@@ -505,6 +505,9 @@ int main(int argc, char** argv)
 	// Test menu
 	GtkWidget* ssh_menu_item = gtk_add_menu_item("SSH",test_menu);
 	GtkWidget* passphrase_menu_item = gtk_add_menu_item("passphrase",test_menu);
+	GtkWidget* default_config_menu_item = gtk_add_menu_item("default config",test_menu);
+	GtkWidget* test_load_menu_item = gtk_add_menu_item("load",test_menu);
+	GtkWidget* test_save_menu_item = gtk_add_menu_item("save",test_menu);
 
 	// Help menu
 	GtkWidget* about_menu_item = gtk_add_menu_item("About",help_menu);
@@ -578,18 +581,6 @@ int main(int argc, char** argv)
   GtkWidget* record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
   gtk_box_pack_start(GTK_BOX(vbox_right), record_save_button , FALSE, TRUE, 1);
 
-	// test buttons...
-  GtkWidget* load_button = gtk_button_new_from_stock(GTK_STOCK_OPEN);
-  gtk_box_pack_start(GTK_BOX(vbox), load_button , FALSE, TRUE, 1);
-  GtkWidget* save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
-  gtk_box_pack_start(GTK_BOX(vbox), save_button , FALSE, TRUE, 1);
-  GtkWidget* test_button = gtk_button_new_from_stock(GTK_STOCK_EXECUTE);
-  gtk_box_pack_start(GTK_BOX(vbox), test_button , FALSE, TRUE, 1);
-
-	// Quit button...
-  GtkWidget* quit_button = gtk_button_new_from_stock(GTK_STOCK_QUIT);
-  gtk_box_pack_start(GTK_BOX(vbox), quit_button , FALSE, TRUE, 1);
-
 	// Status bar...
   GtkWidget* statusbar = gtk_statusbar_new();
   gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, TRUE, 1);
@@ -605,11 +596,16 @@ int main(int argc, char** argv)
   g_signal_connect(G_OBJECT (gui->window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), gui->tree_view);
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), gui->window);
-  g_signal_connect(G_OBJECT (passphrase_menu_item), "activate", G_CALLBACK(menu_test_passphrase), gui->window);
   g_signal_connect(G_OBJECT (open_menu_item), "activate", G_CALLBACK(menu_file_open), gui->window);
   g_signal_connect(G_OBJECT (save_menu_item), "activate", G_CALLBACK(menu_file_save), gui->window);
 	g_signal_connect(G_OBJECT (about_menu_item), "activate", G_CALLBACK(about_widget), gui->window);
 	g_signal_connect(G_OBJECT (exit_menu_item), "activate", G_CALLBACK(gtk_main_quit), NULL);
+
+	// Test menu...
+  g_signal_connect(G_OBJECT (passphrase_menu_item), "activate", G_CALLBACK(menu_test_passphrase), gui->window);
+  g_signal_connect(G_OBJECT (default_config_menu_item), "activate", G_CALLBACK(do_default_config), NULL);
+  g_signal_connect(G_OBJECT (test_load_menu_item), "activate", G_CALLBACK(click_load), NULL);
+  g_signal_connect(G_OBJECT (test_save_menu_item), "activate", G_CALLBACK(click_save), NULL);
 
 	g_signal_connect(G_OBJECT (gui->password_entry), "focus-in-event", G_CALLBACK(show_password), NULL);
 	g_signal_connect(G_OBJECT (gui->password_entry), "focus-out-event", G_CALLBACK(hide_password), NULL);
@@ -631,11 +627,6 @@ int main(int argc, char** argv)
 
   //~ g_signal_connect(G_OBJECT (save_configuration_menu_item), "activate", G_CALLBACK(save_configuration), window);
   //~ g_signal_connect(G_OBJECT (read_configuration_menu_item), "activate", G_CALLBACK(read_configuration), window);
-
-  g_signal_connect(G_OBJECT (load_button), "clicked", G_CALLBACK(click_load), NULL);
-  g_signal_connect(G_OBJECT (save_button), "clicked", G_CALLBACK(click_save), NULL);
-  g_signal_connect(G_OBJECT (test_button), "clicked", G_CALLBACK(do_default_config), NULL);
-  g_signal_connect(G_OBJECT (quit_button), "clicked", G_CALLBACK(gtk_main_quit), NULL);
 
 	// Read the configuration...
 	read_configuration();
