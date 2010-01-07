@@ -9,15 +9,12 @@
 // variables
 //
 
-extern GList* kvo_list;
-
 // -----------------------------------------------------------
 //
 // functions
 //
 
-void update_recent_list(void);
-void save_configuration(void);
-void read_configuration(void);
+extern void save_configuration(GList* kvo_list);
+extern void read_configuration(GList* kvo_list);
 
 #endif

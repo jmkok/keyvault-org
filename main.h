@@ -28,11 +28,18 @@ struct tGUI {
 
 extern struct tGUI* gui;
 
+struct tGlobal {
+	GList* kvo_list;
+};
+
+extern struct tGlobal* global;
+
+
 // -----------------------------------------------------------
 //
 // functions
 //
 
-extern void open_kvo_file(GtkWidget *widget, gpointer kvo_pointer);
+void update_recent_list(GList* kvo_list);
 
 #endif

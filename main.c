@@ -30,6 +30,7 @@
 //
 
 struct tGUI* gui;
+struct tGlobal* global;
 
 tKvoFile* active_keyvault;
 
@@ -65,6 +66,39 @@ void menu_file_open(GtkWidget *widget, gpointer parent_window)
 		// free
 		g_free(buffer);
 		g_free (filename);
+	}
+}
+
+// -----------------------------------------------------------
+//
+// MENU: file -> open_advanced
+//
+
+void open_kvo_file_real(tKvoFile* kvo) {
+	g_printf("open_kvo_file_real()\n");
+	g_printf("hostname: %s\n",kvo->hostname);
+	g_printf("username: %s\n",kvo->username);
+	g_printf("filename: %s\n",kvo->filename);
+	if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
+		trace();
+	}
+	else if (strcmp(kvo->protocol,"ssh") == 0) {
+		ssh_get_file(kvo);
+	}
+}
+
+void menu_file_open_advanced(GtkWidget *widget, gpointer parent_window)
+{
+	// Create a new kvo file
+	tKvoFile* kvo=malloc(sizeof(tKvoFile));
+	memset(kvo,0,sizeof(tKvoFile));
+	// Let the use fill in all required fields...
+	if (dialog_request_kvo(kvo)) {
+		// Store the kvo to the list
+		global->kvo_list = g_list_append(global->kvo_list, kvo);
+		update_recent_list(global->kvo_list);
+		// Open the file...
+		open_kvo_file_real(kvo);
 	}
 }
 
@@ -138,8 +172,9 @@ void clear_filter(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *even
 // Any changes made to the edit fields should be written into the tree store
 //
 
-void do_default_config(GtkWidget *widget, gpointer ptr) {
+void do_default_config(GtkWidget *widget, gpointer kvo_list_ptr) {
 	tKvoFile* kvo;
+	GList* kvo_list=kvo_list_ptr;
 
 	// Remove all items from thge kvo_list
 	void remove_items(gpointer data, gpointer user_data) {
@@ -176,7 +211,7 @@ void do_default_config(GtkWidget *widget, gpointer ptr) {
 	kvo->local_filename = strdup("local.kvo");
 	kvo_list = g_list_append(kvo_list,kvo);
 
-	update_recent_list();
+	update_recent_list(kvo_list);
 
 	// Load default kvo
 	load_default_xml();
@@ -422,22 +457,38 @@ void menu_test_passphrase(GtkWidget *widget, gpointer tree_view) {
 
 // -----------------------------------------------------------
 //
-// Request the user for a kvo file
+// Open (and edit) a recently used KVO file
 //
 
-void open_kvo_file(GtkWidget *widget, gpointer kvo_pointer) {
+void open_recent_kvo_file(GtkWidget *widget, gpointer kvo_pointer) {
 	tKvoFile* kvo=kvo_pointer;
 	if (dialog_request_kvo(kvo)) {
-		g_printf("hostname: %s\n",kvo->hostname);
-		g_printf("username: %s\n",kvo->username);
-		g_printf("filename: %s\n",kvo->filename);
-		if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
-			trace();
-		}
-		else if (strcmp(kvo->protocol,"ssh") == 0) {
-			ssh_get_file(kvo);
-		}
+		open_kvo_file_real(kvo);
 	}
+}
+
+// -----------------------------------------------------------
+//
+// Update the list of recent files
+//
+
+void update_recent_list(GList* kvo_list) {
+	// First remove all items in the recent menu
+	void cb_remove_menu_item(GtkWidget* menu_item, gpointer unused) {
+		gtk_remove_menu_item(menu_item, gui->open_recent_menu);
+	}
+	gtk_container_foreach(GTK_CONTAINER(gui->open_recent_menu), cb_remove_menu_item, 0);
+
+	// Then add all items in the kvo_list to the recent menu
+	void add_to_menu(gpointer data, gpointer user_data) {
+		tKvoFile* kvo = data;
+		GtkWidget* account_menu_item = gtk_add_menu_item(kvo->title,gui->open_recent_menu);
+		g_signal_connect(G_OBJECT (account_menu_item), "activate", G_CALLBACK(open_recent_kvo_file), kvo);
+	}
+	g_list_foreach(kvo_list,add_to_menu,0);
+
+	// Show the recent menu
+	gtk_widget_show_all(gui->open_recent_menu);
 }
 
 // -----------------------------------------------------------
@@ -459,6 +510,10 @@ int main(int argc, char** argv)
 	struct timeval tv;
 	gettimeofday(&tv,0);
 	srand(tv.tv_sec ^ tv.tv_usec);
+
+	// Initialize the generic global component
+	global=malloc(sizeof(struct tGlobal));
+	memset(global,0,sizeof(struct tGlobal));
 
 	// Initialize the global gui component
 	gui=malloc(sizeof(struct tGUI));
@@ -485,7 +540,6 @@ int main(int argc, char** argv)
 	// Menu bar
 	GtkWidget* menu_bar = gtk_menu_bar_new();
 	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, TRUE, 1);
-
 	GtkWidget* file_menu = gtk_add_menu("File",menu_bar);
 	GtkWidget* edit_menu = gtk_add_menu("Edit",menu_bar);
 	GtkWidget* test_menu = gtk_add_menu("Test",menu_bar);
@@ -493,7 +547,8 @@ int main(int argc, char** argv)
 	GtkWidget* help_menu = gtk_add_menu("Help",menu_bar);
 
 	// File menu
-	GtkWidget* open_menu_item = gtk_add_menu_item("Open",file_menu);
+	GtkWidget* open_menu_item = gtk_add_menu_item("Open file",file_menu);
+	GtkWidget* open_advanced_menu_item = gtk_add_menu_item("Open special",file_menu);
 	gui->open_recent_menu = gtk_add_menu("Open recent",file_menu);
 	GtkWidget* save_menu_item = gtk_add_menu_item("Save",file_menu);
 	gtk_add_separator(file_menu);
@@ -597,13 +652,14 @@ int main(int argc, char** argv)
   g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), gui->tree_view);
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), gui->window);
   g_signal_connect(G_OBJECT (open_menu_item), "activate", G_CALLBACK(menu_file_open), gui->window);
+  g_signal_connect(G_OBJECT (open_advanced_menu_item), "activate", G_CALLBACK(menu_file_open_advanced), gui->window);
   g_signal_connect(G_OBJECT (save_menu_item), "activate", G_CALLBACK(menu_file_save), gui->window);
 	g_signal_connect(G_OBJECT (about_menu_item), "activate", G_CALLBACK(about_widget), gui->window);
 	g_signal_connect(G_OBJECT (exit_menu_item), "activate", G_CALLBACK(gtk_main_quit), NULL);
 
 	// Test menu...
   g_signal_connect(G_OBJECT (passphrase_menu_item), "activate", G_CALLBACK(menu_test_passphrase), gui->window);
-  g_signal_connect(G_OBJECT (default_config_menu_item), "activate", G_CALLBACK(do_default_config), NULL);
+  g_signal_connect(G_OBJECT (default_config_menu_item), "activate", G_CALLBACK(do_default_config), global->kvo_list);
   g_signal_connect(G_OBJECT (test_load_menu_item), "activate", G_CALLBACK(click_load), NULL);
   g_signal_connect(G_OBJECT (test_save_menu_item), "activate", G_CALLBACK(click_save), NULL);
 
@@ -629,14 +685,15 @@ int main(int argc, char** argv)
   //~ g_signal_connect(G_OBJECT (read_configuration_menu_item), "activate", G_CALLBACK(read_configuration), window);
 
 	// Read the configuration...
-	read_configuration();
+	read_configuration(global->kvo_list);
+	update_recent_list(global->kvo_list);
 
+	// Run the app
   gtk_widget_show_all(gui->window);
-
   gtk_main();
 
 	// Save the configuration...
-	//~ save_configuration();
+	save_configuration(global->kvo_list);
 
   return 0;
 }
