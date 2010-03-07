@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <gtk/gtk.h>
+#include "list.h"
 
 // -----------------------------------------------------------
 //
@@ -14,7 +15,7 @@
 // functions
 //
 
-extern void save_configuration(GList* kvo_list);
-extern void read_configuration(GList* kvo_list);
+extern void save_configuration(tList* kvo_list);
+extern void read_configuration(tList* kvo_list);
 
 #endif

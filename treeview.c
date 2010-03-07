@@ -1,9 +1,12 @@
+#include <string.h>
+#include <ctype.h>
 #include <gtk/gtk.h>
-#include <mxml.h>
+//~ #include <mxml.h>
+#include <libxml/parser.h>
 
 #include "treeview.h"
 #include "main.h"
-#include "xml.h"
+//~ #include "xml.h"
 #include "encryption.h"
 
 // -----------------------------------------------------------
@@ -29,14 +32,21 @@ char* export_treestore_to_xml(GtkTreeStore* treestore) {
 
 		gtk_tree_model_get(model, iter, COL_TITLE, &title, COL_USERNAME, &username, COL_PASSWORD, &password, COL_URL, &url, COL_INFO, &info,  -1);
 
-		mxml_node_t* keyvault = data;
-		mxml_node_t* group = mxmlNewElement(keyvault, "node");
-		mxml_node_t* node;
-		node = mxmlNewElement(group, "title");		mxmlNewText(node, 0, title);
-		node = mxmlNewElement(group, "username");	mxmlNewText(node, 0, username);
-		node = mxmlNewElement(group, "password");	mxmlNewText(node, 0, password);
-		node = mxmlNewElement(group, "url");			mxmlNewText(node, 0, url);
-		node = mxmlNewElement(group, "info");			mxmlNewText(node, 0, info);
+		//~ mxml_node_t* keyvault = data;
+		//~ mxml_node_t* group = mxmlNewElement(keyvault, "node");
+		xmlNode* keyvault = data;
+		xmlNode* group = xmlNewChild(keyvault, NULL, BAD_CAST "node", NULL);
+		//~ mxml_node_t* node;
+		//~ node = mxmlNewElement(group, "title");		mxmlNewText(node, 0, title);
+		//~ node = mxmlNewElement(group, "username");	mxmlNewText(node, 0, username);
+		//~ node = mxmlNewElement(group, "password");	mxmlNewText(node, 0, password);
+		//~ node = mxmlNewElement(group, "url");			mxmlNewText(node, 0, url);
+		//~ node = mxmlNewElement(group, "info");			mxmlNewText(node, 0, info);
+		xmlNewChild(group, NULL, BAD_CAST "title", BAD_CAST title);
+		xmlNewChild(group, NULL, BAD_CAST "username", BAD_CAST username);
+		xmlNewChild(group, NULL, BAD_CAST "password", BAD_CAST password);
+		xmlNewChild(group, NULL, BAD_CAST "url", BAD_CAST url);
+		xmlNewChild(group, NULL, BAD_CAST "info", BAD_CAST info);
 		g_free(title);
 		g_free(username);
 		g_free(password);
@@ -46,14 +56,17 @@ char* export_treestore_to_xml(GtkTreeStore* treestore) {
 	}
 
 	// Create the xml container
-	mxml_node_t* xml = mxmlNewXML("1.0");
-	mxml_node_t* keyvault = mxmlNewElement(xml,"keyvault");
+	//~ mxml_node_t* xml = mxmlNewXML("1.0");
+	xmlDoc* xml = xmlNewDoc(BAD_CAST "1.0");
+	//~ mxml_node_t* keyvault = mxmlNewElement(xml,"keyvault");
+	xmlNode* keyvault = xmlNewDocNode(xml, NULL, BAD_CAST "keyvault", NULL);
 
 	// Foreach node call "treenode_to_mxml" and store the node into the <keyvault> element
 	gtk_tree_model_foreach(GTK_TREE_MODEL(treestore), treenode_to_mxml, keyvault);
 
 	// Return the xml container as a string
-	return mxmlSaveAllocString(xml, whitespace_cb);
+	//~ return mxmlSaveAllocString(xml, whitespace_cb);
+	return NULL;
 }
 
 // -----------------------------------------------------------
@@ -71,8 +84,11 @@ void my_tree_add(GtkTreeStore *treestore ,GtkTreeIter* self, GtkTreeIter* parent
 // import an xml text into the treestore
 //
 
+extern xmlNode* xmlFindNode(xmlNode* root_node, xmlChar* name, int depth);
+
 void import_xml_into_treestore(GtkTreeStore* treestore, char* xml_text) {
-	mxml_node_t* xml = mxmlLoadString (NULL,xml_text,MXML_NO_CALLBACK);
+	//~ mxml_node_t* xml = mxmlLoadString (NULL,xml_text,MXML_NO_CALLBACK);
+	xmlDoc* xml = xmlReadMemory(xml_text, strlen(xml_text), NULL, NULL, 0);
 	
 	// Show the xml structure
 	//~ mxmlSaveFile(xml,stdout,whitespace_cb);
@@ -80,9 +96,12 @@ void import_xml_into_treestore(GtkTreeStore* treestore, char* xml_text) {
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 	
-	GtkTreeIter self;
-	mxml_node_t* node=xml;
-	while ((node=mxmlFindElement(node,xml,"node",NULL,NULL,MXML_DESCEND))) {
+	//~ GtkTreeIter self;
+	//~ mxml_node_t* node=xml;
+	xmlNode* node = xmlDocGetRootElement(xml);
+	//~ while ((node=mxmlFindElement(node,xml,"node",NULL,NULL,MXML_DESCEND))) {
+	while ((node=xmlFindNode(node, BAD_CAST "node", 0))) {
+/*
 		if (node->type == MXML_ELEMENT) {
 			//~ printf("MXML_ELEMENT: %s\n",node->value.element.name);
 			mxml_node_t* child=node;
@@ -111,6 +130,7 @@ void import_xml_into_treestore(GtkTreeStore* treestore, char* xml_text) {
 			}
 			//~ my_tree_add(treestore, &toplevel, NULL, "You/Com accounts","","pwd","http://server.com/","info");
 		}
+*/
 	}
 	gtk_widget_show_all(gui->window);
 /**/

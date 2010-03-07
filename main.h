@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <gtk/gtk.h>
+#include "list.h"
 
 #define trace() printf("<%s:%u>\n",__FILE__,__LINE__)
 #define todo() printf("TODO <%s:%u>\n",__FILE__,__LINE__)
@@ -29,7 +30,7 @@ struct tGUI {
 extern struct tGUI* gui;
 
 struct tGlobal {
-	GList* kvo_list;
+	tList* kvo_list;
 };
 
 extern struct tGlobal* global;
@@ -40,6 +41,6 @@ extern struct tGlobal* global;
 // functions
 //
 
-void update_recent_list(GList* kvo_list);
+void update_recent_list(tList* kvo_list);
 
 #endif

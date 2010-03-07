@@ -4,7 +4,7 @@
 
 #include "configuration.h"
 #include "structures.h"
-#include "xml.h"
+//~ #include "xml.h"
 #include "main.h"
 #include "gtk_shortcuts.h"
 
@@ -13,7 +13,7 @@
 // Read the configuration
 //
 
-void read_configuration(GList* kvo_list) {
+void read_configuration(tList* kvo_list) {
 	printf("read_configuration()\n");
 	FILE* config=fopen("config.xml","rt");
 	if (config) {
@@ -33,7 +33,9 @@ void read_configuration(GList* kvo_list) {
 				tKvoFile* kvo=malloc(sizeof(tKvoFile));
 				memset(kvo,0,sizeof(tKvoFile));
 				kvo->local_filename = strdup("local.kvo");
-				kvo_list = g_list_append(kvo_list,kvo);
+				trace();
+				list_add(kvo_list,kvo);
+				trace();
 				// Analyze all items for this kvo_file
 				mxml_node_t* child=keyvault_node;
 				while ((child=mxmlWalkNext(child,keyvault_node,MXML_DESCEND))) {
@@ -75,14 +77,14 @@ void read_configuration(GList* kvo_list) {
 // Save the configuration
 //
 
-void save_configuration(GList* kvo_list) {
+void save_configuration(tList* kvo_list) {
 	printf("save_configuration()\n");
 	// Create an xml node that conatins all configuration
 	mxml_node_t* xml = mxmlNewXML("1.0");
 	mxml_node_t* config = mxmlNewElement(xml,"config");
 	int i;
-	for (i=0;i < g_list_length(kvo_list); i++) {
-		tKvoFile* kvo = g_list_nth_data(kvo_list, i);
+	for (i=0;i < kvo_list->count; i++) {
+		tKvoFile* kvo = kvo_list->data[i];
 		mxml_node_t* kvo_file = mxmlNewElement(config, "kvo_file");
 		mxml_node_t* node;
 		// title
@@ -125,7 +127,7 @@ void save_configuration(GList* kvo_list) {
 	// Save the xml node
 	FILE* fh=fopen("config_save.xml","wt");
 	if (fh) {		
-		mxmlSaveFile(xml,fh,whitespace_cb);
+		//~ mxmlSaveFile(xml,fh,whitespace_cb);
 		fclose(fh);
 	}
 	// Remove the xml node

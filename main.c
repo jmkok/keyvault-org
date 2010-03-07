@@ -12,17 +12,19 @@
 #include <glib/gprintf.h>
 //~ #include <glib.h>
 //~ #include <gtk/gtklist.h>
-#include <mxml.h>
+//~ #include <mxml.h>
+#include <libxml/parser.h>
 #include <sys/time.h>
 
 #include "treeview.h"
 #include "dialogs.h"
 #include "ssh.h"
 #include "functions.h"
-#include "xml.h"
+//~ #include "xml.h"
 #include "configuration.h"
 #include "encryption.h"
 #include "gtk_shortcuts.h"
+#include "list.h"
 
 // -----------------------------------------------------------
 //
@@ -95,7 +97,7 @@ void menu_file_open_advanced(GtkWidget *widget, gpointer parent_window)
 	// Let the use fill in all required fields...
 	if (dialog_request_kvo(kvo)) {
 		// Store the kvo to the list
-		global->kvo_list = g_list_append(global->kvo_list, kvo);
+		list_add(global->kvo_list, kvo);
 		update_recent_list(global->kvo_list);
 		// Open the file...
 		open_kvo_file_real(kvo);
@@ -174,20 +176,20 @@ void clear_filter(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *even
 
 void do_default_config(GtkWidget *widget, gpointer kvo_list_ptr) {
 	tKvoFile* kvo;
-	GList* kvo_list=kvo_list_ptr;
+	tList* kvo_list=kvo_list_ptr;
 
 	// Remove all items from thge kvo_list
-	void remove_items(gpointer data, gpointer user_data) {
-		kvo_list=g_list_remove(kvo_list,data);
+	void remove_items(tList* kvo_list,void* data) {
+		list_remove(kvo_list, data);
 	}
-	g_list_foreach(kvo_list,remove_items,0);
+	list_foreach(kvo_list,remove_items);
 
 	// Add jmkok.kvo
 	kvo=malloc(sizeof(tKvoFile));
 	memset(kvo,0,sizeof(tKvoFile));
 	kvo->title = strdup("jmkok.kvo");
 	kvo->filename = strdup("jmkok.kvo");
-	kvo_list = g_list_append(kvo_list,kvo);
+	list_add(kvo_list,kvo);
 
 	// Add ssh @ youcom.nl
 	kvo=malloc(sizeof(tKvoFile));
@@ -198,7 +200,7 @@ void do_default_config(GtkWidget *widget, gpointer kvo_list_ptr) {
 	kvo->username = strdup("jmkok");
 	kvo->filename = strdup("test.kvo");
 	kvo->local_filename = strdup("local.kvo");
-	kvo_list = g_list_append(kvo_list,kvo);
+	list_add(kvo_list,kvo);
 
 	// Add ssh @ pooh
 	kvo=malloc(sizeof(tKvoFile));
@@ -209,7 +211,7 @@ void do_default_config(GtkWidget *widget, gpointer kvo_list_ptr) {
 	kvo->username = strdup("jmkok");
 	kvo->filename = strdup("sjaak.kvo");
 	kvo->local_filename = strdup("local.kvo");
-	kvo_list = g_list_append(kvo_list,kvo);
+	list_add(kvo_list,kvo);
 
 	update_recent_list(kvo_list);
 
@@ -249,22 +251,60 @@ void write_changes_to_treestore(GtkWidget *widget, gpointer selection_ptr) {
 // Load an AES file into the treestore
 //
 
+xmlNode* xmlFindNode(xmlNode* root_node, xmlChar* name, int depth) {
+	//~ printf("soapFindNode('%s',%u) in '%s' \n", name, depth, root_node->name);
+	xmlNode* node = root_node->children;
+	while (node) {
+		//~ printf("found> %s\n", node->name);fflush(stdout);
+		if (node->type == XML_ELEMENT_NODE) {
+			if (xmlStrEqual(node->name, name)) {
+				return node;
+			}
+			if (depth) {
+				xmlNode* sub_node = xmlFindNode(node, name, depth-1);
+				if (sub_node)
+					return sub_node;
+			}
+		}
+
+		node = node->next;
+	}
+	return NULL;
+}
+
+char* xmlNodeContentsText(xmlNode* root_node, xmlChar* name) {
+	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
+	if (node && node->children && node->children->content)
+		return strdup((char*)node->children->content);
+	return NULL;
+}
+
+int xmlNodeContentsInteger(xmlNode* root_node, xmlChar* name) {
+	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
+	if (node && node->children && node->children->content)
+		return atol((char*)node->children->content);
+	return 0;
+}
+
 void load_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 	// Read KVO file
-	FILE* fh=fopen(keyvault->local_filename,"rt");
-	if (!fh) return;
-	mxml_node_t* xml = mxmlLoadFile(NULL, fh, MXML_NO_CALLBACK);
-	fclose(fh);
+	xmlDoc* xml = xmlReadFile(keyvault->local_filename,NULL,0);
+	//~ xmlDocFormatDump( stdout, xml, 1);
+	xmlNode* root = xmlDocGetRootElement(xml);
+	//~ xmlElemDump(stdout, NULL, root);printf("\n");
+	
+	//~ xmlNode* kvo_node = xmlFindNode(root, BAD_CAST "ivec", 0);
+	//~ xmlElemDump(stdout, NULL, kvo_node);printf("\n");
 
 	// Read the ivec
-	mxml_node_t* ivec_node = mxmlFindElement(xml,xml,"ivec",NULL,NULL,MXML_DESCEND);
-	ivec_node = mxmlWalkNext(ivec_node,ivec_node,MXML_DESCEND);
-	if (!ivec_node) {
+	char* base64_ivec = xmlNodeContentsText(root, BAD_CAST "ivec");
+	if (!base64_ivec) {
 		printf("ERROR: missing ivec node\n");
 		goto error;
 	}
+	//~ printf("ivec: %s\n",ivec);
 	gsize ivec_len;
-	keyvault->ivec = g_base64_decode(ivec_node->value.text.string, &ivec_len);
+	keyvault->ivec = g_base64_decode(base64_ivec, &ivec_len);
 	hexdump("ivec",keyvault->ivec,(int)ivec_len);
 	if (!keyvault->ivec){
 		printf("ERROR: Could not decode ivec\n");
@@ -276,24 +316,25 @@ void load_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 	}
 
 	// Read the size (not needed)
-	mxml_node_t* size_node = mxmlFindElement(xml,xml,"size",NULL,NULL,MXML_DESCEND);
-	size_node = mxmlWalkNext(size_node,size_node,MXML_DESCEND);
-	if (!size_node) {
+	xmlNode* size_node = xmlFindNode(root, BAD_CAST "size", 0);
+	//~ mxml_node_t* size_node = mxmlFindElement(xml,xml,"size",NULL,NULL,MXML_DESCEND);
+	//~ size_node = mxmlWalkNext(size_node,size_node,MXML_DESCEND);
+	if (!size_node || !size_node->children || !size_node->children->content) {
 		printf("ERROR: missing size node\n");
 		goto error;
 	}
-	keyvault->data_len=atol(size_node->value.text.string);
+	keyvault->data_len = atol((char*)size_node->children->content);
 	printf("data_size: %u\n",keyvault->data_len);
 
 	// Read the data
 	gsize buffer_len;
-	mxml_node_t* data_node = mxmlFindElement(xml,xml,"data",NULL,NULL,MXML_DESCEND);
-	data_node = mxmlWalkNext(data_node,data_node,MXML_DESCEND);
-	if (!data_node) {
+	xmlNode* data_node = xmlFindNode(root, BAD_CAST "data", 0);
+	//~ data_node = mxmlWalkNext(data_node,data_node,MXML_DESCEND);
+	if (!data_node || !data_node->children || !data_node->children->content) {
 		printf("ERROR: missing data node\n");
 		goto error;
 	}
-	keyvault->data = g_base64_decode(data_node->value.text.string, &buffer_len);
+	keyvault->data = g_base64_decode((char*)data_node->children->content, &buffer_len);
 	if (!keyvault->data){
 		printf("ERROR: Could not decode buffer\n");
 		goto error;
@@ -375,26 +416,41 @@ void save_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 
 	// Save the encrypted data as xml structure
 	gchar* tmp;
-	mxml_node_t* node;
-	mxml_node_t* xml = mxmlNewXML("1.0");
-	mxml_node_t* xml_keyvault = mxmlNewElement(xml,"keyvault");
-	node = mxmlNewElement(xml_keyvault, "encryptiom");
-		mxmlNewText(node, 0, "AES_OFB");
-	node = mxmlNewElement(xml_keyvault, "ivec");
-		tmp=g_base64_encode(keyvault->ivec,16);
-		mxmlNewText(node, 0, tmp);
-		g_free(tmp);
-	node = mxmlNewElement(xml_keyvault, "size");
-		mxmlNewInteger(node, keyvault->data_len);
-	node = mxmlNewElement(xml_keyvault, "data");
-		tmp=g_base64_encode((unsigned char*)keyvault->data, keyvault->data_len);
-		mxmlNewText(node, 0, tmp);
-		g_free(tmp);
+	//~ mxml_node_t* node;
+	//~ mxml_node_t* xml = mxmlNewXML("1.0");
+	xmlDoc* xml = xmlNewDoc(BAD_CAST "1.0");
+	//~ mxml_node_t* xml_keyvault = mxmlNewElement(xml,"keyvault");
+	xmlNode* root = xmlNewDocNode(xml, NULL, BAD_CAST "keyvault", NULL);
+	//~ node = mxmlNewElement(xml_keyvault, "encryptiom");
+		//~ mxmlNewText(node, 0, "AES_OFB");
+	xmlNewChild(root, NULL, BAD_CAST "encryptiom", BAD_CAST "AES_OFB");
+	//~ node = mxmlNewElement(xml_keyvault, "ivec");
+		//~ tmp=g_base64_encode(keyvault->ivec,16);
+		//~ mxmlNewText(node, 0, tmp);
+		//~ g_free(tmp);
+	tmp=g_base64_encode(keyvault->ivec,16);
+	xmlNewChild(root, NULL, BAD_CAST "ivec", BAD_CAST tmp);
+	g_free(tmp);
+	//~ node = mxmlNewElement(xml_keyvault, "size");
+		//~ mxmlNewInteger(node, keyvault->data_len);
+	tmp=malloc(32);
+	printf(tmp,"%u",keyvault->data_len);
+	xmlNewChild(root, NULL, BAD_CAST "size", BAD_CAST tmp);
+	free(tmp);
+	//~ node = mxmlNewElement(xml_keyvault, "data");
+		//~ tmp=g_base64_encode((unsigned char*)keyvault->data, keyvault->data_len);
+		//~ mxmlNewText(node, 0, tmp);
+		//~ g_free(tmp);
+	tmp=g_base64_encode((unsigned char*)keyvault->data, keyvault->data_len);
+	xmlNewChild(root, NULL, BAD_CAST "data", BAD_CAST tmp);
+	g_free(tmp);
 	FILE* fh=fopen(keyvault->local_filename,"wt");
 	if (fh) {
-		mxmlSaveFile(xml,fh,whitespace_cb);
+		//~ mxmlSaveFile(xml,fh,whitespace_cb);
+		xmlDocDump(fh, xml);
 		fclose(fh);
 	}
+	xmlDocDump(stdout, xml);
 
 	free(keyvault->data);
 	keyvault->data=NULL;
@@ -472,7 +528,7 @@ void open_recent_kvo_file(GtkWidget *widget, gpointer kvo_pointer) {
 // Update the list of recent files
 //
 
-void update_recent_list(GList* kvo_list) {
+void update_recent_list(tList* kvo_list) {
 	// First remove all items in the recent menu
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer unused) {
 		gtk_remove_menu_item(menu_item, gui->open_recent_menu);
@@ -480,12 +536,12 @@ void update_recent_list(GList* kvo_list) {
 	gtk_container_foreach(GTK_CONTAINER(gui->open_recent_menu), cb_remove_menu_item, 0);
 
 	// Then add all items in the kvo_list to the recent menu
-	void add_to_menu(gpointer data, gpointer user_data) {
+	void add_to_menu(tList* kvo_list, void* data) {
 		tKvoFile* kvo = data;
 		GtkWidget* account_menu_item = gtk_add_menu_item(kvo->title,gui->open_recent_menu);
 		g_signal_connect(G_OBJECT (account_menu_item), "activate", G_CALLBACK(open_recent_kvo_file), kvo);
 	}
-	g_list_foreach(kvo_list,add_to_menu,0);
+	list_foreach(kvo_list,add_to_menu);
 
 	// Show the recent menu
 	gtk_widget_show_all(gui->open_recent_menu);
@@ -514,6 +570,7 @@ int main(int argc, char** argv)
 	// Initialize the generic global component
 	global=malloc(sizeof(struct tGlobal));
 	memset(global,0,sizeof(struct tGlobal));
+	global->kvo_list=list_create();
 
 	// Initialize the global gui component
 	gui=malloc(sizeof(struct tGUI));
