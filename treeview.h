@@ -16,7 +16,7 @@ enum {
 extern GtkWidget* create_view_and_model(void);
 extern void on_changed(GtkWidget *widget, gpointer statusbar);
 
-char* export_treestore_to_xml(GtkTreeStore* treestore);
-void import_xml_into_treestore(GtkTreeStore* treestore,char* xml);
+xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore);
+void import_xml_into_treestore(GtkTreeStore* treestore,xmlDoc* doc);
 
 #endif

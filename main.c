@@ -109,14 +109,59 @@ void menu_file_open_advanced(GtkWidget *widget, gpointer parent_window)
 
 // -----------------------------------------------------------
 //
+// save_to_file - save the treestore to a file
+//
+
+static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
+
+	// treestore => xml
+	xmlDoc* doc = export_treestore_to_xml(treestore);
+	//~ xmlDocDump(stdout, doc);puts("");
+
+	// xml => encrypted-xml
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, "secret");
+	//~ xmlDocDump(stdout, enc_doc);puts("");
+
+	// encrypted-xml => disk
+	FILE* fp = fopen(filename, "w");
+	if (fp) {
+		xmlDocDump(fp, enc_doc);
+		fclose(fp);
+	}
+}
+
+// -----------------------------------------------------------
+//
+// load_from_file - load a file into the treestore
+//
+
+static void load_from_file(const gchar* filename, GtkTreeStore* treestore) {
+	// Read the file
+	xmlDoc* doc_enc = xmlParseFile(filename);
+	//~ xmlDocDump(stdout, doc_enc);puts("");
+
+	// xml => encrypted-xml
+	xmlDoc* doc = xml_doc_decrypt(doc_enc, "secret");
+	xmlDocDump(stdout, doc);puts("");
+
+	// treestore => xml
+	import_xml_into_treestore(treestore, doc);
+	//~ xmlDoc* doc = export_treestore_to_xml(treestore);
+	//~ xmlDocDump(stdout, doc);puts("");
+
+
+}
+
+// -----------------------------------------------------------
+//
 // MENU: file -> save
 //
 
-void menu_file_save(GtkWidget *widget, gpointer parent_window)
+static void menu_file_save(GtkWidget *widget, gpointer parent_window)
 {
-	gchar* filename=dialog_save_file(widget,parent_window);
+	gchar* filename = dialog_save_file(widget,parent_window);
 	if (filename) {
-		//~ save_to_file (filename);
+		save_to_file(filename, gui->treestore);
 		g_free (filename);
 	}
 }
@@ -129,32 +174,6 @@ void menu_file_save(GtkWidget *widget, gpointer parent_window)
 void click_launch_button(GtkWidget *widget, gpointer ptr) {
 	const gchar* url=gtk_entry_get_text(GTK_ENTRY(gui->url_entry));
 	printf("Launch: %s\n",url);
-}
-
-// -----------------------------------------------------------
-//
-// Setup the treestore with a default file
-//
-
-void load_default_xml() {
-	// Read file...
-	FILE* stream=fopen("default.xml","rb");
-	fseek(stream,0,SEEK_END);
-	size_t filesize=ftell(stream);
-	printf("File size: %zu\n",filesize);
-	char* buffer=g_malloc(filesize+1);
-
-	// Read the file
-	fseek(stream,0,SEEK_SET);
-	size_t rx=fread(buffer,1,filesize,stream);
-	buffer[rx]=0;
-	printf("rx: %zu\n",rx);
-	fclose(stream);
-
-	import_xml_into_treestore(gui->treestore,buffer);
-
-	g_free(buffer);
-
 }
 
 // -----------------------------------------------------------
@@ -174,14 +193,33 @@ void clear_filter(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *even
 
 // -----------------------------------------------------------
 //
-// Any changes made to the edit fields should be written into the tree store
+// Create a default configuration
 //
 
-void do_default_config(GtkWidget *widget, gpointer kvo_list_ptr) {
+static void create_demo_data(GtkWidget *widget, gpointer kvo_list_ptr) {
+	static const char* demo_names[10]={"Tweakers.net","Google.nl","Mijn postbank","Rabobank","Woopie","Amazon","Marktplaats","Hyves","Facebook","IBM services"};
+	static const char* demo_users[10]={"john","james","jack","judy","boris","bas","bruno","berend","boudewijn","jmkok"};
+	int i;
+	for (i=0;i<10;i++) {
+		GtkTreeIter iter;
+		// Insert a new record with a random password
+		gchar* password = create_random_password(12);
+		gtk_tree_store_append(gui->treestore, &iter, NULL);
+		gtk_tree_store_set(gui->treestore, &iter, COL_TITLE, demo_names[i], COL_USERNAME, demo_users[i], COL_PASSWORD, password, COL_URL, "http://someserver.com/path/inde.html", COL_INFO, "", -1);
+		g_free(password);
+	}
+}
+
+// -----------------------------------------------------------
+//
+// Create a default configuration
+//
+
+static void create_demo_config(GtkWidget *widget, gpointer kvo_list_ptr) {
 	tKvoFile* kvo;
 	tList* kvo_list=kvo_list_ptr;
 
-	// Remove all items from thge kvo_list
+	// Remove all items from the kvo_list
 	void remove_items(tList* kvo_list,void* data) {
 		list_remove(kvo_list, data);
 	}
@@ -216,10 +254,8 @@ void do_default_config(GtkWidget *widget, gpointer kvo_list_ptr) {
 	kvo->local_filename = strdup("local.kvo");
 	list_add(kvo_list,kvo);
 
+	// Update the open->recent
 	update_recent_list(kvo_list);
-
-	// Load default kvo
-	load_default_xml();
 }
 
 // -----------------------------------------------------------
@@ -336,11 +372,7 @@ error:
 }
 
 static void click_test_load(GtkWidget *widget, gpointer ptr) {
-	tKvoFile* keyvault=malloc(sizeof(tKvoFile));
-	memset(keyvault,0,sizeof(tKvoFile));
-	keyvault->local_filename = strdup("keyvault.kvo");
-	keyvault->passphrase = strdup("secret");
-	load_treestore(gui->treestore,keyvault);
+	load_from_file("save.kvo", gui->treestore);
 }
 
 // -----------------------------------------------------------
@@ -428,34 +460,16 @@ void save_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 }
 
 static void click_test_save(GtkWidget *widget, gpointer ptr) {
-	if (active_keyvault) {
-		save_treestore(gui->treestore, active_keyvault);
-	}
+	save_to_file("save.kvo", gui->treestore);
+	//~ if (active_keyvault) {
+		//~ save_treestore(gui->treestore, active_keyvault);
+	//~ }
 }
 
 // -----------------------------------------------------------
 //
 // Create a random password
 //
-
-static gchar* create_random_password(int len) {
-	char random_charset[]="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	gchar* password=g_malloc(len+1);
-	memset(password,0,len+1);
-	FILE* fp=fopen("/dev/urandom","r");
-	int i,r;
-	for (i=0;i<len;i++) {
-		if (fp)
-			fread(&r,1,sizeof(r),fp);
-		else
-			r=rand();
-		char p=random_charset[r%strlen(random_charset)];
-		password[i]=p;
-	}
-	if (fp)
-		fclose(fp);
-	return password;
-}
 
 static void click_random_password(GtkWidget *widget, gpointer ptr) {
 	gchar* password = create_random_password(12);
@@ -642,15 +656,15 @@ int main(int argc, char** argv)
 	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
 
 	// File menu
-	GtkWidget* open_menu_item = gtk_add_menu_item(file_menu, "Open file");
-	GtkWidget* open_advanced_menu_item = gtk_add_menu_item(file_menu, "Open special");
+	GtkWidget* open_menu_item = gtk_add_menu_item_clickable(file_menu, "Open file", G_CALLBACK(menu_file_open), gui->window);
+	gtk_add_menu_item_clickable(file_menu, "Open special", G_CALLBACK(menu_file_open_advanced), gui->window);
 	gui->open_recent_menu = gtk_add_menu(file_menu, "Open recent");
-	GtkWidget* save_menu_item = gtk_add_menu_item(file_menu, "Save");
+	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), gui->window);
 	gtk_add_separator(file_menu);
 	//~ GtkWidget* read_configuration_menu_item = gtk_add_menu_item("Read configuration",file_menu);
 	//~ GtkWidget* save_configuration_menu_item = gtk_add_menu_item("Save configuration",file_menu);
 	//~ gtk_add_separator(file_menu);
-	GtkWidget* exit_menu_item = gtk_add_menu_item(file_menu, "Exit");
+	GtkWidget* exit_menu_item = gtk_add_menu_item_clickable(file_menu, "Exit", G_CALLBACK(gtk_main_quit), NULL);
 
 	// Edit menu
 	gtk_add_menu_item_clickable(edit_menu, "Add item", G_CALLBACK(click_add_item), NULL);
@@ -658,17 +672,18 @@ int main(int argc, char** argv)
 	GtkWidget* copy_password_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy passphrase", G_CALLBACK(click_copy_password), NULL);
 
 	// Test menu
-	GtkWidget* ssh_menu_item = gtk_add_menu_item(test_menu, "SSH");
-	GtkWidget* passphrase_menu_item = gtk_add_menu_item(test_menu, "passphrase");
-	GtkWidget* default_config_menu_item = gtk_add_menu_item(test_menu, "default config");
-	GtkWidget* test_load_menu_item = gtk_add_menu_item(test_menu, "load");
-	GtkWidget* test_save_menu_item = gtk_add_menu_item(test_menu, "save");
+	gtk_add_menu_item(test_menu, "SSH");
+	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), gui->window);
+	gtk_add_menu_item_clickable(test_menu, "demo data", G_CALLBACK(create_demo_data), NULL);
+	gtk_add_menu_item_clickable(test_menu, "demo config", G_CALLBACK(create_demo_config), global->kvo_list);
+	gtk_add_menu_item_clickable(test_menu, "load", G_CALLBACK(click_test_load), NULL);
+	gtk_add_menu_item_clickable(test_menu, "save", G_CALLBACK(click_test_save), NULL);
 
 	// Help menu
-	GtkWidget* about_menu_item = gtk_add_menu_item(help_menu, "About");
+	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(about_widget), gui->window);
 
 	// Prevent warnings...
-	if (edit_menu && view_menu && ssh_menu_item);
+	if (view_menu);
 
 	// This is the container for the treeview AND the record info
 	// Make the hbox and put it inside the vbox
@@ -775,18 +790,8 @@ int main(int argc, char** argv)
   g_signal_connect(G_OBJECT (gui->window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), gui->tree_view);
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), gui->window);
-  g_signal_connect(G_OBJECT (open_menu_item), "activate", G_CALLBACK(menu_file_open), gui->window);
-  g_signal_connect(G_OBJECT (open_advanced_menu_item), "activate", G_CALLBACK(menu_file_open_advanced), gui->window);
-  g_signal_connect(G_OBJECT (save_menu_item), "activate", G_CALLBACK(menu_file_save), gui->window);
-	g_signal_connect(G_OBJECT (about_menu_item), "activate", G_CALLBACK(about_widget), gui->window);
-	g_signal_connect(G_OBJECT (exit_menu_item), "activate", G_CALLBACK(gtk_main_quit), NULL);
 
-	// Test menu...
-  g_signal_connect(G_OBJECT (passphrase_menu_item), "activate", G_CALLBACK(menu_test_passphrase), gui->window);
-  g_signal_connect(G_OBJECT (default_config_menu_item), "activate", G_CALLBACK(do_default_config), global->kvo_list);
-  g_signal_connect(G_OBJECT (test_load_menu_item), "activate", G_CALLBACK(click_test_load), NULL);
-  g_signal_connect(G_OBJECT (test_save_menu_item), "activate", G_CALLBACK(click_test_save), NULL);
-
+	// Password entry
 	g_signal_connect(G_OBJECT (gui->password_entry), "focus-in-event", G_CALLBACK(show_password), NULL);
 	g_signal_connect(G_OBJECT (gui->password_entry), "focus-out-event", G_CALLBACK(hide_password), NULL);
 

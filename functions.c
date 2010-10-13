@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <glib/gprintf.h>
+
 // -----------------------------------------------------------
 //
 // hexdump
@@ -81,5 +83,29 @@ char* concat(char* s1,char* s2) {
 	strcpy(retval,s1);
 	strcat(retval,s2);
 	return retval;
+}
+
+// -----------------------------------------------------------
+//
+// create a random password
+//
+
+gchar* create_random_password(int len) {
+	char random_charset[]="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	gchar* password=g_malloc(len+1);
+	memset(password,0,len+1);
+	FILE* fp=fopen("/dev/urandom","r");
+	int i,r;
+	for (i=0;i<len;i++) {
+		if (fp)
+			fread(&r,1,sizeof(r),fp);
+		else
+			r=rand();
+		char p=random_charset[r%strlen(random_charset)];
+		password[i]=p;
+	}
+	if (fp)
+		fclose(fp);
+	return password;
 }
 

@@ -21,9 +21,10 @@
 // export the treestore into an xml text
 //
 
-char* export_treestore_to_xml(GtkTreeStore* treestore) {
+xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 	// Callback per treenode
-	gboolean treenode_to_mxml(GtkTreeModel *model, GtkTreePath *path, GtkTreeIter *iter, gpointer data) {
+	gboolean treenode_to_xml(GtkTreeModel *model, GtkTreePath *path, GtkTreeIter *iter, gpointer data) {
+		trace();
 		char* title;
 		char* username;
 		char* password;
@@ -56,17 +57,17 @@ char* export_treestore_to_xml(GtkTreeStore* treestore) {
 	}
 
 	// Create the xml container
-	//~ mxml_node_t* xml = mxmlNewXML("1.0");
-	xmlDoc* xml = xmlNewDoc(BAD_CAST "1.0");
-	//~ mxml_node_t* keyvault = mxmlNewElement(xml,"keyvault");
-	xmlNode* keyvault = xmlNewDocNode(xml, NULL, BAD_CAST "keyvault", NULL);
+	xmlDoc* doc = xmlNewDoc(BAD_CAST "1.0");
 
-	// Foreach node call "treenode_to_mxml" and store the node into the <keyvault> element
-	gtk_tree_model_foreach(GTK_TREE_MODEL(treestore), treenode_to_mxml, keyvault);
+	// Create the root node
+	xmlNode* keyvault = xmlNewNode(NULL, BAD_CAST "keyvault");
+	xmlDocSetRootElement(doc, keyvault);
 
-	// Return the xml container as a string
-	//~ return mxmlSaveAllocString(xml, whitespace_cb);
-	return NULL;
+	// Foreach node call "treenode_to_xml" and store the node into the <keyvault> element
+	gtk_tree_model_foreach(GTK_TREE_MODEL(treestore), treenode_to_xml, keyvault);
+
+	// Return the xml doc
+	return doc;
 }
 
 // -----------------------------------------------------------
@@ -91,19 +92,13 @@ void extract_field(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIt
 	gtk_tree_store_set(treestore, self, col, text, -1);
 }
 
-void import_xml_into_treestore(GtkTreeStore* treestore, char* xml_text) {
-	//~ mxml_node_t* xml = mxmlLoadString (NULL,xml_text,MXML_NO_CALLBACK);
-	xmlDoc* xml = xmlReadMemory(xml_text, strlen(xml_text), NULL, NULL, 0);
-	
-	// Show the xml structure
-	//~ mxmlSaveFile(xml,stdout,whitespace_cb);
-
+void import_xml_into_treestore(GtkTreeStore* treestore, xmlDoc* doc) {
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 	
 	GtkTreeIter self;
 	//~ mxml_node_t* node=xml;
-	xmlNode* root = xmlDocGetRootElement(xml);
+	xmlNode* root = xmlDocGetRootElement(doc);
 	xmlNode* node = root->children;
 	//~ while ((node=mxmlFindElement(node,xml,"node",NULL,NULL,MXML_DESCEND))) {
 	//~ while ((node=xmlFindNode(node, BAD_CAST "node", 0))) {
