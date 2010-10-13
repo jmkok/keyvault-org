@@ -25,6 +25,7 @@
 #include "encryption.h"
 #include "gtk_shortcuts.h"
 #include "list.h"
+#include "xml.h"
 
 // -----------------------------------------------------------
 //
@@ -37,6 +38,8 @@ struct tGlobal* global;
 tKvoFile* active_keyvault;
 
 extern void quick_message (GtkWidget *parent,gchar *message);
+
+GtkWidget* popup_menu;
 
 // -----------------------------------------------------------
 //
@@ -251,41 +254,6 @@ void write_changes_to_treestore(GtkWidget *widget, gpointer selection_ptr) {
 // Load an AES file into the treestore
 //
 
-xmlNode* xmlFindNode(xmlNode* root_node, xmlChar* name, int depth) {
-	//~ printf("soapFindNode('%s',%u) in '%s' \n", name, depth, root_node->name);
-	xmlNode* node = root_node->children;
-	while (node) {
-		//~ printf("found> %s\n", node->name);fflush(stdout);
-		if (node->type == XML_ELEMENT_NODE) {
-			if (xmlStrEqual(node->name, name)) {
-				return node;
-			}
-			if (depth) {
-				xmlNode* sub_node = xmlFindNode(node, name, depth-1);
-				if (sub_node)
-					return sub_node;
-			}
-		}
-
-		node = node->next;
-	}
-	return NULL;
-}
-
-char* xmlNodeContentsText(xmlNode* root_node, xmlChar* name) {
-	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
-	if (node && node->children && node->children->content)
-		return strdup((char*)node->children->content);
-	return NULL;
-}
-
-int xmlNodeContentsInteger(xmlNode* root_node, xmlChar* name) {
-	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
-	if (node && node->children && node->children->content)
-		return atol((char*)node->children->content);
-	return 0;
-}
-
 void load_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 	// Read KVO file
 	xmlDoc* xml = xmlReadFile(keyvault->local_filename,NULL,0);
@@ -297,7 +265,7 @@ void load_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 	//~ xmlElemDump(stdout, NULL, kvo_node);printf("\n");
 
 	// Read the ivec
-	char* base64_ivec = xmlNodeContentsText(root, BAD_CAST "ivec");
+	char* base64_ivec = (char*)xmlGetContents(root, BAD_CAST "ivec");
 	if (!base64_ivec) {
 		printf("ERROR: missing ivec node\n");
 		goto error;
@@ -367,7 +335,7 @@ error:
 	keyvault->data=NULL;
 }
 
-void click_load(GtkWidget *widget, gpointer ptr) {
+static void click_test_load(GtkWidget *widget, gpointer ptr) {
 	tKvoFile* keyvault=malloc(sizeof(tKvoFile));
 	memset(keyvault,0,sizeof(tKvoFile));
 	keyvault->local_filename = strdup("keyvault.kvo");
@@ -459,7 +427,7 @@ void save_treestore(GtkTreeStore* treestore, tKvoFile* keyvault) {
 	free(aes_filename);
 }
 
-void click_save(GtkWidget *widget, gpointer ptr) {
+static void click_test_save(GtkWidget *widget, gpointer ptr) {
 	if (active_keyvault) {
 		save_treestore(gui->treestore, active_keyvault);
 	}
@@ -470,13 +438,13 @@ void click_save(GtkWidget *widget, gpointer ptr) {
 // Create a random password
 //
 
-void click_random_password(GtkWidget *widget, gpointer ptr) {
+static gchar* create_random_password(int len) {
 	char random_charset[]="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	gchar* password=g_malloc(16);
-	memset(password,0,16);
+	gchar* password=g_malloc(len+1);
+	memset(password,0,len+1);
 	FILE* fp=fopen("/dev/urandom","r");
 	int i,r;
-	for (i=0;i<12;i++) {
+	for (i=0;i<len;i++) {
 		if (fp)
 			fread(&r,1,sizeof(r),fp);
 		else
@@ -486,18 +454,88 @@ void click_random_password(GtkWidget *widget, gpointer ptr) {
 	}
 	if (fp)
 		fclose(fp);
+	return password;
+}
+
+static void click_random_password(GtkWidget *widget, gpointer ptr) {
+	gchar* password = create_random_password(12);
 	gtk_entry_set_text(GTK_ENTRY(gui->password_entry),password);
 	g_free(password);
 }
 
-void show_password(GtkWidget *widget, gpointer entry_ptr) {
+// -----------------------------------------------------------
+//
+// Add a new item
+//
+
+static void click_add_item(GtkWidget *widget, gpointer treestore_ptr) {
+	GtkTreeIter iter;
+	// Insert a new record with a random password
+	gchar* password = create_random_password(12);
+	gtk_tree_store_append(gui->treestore, &iter, NULL);
+	gtk_tree_store_set(gui->treestore, &iter, COL_TITLE, "NEW", COL_USERNAME, "", COL_PASSWORD, password, COL_URL, "", COL_INFO, "", -1);
+	g_free(password);
+	// Set focus...
+  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(gui->tree_view));
+	gtk_tree_selection_select_iter(selection, &iter);
+}
+
+static void click_copy_username(GtkWidget *widget, gpointer ptr) {
+	printf("click_copy_username\n");
+}
+
+static void click_copy_password(GtkWidget *widget, gpointer ptr) {
+	printf("click_copy_password\n");
+}
+
+// -----------------------------------------------------------
+//
+// Show and hide the contents of the password field
+//
+
+static void show_password(GtkWidget *widget, gpointer ptr) {
 	//~ GtkWidget*
 	gtk_entry_set_visibility(GTK_ENTRY(gui->password_entry), TRUE);
 }
 
-void hide_password(GtkWidget *widget, gpointer entry_ptr) {
+static void hide_password(GtkWidget *widget, gpointer ptr) {
 	//~ GtkWidget*
 	gtk_entry_set_visibility(GTK_ENTRY(gui->password_entry), FALSE);
+}
+
+// -----------------------------------------------------------
+//
+// Popup menu
+// http://library.gnome.org/devel/gtk/stable/gtk-migrating-checklist.html#checklist-popup-menu
+//
+
+static void do_popup_menu (GtkWidget *my_widget, GdkEventButton *event) {
+	int button, event_time;
+
+	if (event) {
+		button = event->button;
+		event_time = event->time;
+	}
+	else {
+		button = 0;
+		event_time = gtk_get_current_event_time ();
+	}
+
+	gtk_menu_popup (GTK_MENU (popup_menu), NULL, NULL, NULL, NULL, button, event_time);
+}
+
+static gboolean my_widget_button_press_event_handler (GtkWidget *widget, GdkEventButton *event) {
+	/* Ignore double-clicks and triple-clicks */
+	if ((event->button == 3) && (event->type == GDK_BUTTON_PRESS)) {
+		do_popup_menu (widget, event);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static gboolean my_widget_popup_menu_handler (GtkWidget *widget) {
+	do_popup_menu (widget, NULL);
+	return TRUE;
 }
 
 // -----------------------------------------------------------
@@ -531,14 +569,14 @@ void open_recent_kvo_file(GtkWidget *widget, gpointer kvo_pointer) {
 void update_recent_list(tList* kvo_list) {
 	// First remove all items in the recent menu
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer unused) {
-		gtk_remove_menu_item(menu_item, gui->open_recent_menu);
+		gtk_remove_menu_item(gui->open_recent_menu, menu_item);
 	}
 	gtk_container_foreach(GTK_CONTAINER(gui->open_recent_menu), cb_remove_menu_item, 0);
 
 	// Then add all items in the kvo_list to the recent menu
 	void add_to_menu(tList* kvo_list, void* data) {
 		tKvoFile* kvo = data;
-		GtkWidget* account_menu_item = gtk_add_menu_item(kvo->title,gui->open_recent_menu);
+		GtkWidget* account_menu_item = gtk_add_menu_item(gui->open_recent_menu, kvo->title);
 		g_signal_connect(G_OBJECT (account_menu_item), "activate", G_CALLBACK(open_recent_kvo_file), kvo);
 	}
 	list_foreach(kvo_list,add_to_menu);
@@ -597,32 +635,37 @@ int main(int argc, char** argv)
 	// Menu bar
 	GtkWidget* menu_bar = gtk_menu_bar_new();
 	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, TRUE, 1);
-	GtkWidget* file_menu = gtk_add_menu("File",menu_bar);
-	GtkWidget* edit_menu = gtk_add_menu("Edit",menu_bar);
-	GtkWidget* test_menu = gtk_add_menu("Test",menu_bar);
-	GtkWidget* view_menu = gtk_add_menu("View",menu_bar);
-	GtkWidget* help_menu = gtk_add_menu("Help",menu_bar);
+	GtkWidget* file_menu = gtk_add_menu(menu_bar,"File");
+	GtkWidget* edit_menu = gtk_add_menu(menu_bar,"Edit");
+	GtkWidget* test_menu = gtk_add_menu(menu_bar,"Test");
+	GtkWidget* view_menu = gtk_add_menu(menu_bar,"View");
+	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
 
 	// File menu
-	GtkWidget* open_menu_item = gtk_add_menu_item("Open file",file_menu);
-	GtkWidget* open_advanced_menu_item = gtk_add_menu_item("Open special",file_menu);
-	gui->open_recent_menu = gtk_add_menu("Open recent",file_menu);
-	GtkWidget* save_menu_item = gtk_add_menu_item("Save",file_menu);
+	GtkWidget* open_menu_item = gtk_add_menu_item(file_menu, "Open file");
+	GtkWidget* open_advanced_menu_item = gtk_add_menu_item(file_menu, "Open special");
+	gui->open_recent_menu = gtk_add_menu(file_menu, "Open recent");
+	GtkWidget* save_menu_item = gtk_add_menu_item(file_menu, "Save");
 	gtk_add_separator(file_menu);
 	//~ GtkWidget* read_configuration_menu_item = gtk_add_menu_item("Read configuration",file_menu);
 	//~ GtkWidget* save_configuration_menu_item = gtk_add_menu_item("Save configuration",file_menu);
 	//~ gtk_add_separator(file_menu);
-	GtkWidget* exit_menu_item = gtk_add_menu_item("Exit",file_menu);
+	GtkWidget* exit_menu_item = gtk_add_menu_item(file_menu, "Exit");
+
+	// Edit menu
+	gtk_add_menu_item_clickable(edit_menu, "Add item", G_CALLBACK(click_add_item), NULL);
+	GtkWidget* copy_username_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy username", G_CALLBACK(click_copy_username), NULL);
+	GtkWidget* copy_password_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy passphrase", G_CALLBACK(click_copy_password), NULL);
 
 	// Test menu
-	GtkWidget* ssh_menu_item = gtk_add_menu_item("SSH",test_menu);
-	GtkWidget* passphrase_menu_item = gtk_add_menu_item("passphrase",test_menu);
-	GtkWidget* default_config_menu_item = gtk_add_menu_item("default config",test_menu);
-	GtkWidget* test_load_menu_item = gtk_add_menu_item("load",test_menu);
-	GtkWidget* test_save_menu_item = gtk_add_menu_item("save",test_menu);
+	GtkWidget* ssh_menu_item = gtk_add_menu_item(test_menu, "SSH");
+	GtkWidget* passphrase_menu_item = gtk_add_menu_item(test_menu, "passphrase");
+	GtkWidget* default_config_menu_item = gtk_add_menu_item(test_menu, "default config");
+	GtkWidget* test_load_menu_item = gtk_add_menu_item(test_menu, "load");
+	GtkWidget* test_save_menu_item = gtk_add_menu_item(test_menu, "save");
 
 	// Help menu
-	GtkWidget* about_menu_item = gtk_add_menu_item("About",help_menu);
+	GtkWidget* about_menu_item = gtk_add_menu_item(help_menu, "About");
 
 	// Prevent warnings...
 	if (edit_menu && view_menu && ssh_menu_item);
@@ -647,13 +690,32 @@ int main(int argc, char** argv)
   gui->tree_view = create_view_and_model();
   gtk_box_pack_start(GTK_BOX(vbox_left), gui->tree_view , TRUE, TRUE, 1);
 
+	// POPUP MENU
+  g_signal_connect(G_OBJECT (gui->tree_view), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
+  g_signal_connect(G_OBJECT (gui->tree_view), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
+
+	popup_menu = gtk_menu_new ();
+	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);
+
+	// Add the accelerator
+  GtkAccelGroup* popup_accel_group = gtk_accel_group_new ();
+  gtk_menu_set_accel_group(GTK_MENU (popup_menu), popup_accel_group);
+
+	/* ... add menu items ... */
+	gtk_add_menu_item_clickable(popup_menu, "add", G_CALLBACK(click_add_item), NULL);
+	//~ gtk_widget_add_accelerator (add_menu_item, "activate", popup_accel_group, GDK_x, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+	gtk_add_menu_item_clickable(popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
+	gtk_menu_attach_to_widget (GTK_MENU (popup_menu), gui->tree_view, NULL);
+	gtk_widget_show_all(popup_menu);
+
 	// The right side (record info)
 	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
 	gtk_paned_add2(GTK_PANED(hbox), vbox_right);
 
-	gui->title_entry = gtk_add_labeled_entry("Title",NULL,vbox_right);
-	gui->username_entry = gtk_add_labeled_entry("Username",NULL,vbox_right);
+	gui->title_entry = gtk_add_labeled_entry(vbox_right, "Title", NULL);
+	gui->username_entry = gtk_add_labeled_entry(vbox_right, "Username", NULL);
 
+	// Add the password entry and button
 	label = gtk_label_new("Password");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
@@ -665,6 +727,7 @@ int main(int argc, char** argv)
 		GtkWidget* random_password_button = gtk_button_new_with_label("Random");
 		gtk_box_pack_start(GTK_BOX(box), random_password_button , FALSE, TRUE, 0);
 
+	// Add the url entry and button
 	label = gtk_label_new("Url");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
@@ -675,6 +738,7 @@ int main(int argc, char** argv)
 		GtkWidget* launch_button = gtk_button_new_with_label("Launch");
 		gtk_box_pack_start(GTK_BOX(box), launch_button , FALSE, TRUE, 0);
 
+	// Add the information text area
 	label = gtk_label_new("Information");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
@@ -703,6 +767,9 @@ int main(int argc, char** argv)
   gtk_widget_add_accelerator (open_menu_item, "activate", accel_group, GDK_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (save_menu_item, "activate", accel_group, GDK_s, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (exit_menu_item, "activate", accel_group, GDK_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  //~ gtk_widget_add_accelerator (add_menu_item, "activate", accel_group, GDK_a, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator (copy_username_menu_item, "activate", accel_group, GDK_u, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator (copy_password_menu_item, "activate", accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
 	// Connects...
   g_signal_connect(G_OBJECT (gui->window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -717,8 +784,8 @@ int main(int argc, char** argv)
 	// Test menu...
   g_signal_connect(G_OBJECT (passphrase_menu_item), "activate", G_CALLBACK(menu_test_passphrase), gui->window);
   g_signal_connect(G_OBJECT (default_config_menu_item), "activate", G_CALLBACK(do_default_config), global->kvo_list);
-  g_signal_connect(G_OBJECT (test_load_menu_item), "activate", G_CALLBACK(click_load), NULL);
-  g_signal_connect(G_OBJECT (test_save_menu_item), "activate", G_CALLBACK(click_save), NULL);
+  g_signal_connect(G_OBJECT (test_load_menu_item), "activate", G_CALLBACK(click_test_load), NULL);
+  g_signal_connect(G_OBJECT (test_save_menu_item), "activate", G_CALLBACK(click_test_save), NULL);
 
 	g_signal_connect(G_OBJECT (gui->password_entry), "focus-in-event", G_CALLBACK(show_password), NULL);
 	g_signal_connect(G_OBJECT (gui->password_entry), "focus-out-event", G_CALLBACK(hide_password), NULL);

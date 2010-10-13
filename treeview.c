@@ -6,7 +6,7 @@
 
 #include "treeview.h"
 #include "main.h"
-//~ #include "xml.h"
+#include "xml.h"
 #include "encryption.h"
 
 // -----------------------------------------------------------
@@ -84,7 +84,12 @@ void my_tree_add(GtkTreeStore *treestore ,GtkTreeIter* self, GtkTreeIter* parent
 // import an xml text into the treestore
 //
 
-extern xmlNode* xmlFindNode(xmlNode* root_node, xmlChar* name, int depth);
+//~ extern xmlNode* xmlFindNode(xmlNode* root_node, xmlChar* name, int depth);
+
+void extract_field(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIter* self, int col) {
+	const char* text = (char*)xmlGetContents(node, BAD_CAST name);
+	gtk_tree_store_set(treestore, self, col, text, -1);
+}
 
 void import_xml_into_treestore(GtkTreeStore* treestore, char* xml_text) {
 	//~ mxml_node_t* xml = mxmlLoadString (NULL,xml_text,MXML_NO_CALLBACK);
@@ -96,42 +101,24 @@ void import_xml_into_treestore(GtkTreeStore* treestore, char* xml_text) {
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 	
-	//~ GtkTreeIter self;
+	GtkTreeIter self;
 	//~ mxml_node_t* node=xml;
-	xmlNode* node = xmlDocGetRootElement(xml);
+	xmlNode* root = xmlDocGetRootElement(xml);
+	xmlNode* node = root->children;
 	//~ while ((node=mxmlFindElement(node,xml,"node",NULL,NULL,MXML_DESCEND))) {
-	while ((node=xmlFindNode(node, BAD_CAST "node", 0))) {
-/*
-		if (node->type == MXML_ELEMENT) {
-			//~ printf("MXML_ELEMENT: %s\n",node->value.element.name);
-			mxml_node_t* child=node;
+	//~ while ((node=xmlFindNode(node, BAD_CAST "node", 0))) {
+	while(node) {
+		if (node->type == XML_ELEMENT_NODE) {
 			gtk_tree_store_append(treestore, &self, NULL);
-			while ((child=mxmlWalkNext(child,node,MXML_DESCEND))) {
-				if (child->type == MXML_ELEMENT) {
-					//~ printf("\tMXML_ELEMENT: %s\n",child->value.element.name);
-					char* name=child->value.element.name;
-					child=mxmlWalkNext(child,node,MXML_DESCEND);
-					if (child->type == MXML_TEXT) {
-						//~ printf("\tMXML_TEXT: %s\n",child->value.text.string);
-						char* value=child->value.text.string;
-						if (strcmp(name,"title") == 0)		gtk_tree_store_set(treestore, &self, COL_TITLE, value, -1);
-						if (strcmp(name,"username") == 0)	gtk_tree_store_set(treestore, &self, COL_USERNAME, value, -1);
-						if (strcmp(name,"password") == 0)	gtk_tree_store_set(treestore, &self, COL_PASSWORD, value, -1);
-						if (strcmp(name,"url") == 0)			gtk_tree_store_set(treestore, &self, COL_URL, value, -1);
-						if (strcmp(name,"info") == 0)			gtk_tree_store_set(treestore, &self, COL_INFO, value, -1);
-					}
-				}
-				else if (child->type == MXML_TEXT) {
-					//~ printf("\tMXML_TEXT: %s\n",child->value.text.string);
-				}
-				else {
-					//~ printf("\tMXML_OTHER\n");
-				}
-			}
-			//~ my_tree_add(treestore, &toplevel, NULL, "You/Com accounts","","pwd","http://server.com/","info");
+			extract_field(node,"title", treestore, &self, COL_TITLE);
+			extract_field(node,"username", treestore, &self, COL_USERNAME);
+			extract_field(node,"password", treestore, &self, COL_PASSWORD);
+			extract_field(node,"url", treestore, &self, COL_URL);
+			extract_field(node,"info", treestore, &self, COL_INFO);
 		}
-*/
+		node = node->next;
 	}
+	//~ my_tree_add(treestore, &toplevel, NULL, "You/Com accounts","","pwd","http://server.com/","info");
 	gtk_widget_show_all(gui->window);
 /**/
 }

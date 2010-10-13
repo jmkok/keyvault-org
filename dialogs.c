@@ -27,7 +27,7 @@ gchar* dialog_request_password (GtkWidget *parent,gchar* title) {
   gtk_container_add(GTK_CONTAINER(content_area), vbox);
 	
 	/* Add the passphrase */
-	GtkWidget* passphrase_entry = gtk_add_labeled_entry("Passphrase",NULL,vbox);
+	GtkWidget* passphrase_entry = gtk_add_labeled_entry(vbox, "Passphrase", NULL);
 	gtk_entry_set_visibility(GTK_ENTRY(passphrase_entry), FALSE);
 
 	/* Show the dialog, wait for the OK button and return the passphrase */
@@ -76,7 +76,7 @@ gboolean dialog_request_kvo (tKvoFile* kvo) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),1);
 
 	/* Add the fields */
-	GtkWidget* title_entry = gtk_add_labeled_entry("Title",kvo->title,vbox);
+	GtkWidget* title_entry = gtk_add_labeled_entry(vbox, "Title",kvo->title);
 	GtkWidget* hostname_label = gtk_add_label(vbox,"Hostname");
 	GtkWidget* hostname_entry = gtk_add_entry(vbox,kvo->hostname);
 	GtkWidget* username_label = gtk_add_label(vbox,"Username");
@@ -84,7 +84,7 @@ gboolean dialog_request_kvo (tKvoFile* kvo) {
 	GtkWidget* password_label = gtk_add_label(vbox,"Password");
 	GtkWidget* password_entry = gtk_add_entry(vbox,kvo->password);
 	gtk_entry_set_visibility(GTK_ENTRY(password_entry), FALSE);
-	GtkWidget* filename_entry = gtk_add_labeled_entry("Filename",kvo->filename,vbox);
+	GtkWidget* filename_entry = gtk_add_labeled_entry(vbox, "Filename",kvo->filename);
 
 	/* Protocol change */
 	void change_protocol(GtkWidget *widget, gpointer data) {
@@ -171,9 +171,11 @@ void quick_message (GtkWidget *parent,gchar *message) {
 gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window)
 {
 	gchar* filename=NULL;
-	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Open File",parent_window,GTK_FILE_CHOOSER_ACTION_OPEN,
-								GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, 
-								GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,NULL);
+	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Open File", parent_window, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	GtkFileFilter* filter = gtk_file_filter_new ();
+	gtk_file_filter_set_name(filter,"Keyvault files");
+	gtk_file_filter_add_pattern (filter, "*.kvo");
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	}
