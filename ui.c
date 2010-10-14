@@ -15,6 +15,7 @@
 //~ #include <mxml.h>
 #include <libxml/parser.h>
 #include <sys/time.h>
+#include <assert.h>
 
 #include "treeview.h"
 #include "dialogs.h"
@@ -55,42 +56,71 @@ GtkWidget* url_entry;
 GtkWidget* info_text;
 
 // The data tree
-struct tDataTree {
+struct tTreeData {
 	GtkWidget* treeview;
 	GtkTreeStore* treestore;
 	GtkTreeModel* treefilter;
+	char* filter_title;
 };
-struct tDataTree* treedata;
+struct tTreeData* treedata;
+
+char* active_passphrase = NULL;
+char* active_filename = NULL;
+
+// -----------------------------------------------------------
+//
+// load_from_file - load a file into the treestore
+//
+
+static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
+	// Read the file
+	xmlDoc* doc_enc = xmlParseFile(filename);
+	//~ xmlDocDump(stdout, doc_enc);puts("");
+
+	// Request the passphrase to decode the file ("secret")
+	//~ gchar* passphrase = "secret";
+	
+
+	// xml => encrypted-xml
+	xmlDoc* doc = NULL;
+	while(1) {
+		if (!active_passphrase) {
+			active_passphrase = dialog_request_password(NULL,"menu_test_passphrase");
+			if (!active_passphrase)
+				return 0;
+		}
+		doc = xml_doc_decrypt(doc_enc, active_passphrase);
+		if (!doc) {
+			free(active_passphrase);
+			active_passphrase = NULL;
+			continue;
+		}
+		break;
+	}
+	//~ xmlDocDump(stdout, doc);puts("");
+
+	// treestore => xml
+	import_xml_into_treestore(treestore, doc);
+	//~ xmlDoc* doc = export_reestore_to_xml(treestore);
+	//~ xmlDocDump(stdout, doc);puts("");
+	return 1;
+}
 
 // -----------------------------------------------------------
 //
 // MENU: file -> open
 //
 
-void menu_file_open(GtkWidget *widget, gpointer parent_window)
+static void menu_file_open(GtkWidget *widget, gpointer ptr)
 {
-	gchar* filename=dialog_open_file(widget,parent_window);
+	gchar* filename=dialog_open_file(widget, main_window);
 	if (filename) {
-		// Read file...
-		FILE* stream=fopen(filename,"rb");
-		fseek(stream,0,SEEK_END);
-		size_t filesize=ftell(stream);
-		g_printf("File size: %zu\n",filesize);
-		//~ fseek(stream,16,SEEK_SET);
-		void* buffer=g_malloc(filesize);
-		fread(buffer,1,filesize,stream);
-		fclose(stream);
-		// read aes file
-		//~ AES_KEY* key=g_malloc(sizeof(AES_KEY));
-		//~ AES_set_decrypt_key((unsigned char*)"test",sizeof(AES_KEY),key);
-		//~ hexdump(key,32);g_print("\n");
-		//~ hexdump(buffer,32);g_print("\n");
-		//~ AES_decrypt(buffer,buffer,key);
-		//~ hexdump(buffer,32);g_print("\n");
-		//~ aes_decrypt(buffer,filesize,"secret");
-		//~ printf("%s",buffer);
-		// free
-		g_free(buffer);
+		GtkTreeStore* treestore = ptr;
+		if (load_from_file(filename, treestore)) {
+			if (active_filename)
+				free(active_filename);
+			active_filename = strdup(filename);
+		}
 		g_free (filename);
 	}
 }
@@ -140,10 +170,11 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 	//~ xmlDocDump(stdout, doc);puts("");
 
 	// Request the passphrase to encode the file ("secret")
-	gchar* passphrase = dialog_request_password(NULL,"menu_test_passphrase");
+	if (!active_passphrase)
+		active_passphrase = dialog_request_password(NULL,"menu_test_passphrase");
 
 	// xml => encrypted-xml
-	xmlDoc* enc_doc = xml_doc_encrypt(doc, passphrase);
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, active_passphrase);
 	//~ xmlDocDump(stdout, enc_doc);puts("");
 
 	// encrypted-xml => disk
@@ -156,28 +187,17 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 // -----------------------------------------------------------
 //
-// load_from_file - load a file into the treestore
+// MENU: file -> save as
 //
 
-static void load_from_file(const gchar* filename, GtkTreeStore* treestore) {
-	// Read the file
-	xmlDoc* doc_enc = xmlParseFile(filename);
-	//~ xmlDocDump(stdout, doc_enc);puts("");
-
-	// Request the passphrase to decode the file ("secret")
-	gchar* passphrase = "secret";
-	//~ gchar* passphrase = dialog_request_password(NULL,"menu_test_passphrase");
-
-	// xml => encrypted-xml
-	xmlDoc* doc = xml_doc_decrypt(doc_enc, passphrase);
-	//~ xmlDocDump(stdout, doc);puts("");
-
-	// treestore => xml
-	import_xml_into_treestore(treestore, doc);
-	//~ xmlDoc* doc = export_reestore_to_xml(treestore);
-	//~ xmlDocDump(stdout, doc);puts("");
-
-
+static void menu_file_save_as(GtkWidget *widget, gpointer ptr)
+{
+	gchar* filename = dialog_save_file(widget, main_window);
+	if (filename) {
+		GtkTreeStore* treestore = ptr;
+		save_to_file(filename, treestore);
+		g_free (filename);
+	}
 }
 
 // -----------------------------------------------------------
@@ -185,12 +205,14 @@ static void load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 // MENU: file -> save
 //
 
-static void menu_file_save(GtkWidget *widget, gpointer parent_window)
+static void menu_file_save(GtkWidget *widget, gpointer ptr)
 {
-	gchar* filename = dialog_save_file(widget, parent_window);
-	if (filename) {
-		save_to_file(filename, treedata->treestore);
-		g_free (filename);
+	if (active_filename) {
+		GtkTreeStore* treestore = ptr;
+		save_to_file(active_filename, treestore);
+	}
+	else {
+		menu_file_save_as(widget, ptr);
 	}
 }
 
@@ -209,15 +231,14 @@ void click_launch_button(GtkWidget *widget, gpointer ptr) {
 // A user has made a change to the search field
 //
 
-char* filter_title;
-void treemodel_filter_change(GtkWidget *widget, gpointer ptr) {
+static void treemodel_filter_change(GtkWidget *widget, gpointer ptr) {
 	GtkTreeModelFilter* treefilter = ptr;
 	const char* text=gtk_entry_get_text(GTK_ENTRY(widget));
-	strcpy(filter_title,text);
+	strcpy(treedata->filter_title, text);
 	gtk_tree_model_filter_refilter(treefilter);
 }
 
-void clear_filter(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *event, gpointer user_data) {
+static void clear_filter(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *event, gpointer user_data) {
 	gtk_entry_set_text(entry,"");
 }
 
@@ -235,8 +256,7 @@ static void create_demo_data(GtkWidget *widget, gpointer ptr) {
 		GtkTreeIter iter;
 		// Insert a new record with a random password
 		gchar* password = create_random_password(12);
-		gtk_tree_store_append(treestore, &iter, NULL);
-		gtk_tree_store_set(treestore, &iter, COL_TITLE, demo_names[i], COL_USERNAME, demo_users[i], COL_PASSWORD, password, COL_URL, "http://someserver.com/path/inde.html", COL_INFO, "", -1);
+		treestore_add_record(treestore, &iter, NULL, demo_names[i], demo_users[i], password, "http://someserver.com/path/inde.html", "Some info");
 		g_free(password);
 	}
 }
@@ -519,7 +539,7 @@ static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter,
 	gtk_tree_model_get (model, iter, COL_TITLE, &str, -1);
 	if (str) {
 		lowercase(str);
-		if (strstr(str,filter_title))
+		if (strstr(str, treedata->filter_title))
 			visible = TRUE;
 		g_free (str);
 	}
@@ -568,25 +588,29 @@ static void treestore_click_col1(GtkWidget *widget, gpointer ptr) {
 // create_view_and_model()
 //
 
-static struct tDataTree* create_view_and_model(void) {
-	struct tDataTree* dt = malloc(sizeof(struct tDataTree));
-	memset(dt, 0, sizeof(struct tDataTree));
-	treedata = dt;
+static struct tTreeData* create_view_and_model(void) {
+	struct tTreeData* td = malloc(sizeof(struct tTreeData));
+	memset(td, 0, sizeof(struct tTreeData));
+	treedata = td;
+
+	// Malloc the filter
+	td->filter_title=malloc(1024);
+	*td->filter_title=0;
 
 	// Create the treestore (8 strings fields)
-	dt->treestore = gtk_tree_store_new(NUM_COLS,
+	td->treestore = gtk_tree_store_new(NUM_COLS,
 		G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,
 		G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING
 	);
 
 	// Sort on title
-	gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(dt->treestore), COL_TITLE, treestore_sort_func, NULL, NULL);
-	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(dt->treestore), COL_TITLE, sort_order);
+	gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(td->treestore), COL_TITLE, treestore_sort_func, NULL, NULL);
+	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(td->treestore), COL_TITLE, sort_order);
 
 	// Create the filtered model ("filter_title")
-	dt->treefilter = gtk_tree_model_filter_new(GTK_TREE_MODEL(dt->treestore), NULL);
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(dt->treefilter), treemodel_visible_func, NULL, NULL);
-	dt->treeview = gtk_tree_view_new_with_model(dt->treefilter);
+	td->treefilter = gtk_tree_model_filter_new(GTK_TREE_MODEL(td->treestore), NULL);
+	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(td->treefilter), treemodel_visible_func, NULL, NULL);
+	td->treeview = gtk_tree_view_new_with_model(td->treefilter);
 	
 	// Create column 1 and set the title
   GtkTreeViewColumn* col1 = gtk_tree_view_column_new();
@@ -594,8 +618,8 @@ static struct tDataTree* create_view_and_model(void) {
   gtk_tree_view_column_set_clickable(col1, TRUE);
   gtk_tree_view_column_set_sort_indicator(col1, TRUE);
   //~ gtk_tree_view_column_set_sort_column_id(col1, COL_TITLE);	// Is this easier ? It currently only gives me trouble...
-  g_signal_connect(G_OBJECT (col1), "clicked", G_CALLBACK(treestore_click_col1), dt->treestore);
-  gtk_tree_view_append_column(GTK_TREE_VIEW(dt->treeview), col1);
+  g_signal_connect(G_OBJECT (col1), "clicked", G_CALLBACK(treestore_click_col1), td->treestore);
+  gtk_tree_view_append_column(GTK_TREE_VIEW(td->treeview), col1);
   
   // Define how column 1 looks like
   GtkCellRenderer* renderer = gtk_cell_renderer_text_new();
@@ -603,10 +627,10 @@ static struct tDataTree* create_view_and_model(void) {
   gtk_tree_view_column_add_attribute(col1, renderer, "text", COL_TITLE);
 
 	// Make the title searchable
-	gtk_tree_view_set_search_column(GTK_TREE_VIEW(dt->treeview), COL_TITLE);
+	gtk_tree_view_set_search_column(GTK_TREE_VIEW(td->treeview), COL_TITLE);
 
-	// Return the data tree
-  return dt;
+	// Return the tree data
+  return td;
 }
 
 // -----------------------------------------------------------
@@ -620,9 +644,6 @@ static struct tDataTree* create_view_and_model(void) {
 	// GTK_STOCK_DIALOG_AUTHENTICATION
 
 int create_main_window(void) {
-	filter_title=malloc(1024);
-	*filter_title=0;
-
 	// Initialize random generator
 	struct timeval tv;
 	gettimeofday(&tv,0);
@@ -648,7 +669,7 @@ int create_main_window(void) {
   gtk_widget_set_size_request (main_window, 500, 600);
 
 	// Create the treeview (do not place yet)
-  struct tDataTree* dt = create_view_and_model();
+  struct tTreeData* td = create_view_and_model();
 
 	// Make the vbox and put it in the main window
   GtkWidget* vbox = gtk_vbox_new(FALSE, 3);
@@ -664,10 +685,11 @@ int create_main_window(void) {
 	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
 
 	// File menu
-	GtkWidget* open_menu_item = gtk_add_menu_item_clickable(file_menu, "Open file", G_CALLBACK(menu_file_open), main_window);
-	gtk_add_menu_item_clickable(file_menu, "Open special", G_CALLBACK(menu_file_open_advanced), main_window);
+	GtkWidget* open_menu_item = gtk_add_menu_item_clickable(file_menu, "Open file", G_CALLBACK(menu_file_open), td->treestore);
+	gtk_add_menu_item_clickable(file_menu, "Open special", G_CALLBACK(menu_file_open_advanced), td->treestore);
 	open_recent_menu = gtk_add_menu(file_menu, "Open recent");
-	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), main_window);
+	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), td->treestore);
+	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), td->treestore);
 	gtk_add_separator(file_menu);
 	//~ GtkWidget* read_configuration_menu_item = gtk_add_menu_item("Read configuration",file_menu);
 	//~ GtkWidget* save_configuration_menu_item = gtk_add_menu_item("Save configuration",file_menu);
@@ -682,10 +704,10 @@ int create_main_window(void) {
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
 	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), main_window);
-	gtk_add_menu_item_clickable(test_menu, "demo data", G_CALLBACK(create_demo_data), dt->treestore);
+	gtk_add_menu_item_clickable(test_menu, "demo data", G_CALLBACK(create_demo_data), td->treestore);
 	gtk_add_menu_item_clickable(test_menu, "demo config", G_CALLBACK(create_demo_config), global->kvo_list);
-	gtk_add_menu_item_clickable(test_menu, "load", G_CALLBACK(click_test_load), dt->treestore);
-	gtk_add_menu_item_clickable(test_menu, "save", G_CALLBACK(click_test_save), dt->treestore);
+	gtk_add_menu_item_clickable(test_menu, "load", G_CALLBACK(click_test_load), td->treestore);
+	gtk_add_menu_item_clickable(test_menu, "save", G_CALLBACK(click_test_save), td->treestore);
 
 	// Help menu
 	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(about_widget), main_window);
@@ -710,11 +732,11 @@ int create_main_window(void) {
 	gtk_box_pack_start(GTK_BOX(vbox_left), filter_entry, FALSE, TRUE, 1);
 
 	// The treeview
-  gtk_box_pack_start(GTK_BOX(vbox_left), dt->treeview , TRUE, TRUE, 1);
+  gtk_box_pack_start(GTK_BOX(vbox_left), td->treeview , TRUE, TRUE, 1);
 
 	// POPUP MENU
-  g_signal_connect(G_OBJECT (dt->treeview), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
-  g_signal_connect(G_OBJECT (dt->treeview), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
+  g_signal_connect(G_OBJECT (td->treeview), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
+  g_signal_connect(G_OBJECT (td->treeview), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
 
 	popup_menu = gtk_menu_new ();
 	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);
@@ -727,7 +749,7 @@ int create_main_window(void) {
 	gtk_add_menu_item_clickable(popup_menu, "add", G_CALLBACK(click_add_item), NULL);
 	//~ gtk_widget_add_accelerator (add_menu_item, "activate", popup_accel_group, GDK_x, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 	gtk_add_menu_item_clickable(popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
-	gtk_menu_attach_to_widget (GTK_MENU (popup_menu), dt->treeview, NULL);
+	gtk_menu_attach_to_widget (GTK_MENU (popup_menu), td->treeview, NULL);
 	gtk_widget_show_all(popup_menu);
 
 	// The right side (record info)
@@ -795,7 +817,7 @@ int create_main_window(void) {
 
 	// Connects...
   g_signal_connect(G_OBJECT (main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), dt->treeview);
+  g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), td->treeview);
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), main_window);
 
 	// Password entry
@@ -803,19 +825,19 @@ int create_main_window(void) {
 	g_signal_connect(G_OBJECT (password_entry), "focus-out-event", G_CALLBACK(hide_password), NULL);
 
 	// Any changes made to the treeview
-  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(dt->treeview));
+  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(td->treeview));
   gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
   g_signal_connect(selection, "changed", G_CALLBACK(treeview_selection_changed), statusbar);
 
 	// Any changes made to the input field are written into the tree store
-	//~ g_signal_connect(G_OBJECT (title_entry), "changed", G_CALLBACK(write_changes_to_dt->treestore), selection);
-	//~ g_signal_connect(G_OBJECT (username_entry), "changed", G_CALLBACK(write_changes_to_dt->treestore), selection);
-	//~ g_signal_connect(G_OBJECT (password_entry), "changed", G_CALLBACK(write_changes_to_dt->treestore), selection);
-	//~ g_signal_connect(G_OBJECT (url_entry), "changed", G_CALLBACK(write_changes_to_dt->treestore), selection);
+	//~ g_signal_connect(G_OBJECT (title_entry), "changed", G_CALLBACK(write_changes_to_td->treestore), selection);
+	//~ g_signal_connect(G_OBJECT (username_entry), "changed", G_CALLBACK(write_changes_to_td->treestore), selection);
+	//~ g_signal_connect(G_OBJECT (password_entry), "changed", G_CALLBACK(write_changes_to_td->treestore), selection);
+	//~ g_signal_connect(G_OBJECT (url_entry), "changed", G_CALLBACK(write_changes_to_td->treestore), selection);
 	//~ g_signal_connect(G_OBJECT (info_text), "focus-out-event", G_CALLBACK(write_changes_to_treestore), selection);
 	g_signal_connect(G_OBJECT (record_save_button), "clicked", G_CALLBACK(write_changes_to_treestore), selection);
 
-	g_signal_connect(G_OBJECT (filter_entry), "changed", G_CALLBACK(treemodel_filter_change), dt->treefilter);
+	g_signal_connect(G_OBJECT (filter_entry), "changed", G_CALLBACK(treemodel_filter_change), td->treefilter);
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
   //~ g_signal_connect(G_OBJECT (save_configuration_menu_item), "activate", G_CALLBACK(save_configuration), window);

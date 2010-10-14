@@ -4,20 +4,23 @@
 #include <glib-2.0/glib/gprintf.h>
 #include <openssl/aes.h>
 
+#include "dialogs.h"
 #include "main.h"
 #include "structures.h"
 #include "gtk_shortcuts.h"
 
-gchar* dialog_request_password (GtkWidget *parent,gchar* title) {
+gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	/* Create the dialog */
 	GtkWidget* dialog = gtk_dialog_new_with_buttons (title,
-																	 NULL,
+																	 parent,
 																	 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-																	 GTK_STOCK_OK, GTK_RESPONSE_NONE,
+																	 GTK_STOCK_OK, GTK_RESPONSE_OK,
+																	 GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT,
 																	 NULL);
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/pixmaps/apple-red.png", NULL);
 	gtk_window_set_icon_name(GTK_WINDOW(dialog), GTK_STOCK_DIALOG_AUTHENTICATION);
 	gtk_window_set_default_size (GTK_WINDOW(dialog), 250, -1);
+	//~ gtk_window_set_default  
 
 	//~ gtk_dialog_set_has_separator(GTK_DIALOG(dialog), FALSE);
 	GtkWidget* content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
@@ -32,8 +35,10 @@ gchar* dialog_request_password (GtkWidget *parent,gchar* title) {
 
 	/* Show the dialog, wait for the OK button and return the passphrase */
 	gtk_widget_show_all(dialog);
-	gtk_dialog_run(GTK_DIALOG(dialog));
-	gchar* retval=strdup(gtk_entry_get_text(GTK_ENTRY(passphrase_entry)));
+	gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+	gchar* retval = NULL;
+	if (response == GTK_RESPONSE_OK)
+		retval = strdup(gtk_entry_get_text(GTK_ENTRY(passphrase_entry)));
 	gtk_widget_destroy(dialog);
 	return retval;
 }

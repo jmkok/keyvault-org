@@ -18,7 +18,7 @@ CLIBS=`pkg-config $(LIBS) --libs` -lssh2
 all: $(TARG)
 
 run: $(TARG)
-	./$(TARG)
+	LANG=C ./$(TARG)
 
 clean:
 	rm -f $(TARG) $(OBJS)

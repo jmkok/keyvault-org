@@ -16,4 +16,6 @@ enum {
 xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore);
 void import_xml_into_treestore(GtkTreeStore* treestore,xmlDoc* doc);
 
+void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* title, const char* username, const char* password, const char* url, const char* info);
+
 #endif

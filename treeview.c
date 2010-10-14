@@ -71,50 +71,41 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 
 // -----------------------------------------------------------
 //
-// write a while record into the treestore
-//
-
-void my_tree_add(GtkTreeStore *treestore ,GtkTreeIter* self, GtkTreeIter* parent, char* title, char* username,char* password,char* url,char* info) {
-	gtk_tree_store_append(treestore, self, parent);
-	gtk_tree_store_set(treestore, self, COL_TITLE, title, COL_USERNAME, username, COL_PASSWORD, password, COL_URL, url, COL_INFO, info, -1);
-}
-
-// -----------------------------------------------------------
-//
 // import an xml text into the treestore
 //
 
-//~ extern xmlNode* xmlFindNode(xmlNode* root_node, xmlChar* name, int depth);
-
-void extract_field(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIter* self, int col) {
+static void xmlContentsIntoTreestoreColumn(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIter* self, int col) {
 	const char* text = (char*)xmlGetContents(node, BAD_CAST name);
 	gtk_tree_store_set(treestore, self, col, text, -1);
 }
 
 void import_xml_into_treestore(GtkTreeStore* treestore, xmlDoc* doc) {
 	// Remove all rows
-	trace();
 	gtk_tree_store_clear(treestore);
-	trace();
-	exit(1);
-	
-	GtkTreeIter self;
-	//~ mxml_node_t* node=xml;
+
+	// Read all <node> items and place them inthe tree store
+	GtkTreeIter iter;
 	xmlNode* root = xmlDocGetRootElement(doc);
 	xmlNode* node = root->children;
-	//~ while ((node=mxmlFindElement(node,xml,"node",NULL,NULL,MXML_DESCEND))) {
-	//~ while ((node=xmlFindNode(node, BAD_CAST "node", 0))) {
 	while(node) {
-		if (node->type == XML_ELEMENT_NODE) {
-			gtk_tree_store_append(treestore, &self, NULL);
-			extract_field(node,"title", treestore, &self, COL_TITLE);
-			extract_field(node,"username", treestore, &self, COL_USERNAME);
-			extract_field(node,"password", treestore, &self, COL_PASSWORD);
-			extract_field(node,"url", treestore, &self, COL_URL);
-			extract_field(node,"info", treestore, &self, COL_INFO);
+		if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, BAD_CAST "node")) {
+			gtk_tree_store_append(treestore, &iter, NULL);
+			xmlContentsIntoTreestoreColumn(node, "title", treestore, &iter, COL_TITLE);
+			xmlContentsIntoTreestoreColumn(node, "username", treestore, &iter, COL_USERNAME);
+			xmlContentsIntoTreestoreColumn(node, "password", treestore, &iter, COL_PASSWORD);
+			xmlContentsIntoTreestoreColumn(node, "url", treestore, &iter, COL_URL);
+			xmlContentsIntoTreestoreColumn(node, "info", treestore, &iter, COL_INFO);
 		}
 		node = node->next;
 	}
-	//~ my_tree_add(treestore, &toplevel, NULL, "You/Com accounts","","pwd","http://server.com/","info");
-	todo();	// gtk_widget_show_all(gui->window);
+}
+
+// -----------------------------------------------------------
+//
+// write a while record into the treestore
+//
+
+void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* title, const char* username, const char* password, const char* url, const char* info) {
+	gtk_tree_store_append(treestore, iter, parent);
+	gtk_tree_store_set(treestore, iter, COL_TITLE, title, COL_USERNAME, username, COL_PASSWORD, password, COL_URL, url, COL_INFO, info, -1);
 }
