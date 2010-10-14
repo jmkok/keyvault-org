@@ -13,6 +13,8 @@
 // variables
 //
 
+int create_main_window(void);
+
 struct tGlobal {
 	tList* kvo_list;
 };

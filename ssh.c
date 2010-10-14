@@ -70,7 +70,7 @@ void ssh_get_file(tKvoFile* kvo) {
 	}
 	
 	// Request a password from the user
-	gchar* password = dialog_request_password(gui->window,"SSH server");
+	gchar* password = dialog_request_password(NULL, "SSH server");
 	if (libssh2_userauth_password(session, kvo->username, password)) {
 		printf("\tAuthentication by password failed!\n");
 		goto shutdown;

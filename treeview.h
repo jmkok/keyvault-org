@@ -13,9 +13,6 @@ enum {
   NUM_COLS
 };
 
-extern GtkWidget* create_view_and_model(void);
-extern void on_changed(GtkWidget *widget, gpointer statusbar);
-
 xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore);
 void import_xml_into_treestore(GtkTreeStore* treestore,xmlDoc* doc);
 

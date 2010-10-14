@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <glib/gprintf.h>
 
@@ -107,5 +108,19 @@ gchar* create_random_password(int len) {
 	if (fp)
 		fclose(fp);
 	return password;
+}
+
+// -----------------------------------------------------------
+//
+// convert a tring to lowercase
+//
+
+void lowercase(char string[]) {
+   int  i = 0;
+   while ( string[i] ) {
+      string[i] = tolower(string[i]);
+      i++;
+   }
+   return;
 }
 
