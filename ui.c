@@ -64,7 +64,7 @@ struct tTreeData {
 };
 struct tTreeData* treedata;
 
-char* active_passphrase = NULL;
+char* active_passphrase = "secret";
 char* active_filename = NULL;
 
 // -----------------------------------------------------------
@@ -347,7 +347,7 @@ void write_changes_to_treestore(GtkWidget *widget, gpointer selection) {
 
 static void click_test_load(GtkWidget *widget, gpointer ptr) {
 	GtkTreeStore* treestore = ptr;
-	load_from_file("save.kvo", treestore);
+	load_from_file("test.kvo", treestore);
 }
 
 // -----------------------------------------------------------
@@ -357,7 +357,7 @@ static void click_test_load(GtkWidget *widget, gpointer ptr) {
 
 static void click_test_save(GtkWidget *widget, gpointer ptr) {
 	GtkTreeStore* treestore = ptr;
-	save_to_file("save.kvo", treestore);
+	save_to_file("test.kvo", treestore);
 }
 
 // -----------------------------------------------------------

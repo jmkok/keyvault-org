@@ -2,23 +2,76 @@
 #include <libxml/parser.h>
 #include <glib/gprintf.h>
 
+#include <string.h>
+//~ #include <openssl/x509.h>
+#include <openssl/evp.h>
+//~ #include <openssl/hmac.h>
+
 #include "main.h"
 #include "encryption.h"
 #include "functions.h"
 #include "xml.h"
+
+typedef enum { RC4 , AES_128_OFB , AES_192_OFB , AES_256_OFB } tcipher;
+
+const tcipher default_cipher_list[] = { RC4, AES_256_OFB, 0 };
 
 // -------------------------------------------------------------------------------
 //
 // Encrypt an xmlDoc
 //
 
-xmlDoc* xml_doc_encrypt(xmlDoc* doc, const gchar* passphrase) {
+xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 	xmlChar* xml_text;
 	int xml_size;
+	char string[64];
 	unsigned char ivec[16]="1234567890ABCDEF";
 	shuffle_ivec(ivec);
 	xmlDocDumpFormatMemory(doc, &xml_text, &xml_size, 1);
-	aes_ofb(xml_text, xml_size, passphrase, ivec);
+
+	// PBKDF2 the passphrase
+	char* pbkdf2_salt="keyvault.org";
+	int pbkdf2_rounds=1024;
+	u_char encryption_key[32];
+	if (pbkdf2_rounds) {
+		PKCS5_PBKDF2_HMAC_SHA1(
+			passphrase, strlen(passphrase),
+			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
+			pbkdf2_rounds, 32, encryption_key);
+	}
+	else {
+		memset(encryption_key,0,32);
+		strncpy((char*)encryption_key,passphrase,32);
+	}
+	hexdump("encryption_key",encryption_key,32);
+
+	// Encrypt the data
+	//~ aes_ofb(xml_text, xml_size, EVP_aes_256_ofb(), encryption_key, ivec);
+	char encryption_list[1024];
+	*encryption_list = 0;
+	const tcipher* cipher = default_cipher_list;
+	while (*cipher) {
+		printf("> %u\n",*cipher);
+		char* txt=NULL;
+		if (*cipher == RC4) {
+			aes_ofb(xml_text, xml_size, EVP_rc4(), encryption_key, ivec);
+			txt="rc4";
+		}
+		else if (*cipher == AES_256_OFB) {
+			aes_ofb(xml_text, xml_size, EVP_aes_256_ofb(), encryption_key, ivec);
+			txt="aes_256_ofb";
+		}
+		else {
+			fprintf(stderr, "ERROR: specified cipher not programmed");
+		}
+		cipher++;
+		if (txt) {
+			if (*encryption_list)
+				strcat(encryption_list,",");
+			strcat(encryption_list,txt);
+		}
+	}
+
 
 	// Create the doc
 	xmlDoc* enc_doc = xmlNewDoc(BAD_CAST "1.0"); 
@@ -34,7 +87,14 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const gchar* passphrase) {
 	g_free(tmp);
 
 	// Store the encryption type
-	xmlNewProp(data, BAD_CAST "encryptiom", BAD_CAST "AES_OFB");
+	xmlNewProp(data, BAD_CAST "encryption", BAD_CAST encryption_list);
+
+	// Store the used pbkdf2
+	if (pbkdf2_rounds) {
+		xmlNewProp(data, BAD_CAST "pbkdf2_salt", BAD_CAST pbkdf2_salt);
+		sprintf(string,"%u",pbkdf2_rounds);
+		xmlNewProp(data, BAD_CAST "pbkdf2_rounds", BAD_CAST string);
+	}
 
 	// Store the used ivec
 	tmp = g_base64_encode(ivec,16);
@@ -52,7 +112,7 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const gchar* passphrase) {
 
 // -------------------------------------------------------------------------------
 //
-// Encrypt an xmlDoc
+// Decrypt an xmlDoc
 //
 
 xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
@@ -81,6 +141,13 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	printf("encryption: %s\n", encryption);
 	printf("size: %u\n", size);
 
+	// Setup the decryption list
+	const tcipher* cipher_list = default_cipher_list;
+	if (strcmp((char*)encryption, "AES_OFB") == 0) {
+		const tcipher old_cipher_list[] = { AES_256_OFB, 0 };
+		cipher_list = old_cipher_list;
+	}
+
 	gsize ivec_len;
 	unsigned char* ivec = g_base64_decode(ivec_base64, &ivec_len);
 	hexdump("ivec", ivec, (int)ivec_len);
@@ -90,8 +157,41 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	guchar* data = g_base64_decode(data_base64, &data_len);
 	printf("data_len: %u\n", data_len);
 
+	// Read the PBKDF2 proporties
+	char* pbkdf2_salt = (char*)xmlGetProp(data_node, BAD_CAST "pbkdf2_salt");
+	char* pbkdf2_rounds_text = (char*)xmlGetProp(data_node, BAD_CAST "pbkdf2_rounds");
+	int pbkdf2_rounds = atol(pbkdf2_rounds_text);
+	
+	// PBKDF2 the passphrase
+	u_char encryption_key[32];
+	if (pbkdf2_rounds) {
+		PKCS5_PBKDF2_HMAC_SHA1(
+			passphrase, strlen(passphrase),
+			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
+			pbkdf2_rounds, 32, encryption_key);
+	}
+	else {
+		memset(encryption_key,0,32);
+		strncpy((char*)encryption_key,passphrase,32);
+	}
+
 	// Decrypt the data
-	aes_ofb(data, data_len, passphrase, ivec);
+	//~ hexdump("encryption_key",encryption_key,16);
+	//~ hexdump("ivec",ivec,16);
+	const tcipher* cipher = cipher_list;
+	while (*cipher) {
+		printf("> %u\n",*cipher);
+		if (*cipher == RC4)
+			aes_ofb(data, data_len, EVP_rc4(), encryption_key, ivec);
+		else if (*cipher == AES_256_OFB)
+			aes_ofb(data, data_len, EVP_aes_256_ofb(), encryption_key, ivec);
+		else 
+			fprintf(stderr, "ERROR: specified cipher not programmed");
+		cipher++;
+	}
+	//~ hexdump("encryption_key",encryption_key,16);
+	//~ hexdump("ivec",ivec,16);
+	//~ exit(0);
 
 	// Convert into xml
 	xmlDoc* doc_dec = xmlParseMemory((char*)data, data_len);

@@ -16,6 +16,7 @@ CLIBS=`pkg-config $(LIBS) --libs` -lssh2
 .cc.o:
 
 all: $(TARG)
+	#~ make run
 
 run: $(TARG)
 	LANG=C ./$(TARG)
