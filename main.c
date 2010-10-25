@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "encryption.h"
 
 extern int test_pbkdf2();
 

@@ -54,3 +54,44 @@ void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer,size_t length, con
 	memcpy(buffer, outbuf, length);
 	free(outbuf);
 }
+
+// -----------------------------------------------------------
+//
+// Symetrical encryption
+//
+
+void read_random(void* ptr, int len) {
+	static FILE* fp = NULL;
+	if (!fp) fp=fopen("/dev/urandom","r");
+	fread(ptr,1,len,fp);
+}
+
+unsigned int random_integer() {
+	unsigned int x;
+	read_random(&x,sizeof(x));
+	return x;
+}
+
+// -----------------------------------------------------------
+//
+// create a random password
+//
+
+gchar* create_random_password(int len) {
+	char random_charset[]="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	gchar* password=g_malloc(len+1);
+	memset(password,0,len+1);
+	FILE* fp=fopen("/dev/urandom","r");
+	int i,r;
+	for (i=0;i<len;i++) {
+		if (fp)
+			fread(&r,1,sizeof(r),fp);
+		else
+			r=rand();
+		char p=random_charset[r%strlen(random_charset)];
+		password[i]=p;
+	}
+	if (fp)
+		fclose(fp);
+	return password;
+}

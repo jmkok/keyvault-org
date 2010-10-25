@@ -7,6 +7,8 @@
 #include <openssl/evp.h>
 //~ #include <openssl/hmac.h>
 
+#include <assert.h>
+
 #include "main.h"
 #include "encryption.h"
 #include "functions.h"
@@ -19,6 +21,21 @@
 
 const int default_cipher_list = CIPHER_RC4 | CIPHER_AES_256_OFB;
 
+xmlAttr* xmlNewPropInteger(xmlNode* node, const xmlChar* name, const int value) {
+	gchar* tmp = malloc(32);
+	g_sprintf(tmp, "%u", value);
+	xmlAttr* attrib = xmlNewProp(node, name, BAD_CAST tmp);
+	g_free(tmp);
+	return attrib;
+}
+
+xmlAttr* xmlNewPropBase64(xmlNodePtr node, const xmlChar* name, const void* data, const int size) {
+	gchar* tmp = g_base64_encode(data, size);
+	xmlAttr* attrib = xmlNewProp(node, name, BAD_CAST tmp);
+	g_free(tmp);
+	return attrib;
+}
+
 // -------------------------------------------------------------------------------
 //
 // Encrypt an xmlDoc
@@ -27,14 +44,23 @@ const int default_cipher_list = CIPHER_RC4 | CIPHER_AES_256_OFB;
 xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 	xmlChar* xml_text;
 	int xml_size;
-	char string[64];
-	unsigned char ivec[16]="1234567890ABCDEF";
-	shuffle_ivec(ivec);
+	unsigned char* rc4_ivec = (unsigned char*)create_random_password(16);
+	shuffle_ivec(rc4_ivec);
+	unsigned char* aes_ivec = (unsigned char*)create_random_password(16);
+	shuffle_ivec(aes_ivec);
 	xmlDocDumpFormatMemory(doc, &xml_text, &xml_size, 1);
 
+	// Create the doc
+	xmlDoc* enc_doc = xmlNewDoc(BAD_CAST "1.0"); 
+
+	// Create the root of the doc
+	xmlNode* root = xmlNewNode(NULL, BAD_CAST "keyvault");
+	xmlNewProp(root, BAD_CAST "encrypted", BAD_CAST "yes");
+	xmlDocSetRootElement(enc_doc, root);
+
 	// PBKDF2 the passphrase
-	char* pbkdf2_salt="keyvault.org";
-	int pbkdf2_rounds=1024;
+	char* pbkdf2_salt = create_random_password(32);
+	unsigned int pbkdf2_rounds = 20000 + (random_integer() % 1000);
 	u_char encryption_key[32];
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(
@@ -48,59 +74,28 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 	}
 	hexdump("encryption_key",encryption_key,32);
 
-	// Get the text representation of the used encryption schemes
-	char encryption_list[1024];
-	*encryption_list = 0;
+	// Store the pbkdf2 setup
+	xmlNode* pbkdf2_node = xmlNewChild(root, NULL, BAD_CAST "pbkdf2", NULL);
+	xmlNewProp(pbkdf2_node, BAD_CAST "salt", BAD_CAST pbkdf2_salt);
+	xmlNewPropInteger(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
 
-	// Encrypt the data
-	//~ aes_ofb(xml_text, xml_size, EVP_aes_256_ofb(), encryption_key, ivec);
-	int cipher = default_cipher_list;
-	if (cipher & CIPHER_RC4) {
-		evp_cipher(EVP_rc4(), xml_text, xml_size, encryption_key, ivec);
-		strcat(encryption_list,"rc4,");
-	}
-	if (cipher & CIPHER_AES_256_OFB) {
-		evp_cipher(EVP_aes_256_ofb(), xml_text, xml_size, encryption_key, ivec);
-		strcat(encryption_list,"aes_256_ofb,");
-	}
+	// Encrypt the data using RC4
+	evp_cipher(EVP_rc4(), xml_text, xml_size, encryption_key, rc4_ivec);
+	xmlNode* encryption_node = xmlNewChild(root, NULL, BAD_CAST "encryption", NULL);
+	xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST "rc4");
+	xmlNewPropBase64(encryption_node, BAD_CAST "ivec", rc4_ivec, 16);
 
-	// Remove the trailing ',' from the encryption schemes
-	if (*encryption_list)
-		encryption_list[strlen(encryption_list)-1] = 0;
-
-	// Create the doc
-	xmlDoc* enc_doc = xmlNewDoc(BAD_CAST "1.0"); 
-
-	// Create the root of the doc
-	xmlNode* root = xmlNewNode(NULL, BAD_CAST "keyvault");
-	xmlNewProp(root, BAD_CAST "encrypted", BAD_CAST "yes");
-	xmlDocSetRootElement(enc_doc, root);
+	// Encrypt the data using AES_256_OFB
+	evp_cipher(EVP_aes_256_ofb(), xml_text, xml_size, encryption_key, aes_ivec);
+	encryption_node = xmlNewChild(root, NULL, BAD_CAST "encryption", NULL);
+	xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST "aes_256_ofb");
+	xmlNewPropBase64(encryption_node, BAD_CAST "ivec", BAD_CAST aes_ivec, 16);
 
 	// Add the encrypted data
 	gchar* tmp=g_base64_encode((unsigned char*)xml_text, xml_size);
 	xmlNode* data = xmlNewChild(root, NULL, BAD_CAST "data", BAD_CAST tmp);
 	g_free(tmp);
-
-	// Store the encryption type
-	xmlNewProp(data, BAD_CAST "encryption", BAD_CAST encryption_list);
-
-	// Store the used pbkdf2
-	if (pbkdf2_rounds) {
-		xmlNewProp(data, BAD_CAST "pbkdf2_salt", BAD_CAST pbkdf2_salt);
-		sprintf(string,"%u",pbkdf2_rounds);
-		xmlNewProp(data, BAD_CAST "pbkdf2_rounds", BAD_CAST string);
-	}
-
-	// Store the used ivec
-	tmp = g_base64_encode(ivec,16);
-	xmlNewProp(data, BAD_CAST "ivec", BAD_CAST tmp);
-	g_free(tmp);
-
-	// Store the size
-	tmp = malloc(32);
-	g_sprintf(tmp, "%u", xml_size);
-	xmlNewProp(data, BAD_CAST "size", BAD_CAST tmp);
-	g_free(tmp);
+	xmlNewPropInteger(data, BAD_CAST "size", xml_size);
 
 	return enc_doc;
 }
@@ -127,36 +122,23 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 		return doc;
 
 	// Read the data for this node
-	xmlChar* encryption = xmlGetProp(data_node, BAD_CAST "encryption");
-	char* ivec_base64 = (char*)xmlGetProp(data_node, BAD_CAST "ivec");
 	char* size_text = (char*)xmlGetProp(data_node, BAD_CAST "size");
-
-	// Process the data for this node
 	int size = atol(size_text);
-	printf("encryption: %s\n", encryption);
 	printf("size: %u\n", size);
 
-	// Setup the decryption list
-	int cipher_list = default_cipher_list;
-	if (strcmp((char*)encryption, "AES_OFB") == 0)
-		cipher_list = CIPHER_AES_256_OFB;
-	if (strstr((char*)encryption, "rc4"))
-		cipher_list |= CIPHER_RC4;
-	if (strstr((char*)encryption, "aes_256_ofb"))
-		cipher_list |= CIPHER_AES_256_OFB;
-
-	gsize ivec_len;
-	unsigned char* ivec = g_base64_decode(ivec_base64, &ivec_len);
-	hexdump("ivec", ivec, (int)ivec_len);
-
+	// Read the data
 	gsize data_len;
 	char* data_base64 = (char*)xmlNodeGetContent(data_node);
 	guchar* data = g_base64_decode(data_base64, &data_len);
 	printf("data_len: %u\n", data_len);
 
 	// Read the PBKDF2 proporties
-	char* pbkdf2_salt = (char*)xmlGetProp(data_node, BAD_CAST "pbkdf2_salt");
-	char* pbkdf2_rounds_text = (char*)xmlGetProp(data_node, BAD_CAST "pbkdf2_rounds");
+	xmlNode* pbkdf2_node = xmlFindNode(root, BAD_CAST "pbkdf2", 0);
+	assert(pbkdf2_node);
+	char* pbkdf2_salt = (char*)xmlGetProp(pbkdf2_node, BAD_CAST "salt");
+	assert(pbkdf2_salt);
+	char* pbkdf2_rounds_text = (char*)xmlGetProp(pbkdf2_node, BAD_CAST "rounds");
+	assert(pbkdf2_rounds_text);
 	int pbkdf2_rounds = atol(pbkdf2_rounds_text);
 	
 	// PBKDF2 the passphrase
@@ -173,50 +155,26 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	}
 
 	// Decrypt the data
-	int cipher = cipher_list;
-	if (cipher & CIPHER_RC4)
-		evp_cipher(EVP_rc4(), data, data_len, encryption_key, ivec);
-	if (cipher & CIPHER_AES_256_OFB)
-		evp_cipher(EVP_aes_256_ofb(), data, data_len, encryption_key, ivec);
+	xmlNode* node = root->children;
+	while(node) {
+		printf("> %s\n",node->name);
+		if (node->type == XML_ELEMENT_NODE && xmlStrEqual(node->name, BAD_CAST "encryption")) {
+			xmlChar* cipher = xmlGetProp(node, BAD_CAST "cipher");
+			char* ivec_base64 = (char*)xmlGetProp(node, BAD_CAST "ivec");
+			gsize ivec_len;
+			unsigned char* ivec = g_base64_decode(ivec_base64, &ivec_len);
+			hexdump("ivec", ivec, (int)ivec_len);
+			if (xmlStrEqual(cipher, BAD_CAST "rc4"))
+				evp_cipher(EVP_rc4(), data, data_len, encryption_key, ivec);
+			if (xmlStrEqual(cipher, BAD_CAST "aes_256_ofb"))
+				evp_cipher(EVP_aes_256_ofb(), data, data_len, encryption_key, ivec);
+			xmlFree(cipher);
+		}
+		node = node->next;
+	}
 
 	// Convert into xml
 	xmlDoc* doc_dec = xmlParseMemory((char*)data, data_len);
-
-	/*
-	xmlChar* xml_text;
-	int xml_size;
-	unsigned char ivec[16]="1234567890ABCDEF";
-	shuffle_ivec(ivec);
-	xmlDocDumpFormatMemory(doc, &xml_text, &xml_size, 1);
-	aes_ofb(xml_text, xml_size, passphrase, ivec);
-
-	// Create the doc
-	xmlDoc* enc_doc = xmlNewDoc(BAD_CAST "1.0"); 
-
-	// Create the root of the doc
-	xmlNode* root = xmlNewNode(NULL, BAD_CAST "keyvault");
-	xmlNewProp(root, BAD_CAST "encrypted", BAD_CAST "yes");
-	xmlDocSetRootElement(enc_doc, root);
-
-	// Add the encrypted data
-	gchar* tmp=g_base64_encode((unsigned char*)xml_text, xml_size);
-	xmlNode* data = xmlNewChild(root, NULL, BAD_CAST "data", BAD_CAST tmp);
-	g_free(tmp);
-
-	// Store the encryption type
-	xmlNewProp(data, BAD_CAST "encryptiom", BAD_CAST "AES_OFB");
-
-	// Store the used ivec
-	tmp = g_base64_encode(ivec,16);
-	xmlNewProp(data, BAD_CAST "ivec", BAD_CAST tmp);
-	g_free(tmp);
-
-	// Store the size
-	tmp = malloc(32);
-	g_sprintf(tmp, "%u", xml_size);
-	xmlNewProp(data, BAD_CAST "size", BAD_CAST tmp);
-	g_free(tmp);
-	*/
 
 	return doc_dec;
 }
