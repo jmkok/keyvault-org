@@ -12,9 +12,12 @@
 #include "functions.h"
 #include "xml.h"
 
-typedef enum { RC4 , AES_128_OFB , AES_192_OFB , AES_256_OFB } tcipher;
+#define CIPHER_RC4 (1<<0)
+#define CIPHER_AES_128_OFB (1<<1)
+#define CIPHER_AES_192_OFB (1<<2)
+#define CIPHER_AES_256_OFB (1<<3)
 
-const tcipher default_cipher_list[] = { RC4, AES_256_OFB, 0 };
+const int default_cipher_list = CIPHER_RC4 | CIPHER_AES_256_OFB;
 
 // -------------------------------------------------------------------------------
 //
@@ -45,33 +48,25 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 	}
 	hexdump("encryption_key",encryption_key,32);
 
-	// Encrypt the data
-	//~ aes_ofb(xml_text, xml_size, EVP_aes_256_ofb(), encryption_key, ivec);
+	// Get the text representation of the used encryption schemes
 	char encryption_list[1024];
 	*encryption_list = 0;
-	const tcipher* cipher = default_cipher_list;
-	while (*cipher) {
-		printf("> %u\n",*cipher);
-		char* txt=NULL;
-		if (*cipher == RC4) {
-			aes_ofb(xml_text, xml_size, EVP_rc4(), encryption_key, ivec);
-			txt="rc4";
-		}
-		else if (*cipher == AES_256_OFB) {
-			aes_ofb(xml_text, xml_size, EVP_aes_256_ofb(), encryption_key, ivec);
-			txt="aes_256_ofb";
-		}
-		else {
-			fprintf(stderr, "ERROR: specified cipher not programmed");
-		}
-		cipher++;
-		if (txt) {
-			if (*encryption_list)
-				strcat(encryption_list,",");
-			strcat(encryption_list,txt);
-		}
+
+	// Encrypt the data
+	//~ aes_ofb(xml_text, xml_size, EVP_aes_256_ofb(), encryption_key, ivec);
+	int cipher = default_cipher_list;
+	if (cipher & CIPHER_RC4) {
+		evp_cipher(EVP_rc4(), xml_text, xml_size, encryption_key, ivec);
+		strcat(encryption_list,"rc4,");
+	}
+	if (cipher & CIPHER_AES_256_OFB) {
+		evp_cipher(EVP_aes_256_ofb(), xml_text, xml_size, encryption_key, ivec);
+		strcat(encryption_list,"aes_256_ofb,");
 	}
 
+	// Remove the trailing ',' from the encryption schemes
+	if (*encryption_list)
+		encryption_list[strlen(encryption_list)-1] = 0;
 
 	// Create the doc
 	xmlDoc* enc_doc = xmlNewDoc(BAD_CAST "1.0"); 
@@ -142,11 +137,13 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	printf("size: %u\n", size);
 
 	// Setup the decryption list
-	const tcipher* cipher_list = default_cipher_list;
-	if (strcmp((char*)encryption, "AES_OFB") == 0) {
-		const tcipher old_cipher_list[] = { AES_256_OFB, 0 };
-		cipher_list = old_cipher_list;
-	}
+	int cipher_list = default_cipher_list;
+	if (strcmp((char*)encryption, "AES_OFB") == 0)
+		cipher_list = CIPHER_AES_256_OFB;
+	if (strstr((char*)encryption, "rc4"))
+		cipher_list |= CIPHER_RC4;
+	if (strstr((char*)encryption, "aes_256_ofb"))
+		cipher_list |= CIPHER_AES_256_OFB;
 
 	gsize ivec_len;
 	unsigned char* ivec = g_base64_decode(ivec_base64, &ivec_len);
@@ -176,22 +173,11 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	}
 
 	// Decrypt the data
-	//~ hexdump("encryption_key",encryption_key,16);
-	//~ hexdump("ivec",ivec,16);
-	const tcipher* cipher = cipher_list;
-	while (*cipher) {
-		printf("> %u\n",*cipher);
-		if (*cipher == RC4)
-			aes_ofb(data, data_len, EVP_rc4(), encryption_key, ivec);
-		else if (*cipher == AES_256_OFB)
-			aes_ofb(data, data_len, EVP_aes_256_ofb(), encryption_key, ivec);
-		else 
-			fprintf(stderr, "ERROR: specified cipher not programmed");
-		cipher++;
-	}
-	//~ hexdump("encryption_key",encryption_key,16);
-	//~ hexdump("ivec",ivec,16);
-	//~ exit(0);
+	int cipher = cipher_list;
+	if (cipher & CIPHER_RC4)
+		evp_cipher(EVP_rc4(), data, data_len, encryption_key, ivec);
+	if (cipher & CIPHER_AES_256_OFB)
+		evp_cipher(EVP_aes_256_ofb(), data, data_len, encryption_key, ivec);
 
 	// Convert into xml
 	xmlDoc* doc_dec = xmlParseMemory((char*)data, data_len);
