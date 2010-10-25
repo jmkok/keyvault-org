@@ -1,12 +1,14 @@
 #include <stdint.h>
 #include <mxml.h>
 #include <gtk/gtk.h>
+#include <libxml/parser.h>
 
 #include "configuration.h"
 #include "structures.h"
 //~ #include "xml.h"
 #include "main.h"
 #include "gtk_shortcuts.h"
+#include "xml.h"
 
 // -----------------------------------------------------------
 //
@@ -15,60 +17,39 @@
 
 void read_configuration(tList* kvo_list) {
 	printf("read_configuration()\n");
-	FILE* config=fopen("config.xml","rt");
-	if (config) {
-		trace();
-		mxml_node_t* xml = mxmlLoadFile (NULL,config,MXML_NO_CALLBACK);
-		fclose(config);
-		//~ mxmlSaveFile(xml,stdout,whitespace_cb);
-		mxml_node_t* config_node;
-		if ((config_node = mxmlFindElement(xml,xml,"config",NULL,NULL,MXML_DESCEND))) {
-			trace();
-			//~ mxmlSaveFile(config_node,stdout,whitespace_cb);
-			mxml_node_t* keyvault_node=config_node;
-			gsize size;
-			while ((keyvault_node=mxmlFindElement(keyvault_node,config_node,"kvo_file",NULL,NULL,MXML_DESCEND))) {
-				trace();
-				// Create a new kvo_file
-				tKvoFile* kvo=malloc(sizeof(tKvoFile));
-				memset(kvo,0,sizeof(tKvoFile));
-				kvo->local_filename = strdup("local.kvo");
-				trace();
-				list_add(kvo_list,kvo);
-				trace();
-				// Analyze all items for this kvo_file
-				mxml_node_t* child=keyvault_node;
-				while ((child=mxmlWalkNext(child,keyvault_node,MXML_DESCEND))) {
-					if (child->type == MXML_ELEMENT) {
-						mxml_node_t* text=child;
-						while ((text=mxmlWalkNext(text,child,MXML_DESCEND))) {
-							if (text->type == MXML_TEXT) {
-								if (strcmp(child->value.element.name,"title") == 0)
-									kvo->title = strdup(text->value.text.string);
-								if (strcmp(child->value.element.name,"protocol") == 0)
-									kvo->protocol = strdup(text->value.text.string);
-								if (strcmp(child->value.element.name,"hostname") == 0)
-									kvo->hostname = strdup(text->value.text.string);
-								if (strcmp(child->value.element.name,"port") == 0)
-									kvo->port = text->value.integer;
-								if (strcmp(child->value.element.name,"username") == 0)
-									kvo->username = strdup(text->value.text.string);
-								if (strcmp(child->value.element.name,"password") == 0)
-									kvo->password = strdup(text->value.text.string);
-								if (strcmp(child->value.element.name,"filename") == 0)
-									kvo->filename = strdup(text->value.text.string);
-								if (strcmp(child->value.element.name,"fingerprint") == 0)
-									kvo->fingerprint = g_base64_decode(text->value.text.string, &size);
-									
-							}
-						}
-						//~ printf("\n");
-					}
-				}
-			}
+	xmlDoc* doc = xmlParseFile("config.xml");
+	if (!doc)
+		return;
+
+	xmlNode* root = xmlDocGetRootElement(doc);
+	if (!root)
+		xmlFreeDoc(doc);
+	//~ xmlElemDump(stdout, NULL, root);puts("");
+
+	xmlNode* node = root->children;
+	while(node) {
+		if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, BAD_CAST "kvo_file")) {
+			//~ xmlElemDump(stdout, NULL, node);puts("");
+			// Create a new kvo_file
+			tKvoFile* kvo=malloc(sizeof(tKvoFile));
+			memset(kvo,0,sizeof(tKvoFile));
+			kvo->local_filename = strdup("local.kvo");
+			list_add(kvo_list,kvo);
+			// Analyze all items for this kvo_file
+			kvo->title = (char*)xmlGetContents(node, BAD_CAST "title");
+			kvo->protocol = (char*)xmlGetContents(node, BAD_CAST "protocol");
+			kvo->hostname = (char*)xmlGetContents(node, BAD_CAST "hostname");
+			kvo->port = xmlGetContentsInteger(node, BAD_CAST "port");
+			kvo->username = (char*)xmlGetContents(node, BAD_CAST "username");
+			kvo->password = (char*)xmlGetContents(node, BAD_CAST "password");
+			kvo->filename = (char*)xmlGetContents(node, BAD_CAST "filename");
+			unsigned int size;
+			char* fingerprint_base64 = (char*)xmlGetContents(node, BAD_CAST "fingerprint");
+			kvo->fingerprint = g_base64_decode(fingerprint_base64, &size);
+			free(fingerprint_base64);
 		}
+		node = node->next;
 	}
-	
 	return;
 }
 
