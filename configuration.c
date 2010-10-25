@@ -1,11 +1,11 @@
 #include <stdint.h>
-#include <mxml.h>
+#include <string.h>
+
 #include <gtk/gtk.h>
 #include <libxml/parser.h>
 
 #include "configuration.h"
 #include "structures.h"
-//~ #include "xml.h"
 #include "main.h"
 #include "gtk_shortcuts.h"
 #include "xml.h"
@@ -61,56 +61,43 @@ void read_configuration(tList* kvo_list) {
 void save_configuration(tList* kvo_list) {
 	printf("save_configuration()\n");
 	// Create an xml node that conatins all configuration
-	mxml_node_t* xml = mxmlNewXML("1.0");
-	mxml_node_t* config = mxmlNewElement(xml,"config");
+	xmlDoc* doc = xmlNewDoc(BAD_CAST "1.0");
+	xmlNode* config = xmlNewNode(NULL, BAD_CAST "config");
+	xmlDocSetRootElement(doc, config);
+	
 	int i;
 	for (i=0;i < kvo_list->count; i++) {
 		tKvoFile* kvo = kvo_list->data[i];
-		mxml_node_t* kvo_file = mxmlNewElement(config, "kvo_file");
-		mxml_node_t* node;
-		// title
-		node = mxmlNewElement(kvo_file, "title");			
-		mxmlNewText(node, 0, kvo->title);
-		// protocol
-		node = mxmlNewElement(kvo_file, "protocol");	
-		mxmlNewText(node, 0, kvo->protocol);
-		// hostname
-		if (kvo->hostname) {
-			node = mxmlNewElement(kvo_file, "hostname");	
-			mxmlNewText(node, 0, kvo->hostname);
-		}
-		// port
+		xmlNode* kvo_file_node = xmlNewChild(config, NULL, BAD_CAST "kvo_file", NULL);
+
+		xmlNewChild(kvo_file_node, NULL, BAD_CAST "title", BAD_CAST kvo->title);
+		xmlNewChild(kvo_file_node, NULL, BAD_CAST "protocol", BAD_CAST kvo->protocol);
+		if (kvo->hostname)
+			xmlNewChild(kvo_file_node, NULL, BAD_CAST "hostname", BAD_CAST kvo->hostname);
 		if (kvo->port) {
-			node = mxmlNewElement(kvo_file, "port");			
-			mxmlNewInteger(node, kvo->port);
+			char tmp[64];
+			sprintf(tmp,"%u",kvo->port);
+			xmlNewChild(kvo_file_node, NULL, BAD_CAST "port", BAD_CAST tmp);
 		}
-		// username
-		if (kvo->username) {
-			node = mxmlNewElement(kvo_file, "username");	
-			mxmlNewText(node, 0, kvo->username);
-		}
-		// password
-		if (kvo->password) {
-			node = mxmlNewElement(kvo_file, "password");	
-			mxmlNewText(node, 0, kvo->password);
-		}
-		// filename
-		node = mxmlNewElement(kvo_file, "filename");	
-		mxmlNewText(node, 0, kvo->filename);
-		// fingerprint (ssh)
+		if (kvo->username)
+			xmlNewChild(kvo_file_node, NULL, BAD_CAST "username", BAD_CAST kvo->username);
+		if (kvo->password)
+			xmlNewChild(kvo_file_node, NULL, BAD_CAST "password", BAD_CAST kvo->password);
+		xmlNewChild(kvo_file_node, NULL, BAD_CAST "filename", BAD_CAST kvo->filename);
 		if (kvo->fingerprint)	{
-			node = mxmlNewElement(kvo_file, "fingerprint");	
 			char* tmp=g_base64_encode(kvo->fingerprint,16);
-			mxmlNewText(node, 0, tmp);
+			xmlNewChild(kvo_file_node, NULL, BAD_CAST "fingerprint", BAD_CAST tmp);
 			g_free(tmp);
 		}
 	}
-	// Save the xml node
-	FILE* fh=fopen("config_save.xml","wt");
-	if (fh) {		
-		//~ mxmlSaveFile(xml,fh,whitespace_cb);
-		fclose(fh);
+	
+	// encrypted-xml => disk
+	FILE* fp = fopen("config_save.xml", "w");
+	if (fp) {
+		xmlDocDump(fp, doc);
+		fclose(fp);
 	}
+
 	// Remove the xml node
-	mxmlDelete(xml);
+	xmlFreeDoc(doc);
 }
