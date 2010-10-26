@@ -4,11 +4,15 @@
 #include <openssl/evp.h>
 #include <stdint.h>
 
-void shuffle_ivec(unsigned char ivec[16]);
-void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer, size_t len, const unsigned char key[32], const unsigned char iv[16]);
+extern void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer, size_t len, const unsigned char key[32], const unsigned char iv[16]);
 
-void read_random(void* ptr, int len);
-unsigned int random_integer();
+extern void random_init(void);
+extern void* malloc_random(int len);
+extern unsigned int random_integer(unsigned int max);
+
 extern gchar* create_random_password(int len);
+
+//~ extern void shuffle_data(void* data, int len);
+//~ extern void read_random(void* ptr, int len);
 
 #endif

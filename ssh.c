@@ -101,9 +101,7 @@ void ssh_get_file(tKvoFile* kvo) {
 	// Open the local file for writing
 	FILE* local_file = fopen(kvo->local_filename,"wb");
 	if (!local_file) {
-		GtkWidget* dialog = gtk_message_dialog_new(NULL,GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_OK,"Could not open local file '%s'",kvo->local_filename);
-		gtk_dialog_run(GTK_DIALOG(dialog));
-		gtk_widget_destroy(dialog);
+		gtk_error_dialog(NULL, "Could not open local file '%s'", kvo->local_filename);
 		goto shutdown;
 	}
 

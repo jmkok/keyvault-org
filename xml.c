@@ -44,10 +44,8 @@ xmlAttr* xmlNewPropBase64(xmlNodePtr node, const xmlChar* name, const void* data
 xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 	xmlChar* xml_text;
 	int xml_size;
-	unsigned char* rc4_ivec = (unsigned char*)create_random_password(16);
-	shuffle_ivec(rc4_ivec);
-	unsigned char* aes_ivec = (unsigned char*)create_random_password(16);
-	shuffle_ivec(aes_ivec);
+	unsigned char* rc4_ivec = malloc_random(16);
+	unsigned char* aes_ivec = malloc_random(16);
 	xmlDocDumpFormatMemory(doc, &xml_text, &xml_size, 1);
 
 	// Create the doc
@@ -60,7 +58,7 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 
 	// PBKDF2 the passphrase
 	char* pbkdf2_salt = create_random_password(32);
-	unsigned int pbkdf2_rounds = 20000 + (random_integer() % 1000);
+	unsigned int pbkdf2_rounds = 20000 + random_integer(1000);
 	u_char encryption_key[32];
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(

@@ -8,6 +8,7 @@
 #include "main.h"
 #include "structures.h"
 #include "gtk_shortcuts.h"
+#include "gtk_dialogs.h"
 
 gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	/* Create the dialog */
@@ -144,7 +145,7 @@ gboolean dialog_request_kvo (tKvoFile* kvo) {
 	return retval;
 }
 
-void quick_message (GtkWidget *parent,gchar *message) {
+void quick_message (GtkWidget *parent, gchar *message) {
 	/* Create the widgets */
 	GtkWidget* dialog = gtk_dialog_new_with_buttons ("Popup message",
 																	 GTK_WINDOW(parent),	//main_application_window,
@@ -203,15 +204,8 @@ gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window)
 	return filename;
 }
 
-void about_widget(GtkWidget *widget, gpointer parent_window)
-{
-	char* authors[]={"Jelle Martijn Kok <jmkok@youcom.nl>",NULL};
-	gtk_show_about_dialog (parent_window,
-		"program-name", "KeyVault.org",
-		"title", "About KeyVault.org",
-		"logo-icon-name", GTK_STOCK_DIALOG_AUTHENTICATION,
-		"authors", authors, 
-		"website", "http://www.keyvault.org",
-		//~ "website-label", "http://www.keyvault.org",
-		NULL);
+void gtk_error_dialog(GtkWindow* parent, const gchar* message, const gchar* title) {
+	GtkWidget* dialog = gtk_message_dialog_new(parent, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message, title);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
 }

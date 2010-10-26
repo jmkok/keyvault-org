@@ -9,6 +9,6 @@ extern gboolean dialog_request_kvo (tKvoFile* );
 
 extern gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window);
 extern gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window);
-extern void about_widget(GtkWidget *widget, gpointer parent_window);
+extern void gtk_error_dialog(GtkWindow *parent, const gchar *message, const gchar *title);
 
 #endif

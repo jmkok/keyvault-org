@@ -10,9 +10,6 @@
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
 #include <glib/gprintf.h>
-//~ #include <glib.h>
-//~ #include <gtk/gtklist.h>
-//~ #include <mxml.h>
 #include <libxml/parser.h>
 #include <sys/time.h>
 #include <assert.h>
@@ -638,6 +635,24 @@ static struct tTreeData* create_view_and_model(void) {
 // main()
 //
 
+static void click_about(GtkWidget *widget, gpointer parent_window)
+{
+	char* authors[]={"Jelle Martijn Kok <jmkok@youcom.nl>",NULL};
+	gtk_show_about_dialog (parent_window,
+		"program-name", "KeyVault.org",
+		"title", "About KeyVault.org",
+		"logo-icon-name", GTK_STOCK_DIALOG_AUTHENTICATION,
+		"authors", authors, 
+		"website", "http://www.keyvault.org",
+		//~ "website-label", "http://www.keyvault.org",
+		NULL);
+}
+
+// -----------------------------------------------------------
+//
+// main()
+//
+
 	// GTK_STOCK_CANCEL
 	// GTK_STOCK_DELETE
 	// GTK_STOCK_CLEAR
@@ -710,7 +725,7 @@ int create_main_window(void) {
 	gtk_add_menu_item_clickable(test_menu, "save", G_CALLBACK(click_test_save), td->treestore);
 
 	// Help menu
-	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(about_widget), main_window);
+	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), main_window);
 
 	// Prevent warnings...
 	if (view_menu);

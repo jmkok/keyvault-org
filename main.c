@@ -1,13 +1,16 @@
 #include "gtk_ui.h"
 #include "encryption.h"
 
-extern int test_pbkdf2();
-
 int main(int argc, char** argv)
 {
-	//~ return test_pbkdf2();
-	
+	// Initialize the gtk
   gtk_init(&argc, &argv);
+  
+  // Open the essential random handle (do it here so we can warn the user with a dialog before doing anything else
+  random_init();
+
+	// Create the main window
 	create_main_window();
+
   return 0;
 }

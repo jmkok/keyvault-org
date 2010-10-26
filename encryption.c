@@ -6,25 +6,7 @@
 #include "main.h"
 #include "encryption.h"
 #include "functions.h"
-
-// -----------------------------------------------------------
-//
-// Generate a 16 character random initialization vector
-//
-
-void shuffle_ivec(unsigned char ivec[16]) {
-	FILE* fp=fopen("/dev/urandom","r");
-	int i,r;
-	for (i=0;i<16;i++) {
-		if (fp)
-			fread(&r,1,sizeof(r),fp);
-		else
-			r=rand();
-		ivec[i]^=r;
-	}
-	if (fp)
-		fclose(fp);
-}
+#include "gtk_dialogs.h"
 
 // -----------------------------------------------------------
 //
@@ -57,41 +39,80 @@ void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer,size_t length, con
 
 // -----------------------------------------------------------
 //
-// Symetrical encryption
+// Random functions
 //
 
-void read_random(void* ptr, int len) {
-	static FILE* fp = NULL;
-	if (!fp) fp=fopen("/dev/urandom","r");
-	fread(ptr,1,len,fp);
+static FILE* random_handle;
+
+void random_init(void) {
+ 	random_handle = fopen("/dev/urandom","r");
+ 	if (!random_handle) {
+		gtk_error_dialog(NULL, "Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating password is insecure !!!", "Error initializing random number generator");
+		srand(time(NULL));
+	}
 }
 
-unsigned int random_integer() {
-	unsigned int x;
-	read_random(&x,sizeof(x));
-	return x;
+static void read_random(void* ptr, int len) {
+	if (random_handle) {
+		fread(ptr, 1, len, random_handle);
+	}
+	else {
+		int i;
+		for (i=0;i<len;i++) {
+			((char*)ptr)[i] = rand();
+		}
+	}
 }
 
 // -----------------------------------------------------------
 //
-// create a random password
+// Create a random password
 //
 
 gchar* create_random_password(int len) {
 	char random_charset[]="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	gchar* password=g_malloc(len+1);
 	memset(password,0,len+1);
-	FILE* fp=fopen("/dev/urandom","r");
-	int i,r;
+	int i;
 	for (i=0;i<len;i++) {
-		if (fp)
-			fread(&r,1,sizeof(r),fp);
-		else
-			r=rand();
-		char p=random_charset[r%strlen(random_charset)];
-		password[i]=p;
+		int idx = random_integer(strlen(random_charset));
+		password[i] = random_charset[idx];
 	}
-	if (fp)
-		fclose(fp);
 	return password;
+}
+
+// -----------------------------------------------------------
+//
+// Shuffle some bytes
+//
+
+//~ static void shuffle_data(void* data, int len) {
+	//~ unsigned char* xor = malloc(len);
+	//~ read_random(xor,len);
+	//~ int i;
+	//~ for (i=0;i<16;i++) {
+		//~ ((unsigned char*)data)[i] ^= xor[i];
+	//~ }
+//~ }
+
+// -----------------------------------------------------------
+//
+// Allocate random memory
+//
+
+void* malloc_random(int len) {
+	void* data = malloc(len);
+	read_random(data,len);
+	return data;
+}
+
+// -----------------------------------------------------------
+//
+// Create an random integer
+//
+
+unsigned int random_integer(unsigned int max) {
+	unsigned int x;
+	read_random(&x,sizeof(x));
+	return x % max;
 }
