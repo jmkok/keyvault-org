@@ -1,13 +1,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <gtk/gtk.h>
-#include <glib-2.0/glib/gprintf.h>
-#include <openssl/aes.h>
 
 #include "gtk_dialogs.h"
 #include "gtk_shortcuts.h"
 #include "gtk_dialogs.h"
-#include "structures.h"
 #include "functions.h"
 
 gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
@@ -15,13 +12,18 @@ gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	GtkWidget* dialog = gtk_dialog_new_with_buttons (title,
 																	 parent,
 																	 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-																	 GTK_STOCK_OK, GTK_RESPONSE_OK,
-																	 GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT,
 																	 NULL);
+	GtkWidget* ok_button = gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_OK, GTK_RESPONSE_OK);
+	gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
+
+	//~ gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_OK);
+	//~ gtk_dialog_set_response_sensitive(GTK_DIALOG(dialog), GTK_RESPONSE_OK, TRUE);
+	//~ gtk_widget_set_can_default(ok_button, TRUE);
+	//~ gtk_widget_grab_default(ok_button);
+	 
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/pixmaps/apple-red.png", NULL);
 	gtk_window_set_icon_name(GTK_WINDOW(dialog), GTK_STOCK_DIALOG_AUTHENTICATION);
 	gtk_window_set_default_size (GTK_WINDOW(dialog), 250, -1);
-	//~ gtk_window_set_default  
 
 	//~ gtk_dialog_set_has_separator(GTK_DIALOG(dialog), FALSE);
 	GtkWidget* content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
@@ -33,6 +35,10 @@ gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	/* Add the passphrase */
 	GtkWidget* passphrase_entry = gtk_add_labeled_entry(vbox, "Passphrase", NULL);
 	gtk_entry_set_visibility(GTK_ENTRY(passphrase_entry), FALSE);
+
+	/* Attach the enter key to the OK button */
+	//~ gtk_signal_connect_object (GTK_OBJECT (passphrase_entry), "focus_in_event", GTK_SIGNAL_FUNC (gtk_widget_grab_default), GTK_OBJECT (ok_button));
+	gtk_signal_connect_object (GTK_OBJECT (passphrase_entry), "activate", GTK_SIGNAL_FUNC (gtk_button_clicked), GTK_OBJECT (ok_button));
 
 	/* Show the dialog, wait for the OK button and return the passphrase */
 	gtk_widget_show_all(dialog);
@@ -203,8 +209,8 @@ gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window)
 	return filename;
 }
 
-void gtk_error_dialog(GtkWindow* parent, const gchar* message, const gchar* title) {
-	GtkWidget* dialog = gtk_message_dialog_new(parent, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message, title);
+void gtk_error_dialog(const gchar* message) {
+	GtkWidget* dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message, NULL);
 	gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
 }

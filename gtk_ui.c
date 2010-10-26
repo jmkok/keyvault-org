@@ -16,13 +16,13 @@
 
 #include "gtk_treeview.h"
 #include "gtk_dialogs.h"
-#include "ssh.h"
+#include "gtk_shortcuts.h"
+#include "list.h"
 #include "functions.h"
 #include "configuration.h"
 #include "encryption.h"
-#include "gtk_shortcuts.h"
-#include "list.h"
 #include "xml.h"
+#include "ssh.h"
 
 // -----------------------------------------------------------
 //
@@ -31,10 +31,10 @@
 
 struct tGlobal* global;
 
-tFileDescription* active_file;
+static char* active_passphrase = NULL;
+static char* active_filename = NULL;
+//~ static tFileDescription* active_file;
 GtkWidget* popup_menu;
-
-static void update_recent_list(tList* kvo_list);
 
 // -----------------------------------------------------------
 //
@@ -63,8 +63,12 @@ struct tTreeData {
 };
 struct tTreeData* treedata;
 
-char* active_passphrase = "secret";
-char* active_filename = NULL;
+// -----------------------------------------------------------
+//
+// static functions (needed as they reference each other)
+//
+
+static void update_recent_list(tList* kvo_list);
 
 // -----------------------------------------------------------
 //
@@ -236,6 +240,7 @@ static void menu_file_import(GtkWidget *widget, gpointer ptr)
 
 static void menu_file_export(GtkWidget *widget, gpointer ptr)
 {
+	gtk_error_dialog("You are about to save your information unencrypted");
 	gchar* filename = dialog_save_file(widget, main_window);
 	if (filename) {
 		GtkTreeStore* treestore = ptr;

@@ -11,9 +11,9 @@ SRCS=main.c \
 	gtk_ui.c gtk_treeview.c gtk_dialogs.c gtk_shortcuts.c \
 	configuration.c ssh.c encryption.c functions.c list.c xml.c
 OBJS=$(SRCS:.c=.o)
-LIBS=glib-2.0 gtk+-2.0 openssl libxml-2.0
-CFLAGS=`pkg-config $(LIBS) --cflags` -Wall -Werror
-CLIBS=`pkg-config $(LIBS) --libs` -lssh2
+LIBRARIES=glib-2.0 gtk+-2.0 libxml-2.0 openssl libssh2
+CFLAGS=`pkg-config --cflags $(LIBRARIES)` -Wall -Werror
+LIBS=`pkg-config --libs $(LIBRARIES)`
 
 .cc.o:
 
@@ -27,4 +27,4 @@ clean:
 	rm -f $(TARG) $(OBJS)
 
 $(TARG): $(OBJS)
-	$(CC) $(CLIBS) $(OBJS) -o $(TARG)
+	$(CC) $(LIBS) $(OBJS) -o $(TARG)

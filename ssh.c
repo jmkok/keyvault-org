@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <libssh2.h>
 #include <libssh2_sftp.h>
-//~ #include <glib-2.0/glib/gprintf.h>
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -101,7 +100,7 @@ tData* ssh_get_file(tFileDescription* kvo) {
 	// Open the local file for writing
 	FILE* local_file = fopen("local.kvo","wb");
 	if (!local_file) {
-		gtk_error_dialog(NULL, "Could not open local file '%s'", "local.kvo");
+		gtk_error_dialog("Could not open local file");
 		goto shutdown;
 	}
 
