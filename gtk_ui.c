@@ -366,12 +366,12 @@ static void click_copy_password(GtkWidget *widget, gpointer ptr) {
 // Show and hide the contents of the password field
 //
 
-static void show_password(GtkWidget *widget, gpointer ptr) {
+static void focus_in_password(GtkWidget *widget, gpointer ptr) {
 	//~ GtkWidget*
 	gtk_entry_set_visibility(GTK_ENTRY(password_entry), TRUE);
 }
 
-static void hide_password(GtkWidget *widget, gpointer ptr) {
+static void focus_out_password(GtkWidget *widget, gpointer ptr) {
 	//~ GtkWidget*
 	gtk_entry_set_visibility(GTK_ENTRY(password_entry), FALSE);
 }
@@ -420,6 +420,20 @@ void menu_test_passphrase(GtkWidget *widget, gpointer tree_view) {
 	gchar* passphrase = dialog_request_password(NULL,"menu_test_passphrase");
 	g_printf("passphrase: %s\n",passphrase);
 	g_free(passphrase);
+}
+
+// -----------------------------------------------------------
+//
+// Request the user for a new passphrase
+//
+
+void menu_edit_change_passphrase(GtkWidget *widget, gpointer ptr) {
+	gchar* passphrase = dialog_request_password(NULL,"menu_test_passphrase");
+	if (passphrase) {
+		if (active_passphrase)
+			g_free(active_passphrase);
+		active_passphrase = passphrase;
+	}
 }
 
 // -----------------------------------------------------------
@@ -664,7 +678,7 @@ int create_main_window(void) {
 	GtkWidget* file_menu = gtk_add_menu(menu_bar,"File");
 	GtkWidget* edit_menu = gtk_add_menu(menu_bar,"Edit");
 	GtkWidget* test_menu = gtk_add_menu(menu_bar,"Test");
-	GtkWidget* view_menu = gtk_add_menu(menu_bar,"View");
+	//~ GtkWidget* view_menu = gtk_add_menu(menu_bar,"View");
 	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
 
 	// File menu
@@ -677,8 +691,8 @@ int create_main_window(void) {
 	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), td->treestore);
 	gtk_add_menu_item_clickable(file_menu, "Export...", G_CALLBACK(menu_file_export), td->treestore);
 	gtk_add_separator(file_menu);
-	//~ GtkWidget* read_configuration_menu_item = gtk_add_menu_item("Read configuration",file_menu);
-	//~ GtkWidget* save_configuration_menu_item = gtk_add_menu_item("Save configuration",file_menu);
+	//~ gtk_add_menu_item_clickable(file_menu, "Read configuration", G_CALLBACK(save_configuration), NULL);
+	//~ gtk_add_menu_item_clickable(file_menu, "Save configuration", G_CALLBACK(read_configuration), NULL);
 	//~ gtk_add_separator(file_menu);
 	GtkWidget* exit_menu_item = gtk_add_menu_item_clickable(file_menu, "Exit", G_CALLBACK(gtk_main_quit), NULL);
 
@@ -686,20 +700,17 @@ int create_main_window(void) {
 	gtk_add_menu_item_clickable(edit_menu, "Add item", G_CALLBACK(click_add_item), NULL);
 	GtkWidget* copy_username_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy username", G_CALLBACK(click_copy_username), NULL);
 	GtkWidget* copy_password_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy passphrase", G_CALLBACK(click_copy_password), NULL);
+	gtk_add_separator(edit_menu);
+	gtk_add_menu_item_clickable(edit_menu, "Change passphrase", G_CALLBACK(menu_edit_change_passphrase), NULL);
 
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
 	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), main_window);
-	//~ gtk_add_menu_item_clickable(test_menu, "demo data", G_CALLBACK(create_demo_data), td->treestore);
-	//~ gtk_add_menu_item_clickable(test_menu, "demo config", G_CALLBACK(create_demo_config), global->kvo_list);
 	gtk_add_menu_item_clickable(test_menu, "quick load", G_CALLBACK(menu_test_quick_load), td->treestore);
 	gtk_add_menu_item_clickable(test_menu, "quick save", G_CALLBACK(menu_test_quick_save), td->treestore);
 
 	// Help menu
 	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), main_window);
-
-	// Prevent warnings...
-	if (view_menu);
 
 	// This is the container for the treeview AND the record info
 	// Make the hbox and put it inside the vbox
@@ -807,8 +818,8 @@ int create_main_window(void) {
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), main_window);
 
 	// Password entry
-	g_signal_connect(G_OBJECT (password_entry), "focus-in-event", G_CALLBACK(show_password), NULL);
-	g_signal_connect(G_OBJECT (password_entry), "focus-out-event", G_CALLBACK(hide_password), NULL);
+	g_signal_connect(G_OBJECT (password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
+	g_signal_connect(G_OBJECT (password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
 
 	// Any changes made to the treeview
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(td->treeview));
@@ -825,9 +836,6 @@ int create_main_window(void) {
 
 	g_signal_connect(G_OBJECT (filter_entry), "changed", G_CALLBACK(treemodel_filter_change), td->treefilter);
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
-
-  //~ g_signal_connect(G_OBJECT (save_configuration_menu_item), "activate", G_CALLBACK(save_configuration), window);
-  //~ g_signal_connect(G_OBJECT (read_configuration_menu_item), "activate", G_CALLBACK(read_configuration), window);
 
 	// Read the configuration...
 	read_configuration(global->kvo_list);
