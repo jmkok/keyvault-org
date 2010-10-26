@@ -7,7 +7,9 @@
 # - http://library.gnome.org/devel/gtk/stable/
 
 TARG=keyvault
-SRCS=main.c ui.c configuration.c treeview.c dialogs.c ssh.c encryption.c gtk_shortcuts.c functions.c list.c xml.c
+SRCS=main.c \
+	gtk_ui.c gtk_treeview.c gtk_dialogs.c gtk_shortcuts.c \
+	configuration.c ssh.c encryption.c functions.c list.c xml.c
 OBJS=$(SRCS:.c=.o)
 LIBS=glib-2.0 gtk+-2.0 openssl libxml-2.0
 CFLAGS=`pkg-config $(LIBS) --cflags` -Wall -Werror

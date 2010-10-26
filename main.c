@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "gtk_ui.h"
 #include "encryption.h"
 
 extern int test_pbkdf2();

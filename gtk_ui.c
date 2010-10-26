@@ -17,8 +17,8 @@
 #include <sys/time.h>
 #include <assert.h>
 
-#include "treeview.h"
-#include "dialogs.h"
+#include "gtk_treeview.h"
+#include "gtk_dialogs.h"
 #include "ssh.h"
 #include "functions.h"
 #include "configuration.h"

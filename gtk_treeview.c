@@ -1,7 +1,7 @@
 #include <gtk/gtk.h>
 #include <libxml/parser.h>
 
-#include "treeview.h"
+#include "gtk_treeview.h"
 #include "main.h"
 #include "xml.h"
 

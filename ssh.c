@@ -12,7 +12,7 @@
 
 #include "functions.h"
 #include "ssh.h"
-#include "dialogs.h"
+#include "gtk_dialogs.h"
 
 /*
  * http://www.libssh2.org

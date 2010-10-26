@@ -4,7 +4,7 @@
 #include <glib-2.0/glib/gprintf.h>
 #include <openssl/aes.h>
 
-#include "dialogs.h"
+#include "gtk_dialogs.h"
 #include "main.h"
 #include "structures.h"
 #include "gtk_shortcuts.h"
