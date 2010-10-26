@@ -10,9 +10,9 @@
 // variables
 //
 
-struct tGlobal {
-	tList* kvo_list;
-};
+//~ struct tGlobal {
+	//~ tList* kvo_list;
+//~ };
 
 extern struct tGlobal* global;
 

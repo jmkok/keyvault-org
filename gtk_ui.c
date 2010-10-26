@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <assert.h>
 
+#include "gtk_ui.h"
 #include "gtk_treeview.h"
 #include "gtk_dialogs.h"
 #include "gtk_shortcuts.h"
@@ -640,7 +641,7 @@ static void click_about(GtkWidget *widget, gpointer parent_window)
 	// GTK_STOCK_CLEAR
 	// GTK_STOCK_DIALOG_AUTHENTICATION
 
-int create_main_window(void) {
+int create_main_window(const char* filename) {
 	// Initialize random generator
 	struct timeval tv;
 	gettimeofday(&tv,0);
@@ -841,8 +842,14 @@ int create_main_window(void) {
 	read_configuration(global->kvo_list);
 	update_recent_list(global->kvo_list);
 
-	// Run the app
+	// Show the application
   gtk_widget_show_all(main_window);
+
+	// Is a filename given, then read that file
+	if (filename)
+		load_from_file(filename, td->treestore);
+
+	// Run the app
   gtk_main();
 
 	// Save the configuration...

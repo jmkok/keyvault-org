@@ -13,7 +13,7 @@
 // variables
 //
 
-int create_main_window(void);
+int create_main_window(const char* filename);
 
 struct tGlobal {
 	tList* kvo_list;
@@ -21,12 +21,5 @@ struct tGlobal {
 
 extern struct tGlobal* global;
 
-
-// -----------------------------------------------------------
-//
-// functions
-//
-
-void update_recent_list(tList* kvo_list);
 
 #endif

@@ -9,8 +9,15 @@ int main(int argc, char** argv)
   // Open the essential random handle (do it here so we can warn the user with a dialog before doing anything else
   random_init();
 
+	// Load a default file
+	char* filename = NULL;
+	int i;
+	for (i=1;i<argc;i++) {
+		filename = argv[i];
+	}
+
 	// Create the main window
-	create_main_window();
+	create_main_window(filename);
 
   return 0;
 }

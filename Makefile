@@ -21,7 +21,7 @@ all: $(TARG)
 	#~ make run
 
 run: $(TARG)
-	LANG=C ./$(TARG)
+	LANG=C ./$(TARG) xxx.kvo
 
 clean:
 	rm -f $(TARG) $(OBJS)
