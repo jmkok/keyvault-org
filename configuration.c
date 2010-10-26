@@ -31,9 +31,8 @@ void read_configuration(tList* kvo_list) {
 		if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, BAD_CAST "kvo_file")) {
 			//~ xmlElemDump(stdout, NULL, node);puts("");
 			// Create a new kvo_file
-			tKvoFile* kvo=malloc(sizeof(tKvoFile));
-			memset(kvo,0,sizeof(tKvoFile));
-			kvo->local_filename = strdup("local.kvo");
+			tFileDescription* kvo=malloc(sizeof(tFileDescription));
+			memset(kvo,0,sizeof(tFileDescription));
 			list_add(kvo_list,kvo);
 			// Analyze all items for this kvo_file
 			kvo->title = (char*)xmlGetContents(node, BAD_CAST "title");
@@ -67,7 +66,7 @@ void save_configuration(tList* kvo_list) {
 	
 	int i;
 	for (i=0;i < kvo_list->count; i++) {
-		tKvoFile* kvo = kvo_list->data[i];
+		tFileDescription* kvo = kvo_list->data[i];
 		xmlNode* kvo_file_node = xmlNewChild(config, NULL, BAD_CAST "kvo_file", NULL);
 
 		xmlNewChild(kvo_file_node, NULL, BAD_CAST "title", BAD_CAST kvo->title);

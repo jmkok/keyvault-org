@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
-#include "main.h"
 #include "gtk_shortcuts.h"
+#include "functions.h"
 
 GtkWidget* gtk_add_labeled_entry(GtkWidget* vbox, gchar* title, gchar* value) {
 	/* 1. Add the label. */
@@ -65,4 +65,14 @@ GtkWidget* gtk_add_menu(GtkWidget* parent, gchar* title) {
 	GtkWidget* menu = gtk_menu_new();
 	gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item),menu);
 	return menu;
+}
+
+GtkFileFilter* gtk_add_filter(GtkFileChooser* parent, const char* title, const char* filter, int selected) {
+	GtkFileFilter* widget = gtk_file_filter_new ();
+	gtk_file_filter_set_name(widget, title);
+	gtk_file_filter_add_pattern (widget, filter);
+	gtk_file_chooser_add_filter(parent, widget);
+	if (selected)
+		gtk_file_chooser_set_filter(parent, widget);
+	return widget;
 }

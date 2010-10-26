@@ -1,5 +1,5 @@
-#ifndef _main_h_
-#define _main_h_
+#ifndef _gtk_ui_h_
+#define _gtk_ui_h_
 
 #include <stdint.h>
 #include <gtk/gtk.h>

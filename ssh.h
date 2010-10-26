@@ -3,6 +3,6 @@
 
 #include "structures.h"
 
-extern void ssh_get_file(tKvoFile*);
+extern tData* ssh_get_file(tFileDescription*);
 	
 #endif

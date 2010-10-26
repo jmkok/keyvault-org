@@ -5,10 +5,10 @@
 #include <openssl/aes.h>
 
 #include "gtk_dialogs.h"
-#include "main.h"
-#include "structures.h"
 #include "gtk_shortcuts.h"
 #include "gtk_dialogs.h"
+#include "structures.h"
+#include "functions.h"
 
 gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	/* Create the dialog */
@@ -44,7 +44,7 @@ gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	return retval;
 }
 
-gboolean dialog_request_kvo (tKvoFile* kvo) {
+gboolean dialog_request_kvo (tFileDescription* kvo) {
 	trace();
 	if (!kvo) 
 		return FALSE;
@@ -174,14 +174,13 @@ void quick_message (GtkWidget *parent, gchar *message) {
 	gtk_widget_show_all (dialog);
 }
 
-gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window)
+gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window, int filter)
 {
 	gchar* filename=NULL;
 	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Open File", parent_window, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
-	GtkFileFilter* filter = gtk_file_filter_new ();
-	gtk_file_filter_set_name(filter,"Keyvault files");
-	gtk_file_filter_add_pattern (filter, "*.kvo");
-	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Keyvault files", "*.kvo", (filter == 0));
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Comma separated files", "*.csv", (filter == 1));
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "All files", "*.*", 0);
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	}

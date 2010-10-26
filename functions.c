@@ -100,3 +100,13 @@ void lowercase(char string[]) {
    return;
 }
 
+// -----------------------------------------------------------
+//
+// create a piece of zeroed memory
+//
+
+void* mallocz(int size) {
+	void* ptr = malloc(size);
+	memset(ptr,0,size);
+	return ptr;
+}

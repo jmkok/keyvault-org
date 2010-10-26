@@ -31,8 +31,10 @@
 
 struct tGlobal* global;
 
-tKvoFile* active_keyvault;
+tFileDescription* active_file;
 GtkWidget* popup_menu;
+
+static void update_recent_list(tList* kvo_list);
 
 // -----------------------------------------------------------
 //
@@ -110,7 +112,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 
 static void menu_file_open(GtkWidget *widget, gpointer ptr)
 {
-	gchar* filename=dialog_open_file(widget, main_window);
+	gchar* filename=dialog_open_file(widget, main_window, 0);
 	if (filename) {
 		GtkTreeStore* treestore = ptr;
 		if (load_from_file(filename, treestore)) {
@@ -127,7 +129,7 @@ static void menu_file_open(GtkWidget *widget, gpointer ptr)
 // MENU: file -> open_advanced
 //
 
-void open_kvo_file_real(tKvoFile* kvo) {
+void open_kvo_file_real(tFileDescription* kvo) {
 	g_printf("open_kvo_file_real()\n");
 	g_printf("hostname: %s\n",kvo->hostname);
 	g_printf("username: %s\n",kvo->username);
@@ -143,8 +145,8 @@ void open_kvo_file_real(tKvoFile* kvo) {
 void menu_file_open_advanced(GtkWidget *widget, gpointer parent_window)
 {
 	// Create a new kvo file
-	tKvoFile* kvo=malloc(sizeof(tKvoFile));
-	memset(kvo,0,sizeof(tKvoFile));
+	tFileDescription* kvo=malloc(sizeof(tFileDescription));
+	memset(kvo,0,sizeof(tFileDescription));
 	// Let the use fill in all required fields...
 	if (dialog_request_kvo(kvo)) {
 		// Store the kvo to the list
@@ -215,6 +217,34 @@ static void menu_file_save(GtkWidget *widget, gpointer ptr)
 
 // -----------------------------------------------------------
 //
+// MENU: file -> import
+//
+
+static void menu_file_import(GtkWidget *widget, gpointer ptr)
+{
+	gchar* filename = dialog_open_file(widget, main_window, 1);
+	if (filename) {
+		GtkTreeStore* treestore = ptr;
+		import_treestore_from_csv(treestore, filename);
+	}
+}
+
+// -----------------------------------------------------------
+//
+// MENU: file -> export
+//
+
+static void menu_file_export(GtkWidget *widget, gpointer ptr)
+{
+	gchar* filename = dialog_save_file(widget, main_window);
+	if (filename) {
+		GtkTreeStore* treestore = ptr;
+		export_treestore_to_csv(treestore, filename);
+	}
+}
+
+// -----------------------------------------------------------
+//
 // Launch the URL
 //
 
@@ -237,73 +267,6 @@ static void treemodel_filter_change(GtkWidget *widget, gpointer ptr) {
 
 static void clear_filter(GtkEntry *entry, GtkEntryIconPosition icon_pos, GdkEvent *event, gpointer user_data) {
 	gtk_entry_set_text(entry,"");
-}
-
-// -----------------------------------------------------------
-//
-// Create a default configuration
-//
-
-static void create_demo_data(GtkWidget *widget, gpointer ptr) {
-	GtkTreeStore* treestore = ptr;
-	static const char* demo_names[10]={"Tweakers.net","Google.nl","Mijn postbank","Rabobank","Woopie","Amazon","Marktplaats","Hyves","Facebook","IBM services"};
-	static const char* demo_users[10]={"john","james","jack","judy","boris","bas","bruno","berend","boudewijn","jmkok"};
-	int i;
-	for (i=0;i<10;i++) {
-		GtkTreeIter iter;
-		// Insert a new record with a random password
-		gchar* password = create_random_password(12);
-		treestore_add_record(treestore, &iter, NULL, demo_names[i], demo_users[i], password, "http://someserver.com/path/inde.html", "Some info");
-		g_free(password);
-	}
-}
-
-// -----------------------------------------------------------
-//
-// Create a default configuration
-//
-
-static void create_demo_config(GtkWidget *widget, gpointer kvo_list_ptr) {
-	tKvoFile* kvo;
-	tList* kvo_list=kvo_list_ptr;
-
-	// Remove all items from the kvo_list
-	void remove_items(tList* kvo_list,void* data) {
-		list_remove(kvo_list, data);
-	}
-	list_foreach(kvo_list,remove_items);
-
-	// Add jmkok.kvo
-	kvo=malloc(sizeof(tKvoFile));
-	memset(kvo,0,sizeof(tKvoFile));
-	kvo->title = strdup("jmkok.kvo");
-	kvo->filename = strdup("jmkok.kvo");
-	list_add(kvo_list,kvo);
-
-	// Add ssh @ youcom.nl
-	kvo=malloc(sizeof(tKvoFile));
-	memset(kvo,0,sizeof(tKvoFile));
-	kvo->title = strdup("ssh://jmkok@youcom.nl");
-	kvo->protocol = strdup("ssh");
-	kvo->hostname = strdup("green.youcom.nl");
-	kvo->username = strdup("jmkok");
-	kvo->filename = strdup("test.kvo");
-	kvo->local_filename = strdup("local.kvo");
-	list_add(kvo_list,kvo);
-
-	// Add ssh @ pooh
-	kvo=malloc(sizeof(tKvoFile));
-	memset(kvo,0,sizeof(tKvoFile));
-	kvo->title = strdup("ssh://jmkok@p23.nl");
-	kvo->protocol = strdup("ssh");
-	kvo->hostname = strdup("pooh.p23.nl");
-	kvo->username = strdup("jmkok");
-	kvo->filename = strdup("sjaak.kvo");
-	kvo->local_filename = strdup("local.kvo");
-	list_add(kvo_list,kvo);
-
-	// Update the open->recent
-	update_recent_list(kvo_list);
 }
 
 // -----------------------------------------------------------
@@ -342,7 +305,7 @@ void write_changes_to_treestore(GtkWidget *widget, gpointer selection) {
 // Load "save.kvo"
 //
 
-static void click_test_load(GtkWidget *widget, gpointer ptr) {
+static void menu_test_quick_load(GtkWidget *widget, gpointer ptr) {
 	GtkTreeStore* treestore = ptr;
 	load_from_file("test.kvo", treestore);
 }
@@ -352,7 +315,7 @@ static void click_test_load(GtkWidget *widget, gpointer ptr) {
 // Save "save.kvo"
 //
 
-static void click_test_save(GtkWidget *widget, gpointer ptr) {
+static void menu_test_quick_save(GtkWidget *widget, gpointer ptr) {
 	GtkTreeStore* treestore = ptr;
 	save_to_file("test.kvo", treestore);
 }
@@ -460,7 +423,7 @@ void menu_test_passphrase(GtkWidget *widget, gpointer tree_view) {
 //
 
 void open_recent_kvo_file(GtkWidget *widget, gpointer kvo_pointer) {
-	tKvoFile* kvo=kvo_pointer;
+	tFileDescription* kvo = kvo_pointer;
 	if (dialog_request_kvo(kvo)) {
 		open_kvo_file_real(kvo);
 	}
@@ -471,7 +434,7 @@ void open_recent_kvo_file(GtkWidget *widget, gpointer kvo_pointer) {
 // Update the list of recent files
 //
 
-void update_recent_list(tList* kvo_list) {
+static void update_recent_list(tList* kvo_list) {
 	// First remove all items in the recent menu
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer unused) {
 		gtk_remove_menu_item(open_recent_menu, menu_item);
@@ -480,7 +443,7 @@ void update_recent_list(tList* kvo_list) {
 
 	// Then add all items in the kvo_list to the recent menu
 	void add_to_menu(tList* kvo_list, void* data) {
-		tKvoFile* kvo = data;
+		tFileDescription* kvo = data;
 		GtkWidget* account_menu_item = gtk_add_menu_item(open_recent_menu, kvo->title);
 		g_signal_connect(G_OBJECT (account_menu_item), "activate", G_CALLBACK(open_recent_kvo_file), kvo);
 	}
@@ -706,6 +669,9 @@ int create_main_window(void) {
 	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), td->treestore);
 	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), td->treestore);
 	gtk_add_separator(file_menu);
+	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), td->treestore);
+	gtk_add_menu_item_clickable(file_menu, "Export...", G_CALLBACK(menu_file_export), td->treestore);
+	gtk_add_separator(file_menu);
 	//~ GtkWidget* read_configuration_menu_item = gtk_add_menu_item("Read configuration",file_menu);
 	//~ GtkWidget* save_configuration_menu_item = gtk_add_menu_item("Save configuration",file_menu);
 	//~ gtk_add_separator(file_menu);
@@ -719,10 +685,10 @@ int create_main_window(void) {
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
 	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), main_window);
-	gtk_add_menu_item_clickable(test_menu, "demo data", G_CALLBACK(create_demo_data), td->treestore);
-	gtk_add_menu_item_clickable(test_menu, "demo config", G_CALLBACK(create_demo_config), global->kvo_list);
-	gtk_add_menu_item_clickable(test_menu, "load", G_CALLBACK(click_test_load), td->treestore);
-	gtk_add_menu_item_clickable(test_menu, "save", G_CALLBACK(click_test_save), td->treestore);
+	//~ gtk_add_menu_item_clickable(test_menu, "demo data", G_CALLBACK(create_demo_data), td->treestore);
+	//~ gtk_add_menu_item_clickable(test_menu, "demo config", G_CALLBACK(create_demo_config), global->kvo_list);
+	gtk_add_menu_item_clickable(test_menu, "quick load", G_CALLBACK(menu_test_quick_load), td->treestore);
+	gtk_add_menu_item_clickable(test_menu, "quick save", G_CALLBACK(menu_test_quick_save), td->treestore);
 
 	// Help menu
 	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), main_window);

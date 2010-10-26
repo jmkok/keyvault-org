@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "list.h"
-#include "main.h"
+#include "functions.h"
 
 #define LIST_SIZE_STEP 8
 //~ #define sizeof(void*)

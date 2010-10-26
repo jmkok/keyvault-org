@@ -18,7 +18,7 @@
  * http://www.libssh2.org
  */
 
-void ssh_get_file(tKvoFile* kvo) {
+tData* ssh_get_file(tFileDescription* kvo) {
 	// TODO: kvo->hostname
 	unsigned long hostaddr=inet_addr("192.168.9.1");
 	printf("hostaddr: %08lX\n",hostaddr);
@@ -30,7 +30,7 @@ void ssh_get_file(tKvoFile* kvo) {
 	sin.sin_addr.s_addr = hostaddr;
 	if (connect(sock, (struct sockaddr*)(&sin),sizeof(struct sockaddr_in)) != 0) {
 		fprintf(stderr, "failed to connect!\n");
-		return;
+		return NULL;
 	}
 
 	// Open an SSH session...
@@ -38,7 +38,7 @@ void ssh_get_file(tKvoFile* kvo) {
 	if (libssh2_session_startup(session, sock)) {
 		fprintf(stderr, "Failure establishing SSH session\n");
 		close(sock);
-		return;
+		return NULL;
 	}
 
 	// Verify the fingerprint... (TODO: store it in the kvo_file)
@@ -99,9 +99,9 @@ void ssh_get_file(tKvoFile* kvo) {
 	}
 
 	// Open the local file for writing
-	FILE* local_file = fopen(kvo->local_filename,"wb");
+	FILE* local_file = fopen("local.kvo","wb");
 	if (!local_file) {
-		gtk_error_dialog(NULL, "Could not open local file '%s'", kvo->local_filename);
+		gtk_error_dialog(NULL, "Could not open local file '%s'", "local.kvo");
 		goto shutdown;
 	}
 
@@ -129,5 +129,19 @@ shutdown:
 	libssh2_session_free(session);
 
 	close(sock);
-	printf("all done!\n");
+
+	// Read the data from the drive into memory
+	tData* retval = NULL;
+	if (total) {
+		retval = mallocz(sizeof(tData*));
+		retval->data = malloc(total);
+		retval->size = total;
+		FILE* fp = fopen("local.kvo","rb");
+		if (fp) {
+			fread(retval->data, 1, total, fp);
+			fclose(fp);
+		}
+	}
+
+	return retval;
 }
