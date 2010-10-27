@@ -17,19 +17,35 @@
  * http://www.libssh2.org
  */
 
-tData* ssh_get_file(tFileDescription* kvo) {
-	// TODO: kvo->hostname
-	unsigned long hostaddr=inet_addr("192.168.9.1");
+int tcp_connect(const char* hostname, int port) {
+	// TODO: kvo->hostname must be numerical...
+	unsigned long hostaddr = inet_addr(hostname);
+	if (!hostaddr)
+		return 0;
 	printf("hostaddr: %08lX\n",hostaddr);
 
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in sin;
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(22);
+	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = hostaddr;
-	if (connect(sock, (struct sockaddr*)(&sin),sizeof(struct sockaddr_in)) != 0) {
+	if (connect(sock, (struct sockaddr*)(&sin),sizeof(struct sockaddr_in)) != 0)
+		return 0;
+	return sock;
+}
+
+// ------------------------------------------------------------------
+//
+// ssh_get_file()
+// Connect to an SSH server and get the specified file
+//
+
+int ssh_get_file(tFileDescription* kvo, void** data, ssize_t* length) {
+	// Connect to the server
+	int sock = tcp_connect(kvo->hostname, kvo->port);
+	if (!sock) {
 		fprintf(stderr, "failed to connect!\n");
-		return NULL;
+		return 0;
 	}
 
 	// Open an SSH session...
@@ -37,7 +53,7 @@ tData* ssh_get_file(tFileDescription* kvo) {
 	if (libssh2_session_startup(session, sock)) {
 		fprintf(stderr, "Failure establishing SSH session\n");
 		close(sock);
-		return NULL;
+		return 0;
 	}
 
 	// Verify the fingerprint... (TODO: store it in the kvo_file)
@@ -61,64 +77,74 @@ tData* ssh_get_file(tFileDescription* kvo) {
 		/* We could authenticate via password */
 		if (libssh2_userauth_password(session, kvo->username, kvo->password)) {
 			printf("\tAuthentication by password failed!\n");
-			goto shutdown;
 		} 
 		else {
 			printf("\tAuthentication by password succeeded.\n");
+			goto ssh_password_succeeded;
 		}
 	}
 	
 	// Request a password from the user
+ssh_request_user_password:;
 	gchar* password = dialog_request_password(NULL, "SSH server");
+	if (!password)
+		goto shutdown;
 	if (libssh2_userauth_password(session, kvo->username, password)) {
 		printf("\tAuthentication by password failed!\n");
-		goto shutdown;
+		g_free(password);
+		goto ssh_request_user_password;
 	} 
 	else {
 		printf("\tAuthentication by password succeeded.\n");
 	}
 	g_free(password);
 
+ssh_password_succeeded:
 	// SFTP...
-	fprintf(stderr, "libssh2_sftp_init()!\n");
+	fprintf(stderr, "Perform: libssh2_sftp_init()\n");
 	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(session);
-
 	if (!sftp_session) {
 		fprintf(stderr, "Unable to init SFTP session\n");
 		goto shutdown;
 	}
+	else {
+		fprintf(stderr, "SFTP session initialized\n");
+	}
 
-	fprintf(stderr, "libssh2_sftp_open()!\n");
-	/* Request a file via SFTP */
+	// Request a file via SFTP
+	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",kvo->filename);
 	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, kvo->filename, LIBSSH2_FXF_READ, 0);
-
 	if (!sftp_handle) {
 		fprintf(stderr, "Unable to open file with SFTP\n");
 		goto shutdown;
 	}
+	else {
+		fprintf(stderr, "SFTP handle openened\n");
+	}
 
-	// Open the local file for writing
-	FILE* local_file = fopen("local.kvo","wb");
-	if (!local_file) {
-		gtk_error_dialog("Could not open local file");
+	// Stat the file
+	struct _LIBSSH2_SFTP_ATTRIBUTES attrs;
+	int err = libssh2_sftp_fstat(sftp_handle, &attrs);
+	if (err) {
+		fprintf(stderr, "Could not stat the file\n");
 		goto shutdown;
 	}
 
-	fprintf(stderr, "libssh2_sftp_open() is done, now receive data!\n");
-	
-	#define BLOCK_SIZE 1024*1024
-	void* buffer=g_malloc(BLOCK_SIZE);
-	int rx;
+	// Allocate memory to store the file
+	*length = attrs.filesize;
+	printf("filesize: %zi\n", *length);
+	*data = malloc(*length);
+
+	// Open the local file for writing
+	fprintf(stderr, "libssh2_sftp_open() is done, now receive data!\n");	
 	int total=0;
-	while(1) {
+	while(total < attrs.filesize) {
 		printf(".");
-		rx=libssh2_sftp_read(sftp_handle, buffer, 1024);
+		int rx = attrs.filesize-total;
+		rx=libssh2_sftp_read(sftp_handle, *data+total, rx);
 		if (rx <= 0) break;
-		fwrite(buffer,1,rx,local_file);
 		total+=rx;
 	}
-	g_free(buffer);
-	fclose(local_file);
 
 	libssh2_sftp_close(sftp_handle);
 	libssh2_sftp_shutdown(sftp_session);
@@ -129,18 +155,5 @@ shutdown:
 
 	close(sock);
 
-	// Read the data from the drive into memory
-	tData* retval = NULL;
-	if (total) {
-		retval = mallocz(sizeof(tData*));
-		retval->data = malloc(total);
-		retval->size = total;
-		FILE* fp = fopen("local.kvo","rb");
-		if (fp) {
-			fread(retval->data, 1, total, fp);
-			fclose(fp);
-		}
-	}
-
-	return retval;
+	return *length;
 }

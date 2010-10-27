@@ -3,6 +3,6 @@
 
 #include "structures.h"
 
-extern tData* ssh_get_file(tFileDescription*);
+extern int ssh_get_file(tFileDescription*, void** data, ssize_t* length);
 	
 #endif

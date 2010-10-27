@@ -76,9 +76,7 @@ static void update_recent_list(tList* kvo_list);
 // load_from_file - load a file into the treestore
 //
 
-static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
-	// Read the file
-	xmlDoc* doc_enc = xmlParseFile(filename);
+static int encrypted_xml_to_treestore(xmlDoc* doc_enc, GtkTreeStore* treestore) {
 	//~ xmlDocDump(stdout, doc_enc);puts("");
 
 	// Request the passphrase to decode the file ("secret")
@@ -108,6 +106,14 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 	//~ xmlDoc* doc = export_reestore_to_xml(treestore);
 	//~ xmlDocDump(stdout, doc);puts("");
 	return 1;
+}
+
+static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
+	// Read the file
+	xmlDoc* doc_enc = xmlParseFile(filename);
+	
+	// Move the encrypted xml into the treestore
+	return encrypted_xml_to_treestore(doc_enc, treestore);
 }
 
 // -----------------------------------------------------------
@@ -143,7 +149,19 @@ void open_kvo_file_real(tFileDescription* kvo) {
 		trace();
 	}
 	else if (strcmp(kvo->protocol,"ssh") == 0) {
-		ssh_get_file(kvo);
+		void* data;
+		int len;
+		ssh_get_file(kvo,&data,&len);
+		
+		// Read the data into an xml structure
+		xmlDoc* doc_enc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
+		if (!doc_enc) {
+			gtk_error_dialog("Invalid XML document");
+			return;
+		}
+
+		// Move the encrypted xml into the treestore
+		encrypted_xml_to_treestore(doc_enc, treedata->treestore);
 	}
 }
 
