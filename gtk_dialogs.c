@@ -7,7 +7,7 @@
 #include "gtk_dialogs.h"
 #include "functions.h"
 
-gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
+gchar* gtk_password_dialog(GtkWindow* parent, gchar* title) {
 	/* Create the dialog */
 	GtkWidget* dialog = gtk_dialog_new_with_buttons (title,
 																	 parent,
@@ -50,18 +50,19 @@ gchar* dialog_request_password(GtkWindow* parent, gchar* title) {
 	return retval;
 }
 
-gboolean dialog_request_kvo (tFileDescription* kvo) {
+gboolean dialog_request_kvo (GtkWidget* parent, tFileDescription* kvo) {
 	trace();
 	if (!kvo) 
 		return FALSE;
 	gboolean retval=FALSE;
 	/* Create the dialog */
-	GtkWidget* dialog = gtk_dialog_new_with_buttons ("Passphrase",
-																	 NULL,
+	GtkWidget* dialog = gtk_dialog_new_with_buttons ("File configuration",
+																	 GTK_WINDOW(parent),
 																	 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-																	 GTK_STOCK_OK, GTK_RESPONSE_ACCEPT,
-																	 GTK_STOCK_CANCEL, GTK_RESPONSE_NONE,
 																	 NULL);
+	GtkWidget* ok_button = gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_OK, GTK_RESPONSE_OK);	// GTK_RESPONSE_ACCEPT
+	gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);	// GTK_RESPONSE_NONE
+
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/pixmaps/apple-red.png", NULL);
 	gtk_window_set_icon_name(GTK_WINDOW(dialog), GTK_STOCK_DIALOG_AUTHENTICATION);
 	gtk_window_set_default_size (GTK_WINDOW(dialog), 300, -1);
@@ -128,7 +129,10 @@ gboolean dialog_request_kvo (tFileDescription* kvo) {
 	gtk_widget_show_all(dialog);
 	change_protocol(combo_box,NULL);
 
-	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+	//~ gtk_signal_connect_object (GTK_OBJECT (passphrase_entry), "focus_in_event", GTK_SIGNAL_FUNC (gtk_widget_grab_default), GTK_OBJECT (ok_button));
+	gtk_signal_connect_object (GTK_OBJECT (combo_box), "activate", GTK_SIGNAL_FUNC (gtk_button_clicked), GTK_OBJECT (ok_button));
+
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
 		// Update the fields in the kvo structure...
 		if (kvo->title) free(kvo->title);
 		kvo->title=strdup(gtk_entry_get_text(GTK_ENTRY(title_entry)));
@@ -183,11 +187,14 @@ void quick_message (GtkWidget *parent, gchar *message) {
 gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window, int filter)
 {
 	gchar* filename=NULL;
-	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Open File", parent_window, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Open File", parent_window, GTK_FILE_CHOOSER_ACTION_OPEN, 
+								GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, 
+								GTK_STOCK_OPEN, GTK_RESPONSE_OK, 
+								NULL);
 	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Keyvault files", "*.kvo", (filter == 0));
 	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Comma separated files", "*.csv", (filter == 1));
 	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "All files", "*.*", 0);
-	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
+	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK) {
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	}
 	gtk_widget_destroy (dialog);
@@ -199,10 +206,11 @@ gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window)
 	gchar* filename=NULL;
 	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Save File",parent_window,GTK_FILE_CHOOSER_ACTION_SAVE,
 								GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-								GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,NULL);
+								GTK_STOCK_SAVE, GTK_RESPONSE_OK,
+								NULL);
 	gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER (dialog), TRUE);
 
-	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
+	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK) {
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	}
 	gtk_widget_destroy (dialog);

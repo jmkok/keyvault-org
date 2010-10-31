@@ -91,7 +91,7 @@ void save_configuration(tList* kvo_list) {
 	}
 	
 	// encrypted-xml => disk
-	FILE* fp = fopen("config_save.xml", "w");
+	FILE* fp = fopen("config.xml", "w");
 	if (fp) {
 		xmlDocDump(fp, doc);
 		fclose(fp);

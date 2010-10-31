@@ -13,12 +13,18 @@
 #include "ssh.h"
 #include "gtk_dialogs.h"
 
+// The SSH connection
+struct tSsh {
+	int sock;
+	LIBSSH2_SESSION* session;
+};
+
 /*
  * http://www.libssh2.org
  */
 
 int tcp_connect(const char* hostname, int port) {
-	// TODO: kvo->hostname must be numerical...
+	// TODO: hostname must be numerical...
 	unsigned long hostaddr = inet_addr(hostname);
 	if (!hostaddr)
 		return 0;
@@ -36,87 +42,97 @@ int tcp_connect(const char* hostname, int port) {
 
 // ------------------------------------------------------------------
 //
-// ssh_get_file()
-// Connect to an SSH server and get the specified file
+// ssh_connect() - Connect to an SSH server
 //
 
-int ssh_get_file(tFileDescription* kvo, void** data, ssize_t* length) {
-	// Connect to the server
-	int sock = tcp_connect(kvo->hostname, kvo->port);
-	if (!sock) {
+static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** fingerprint) {
+	ssh->sock = tcp_connect(hostname, port);
+	if (!ssh->sock) {
 		fprintf(stderr, "failed to connect!\n");
-		return 0;
-	}
-
-	// Open an SSH session...
-	LIBSSH2_SESSION* session = libssh2_session_init();
-	if (libssh2_session_startup(session, sock)) {
-		fprintf(stderr, "Failure establishing SSH session\n");
-		close(sock);
-		return 0;
-	}
-
-	// Verify the fingerprint... (TODO: store it in the kvo_file)
-	const char* fingerprint = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_MD5);
-	hexdump("fingerprint",fingerprint,16);printf("\n");   
-	if (kvo->fingerprint && (memcmp(fingerprint,(char*)kvo->fingerprint,16) != 0)) {
-		hexdump("fingerprint",kvo->fingerprint,16);printf("\n");   
-		printf("Incorrect fingerprint\n");
-		goto shutdown;
-	}
-	if (!kvo->fingerprint)
-		kvo->fingerprint=malloc(16);
-	memcpy(kvo->fingerprint,fingerprint,16);
-
-	/* check what authentication methods are available */
-	char* userauthlist = libssh2_userauth_list(session, kvo->username, strlen(kvo->username));
-	printf("Authentication methods: %s\n", userauthlist);
-
-	// If a password is given, try that one...
-	if (kvo->password && *kvo->password) {
-		/* We could authenticate via password */
-		if (libssh2_userauth_password(session, kvo->username, kvo->password)) {
-			printf("\tAuthentication by password failed!\n");
-		} 
-		else {
-			printf("\tAuthentication by password succeeded.\n");
-			goto ssh_password_succeeded;
-		}
+		return -1;
 	}
 	
-	// Request a password from the user
-ssh_request_user_password:;
-	gchar* password = dialog_request_password(NULL, "SSH server");
-	if (!password)
-		goto shutdown;
-	if (libssh2_userauth_password(session, kvo->username, password)) {
-		printf("\tAuthentication by password failed!\n");
-		g_free(password);
-		goto ssh_request_user_password;
-	} 
-	else {
-		printf("\tAuthentication by password succeeded.\n");
+	// Open an SSH session...
+	ssh->session = libssh2_session_init();
+	if (libssh2_session_startup(ssh->session, ssh->sock)) {
+		fprintf(stderr, "Failure establishing SSH session\n");
+		return -1;
 	}
-	g_free(password);
 
-ssh_password_succeeded:
+	// Verify the fingerprint...
+	const void* server_fingerprint = libssh2_hostkey_hash(ssh->session, LIBSSH2_HOSTKEY_HASH_MD5);
+	hexdump("fingerprint", server_fingerprint, 16);printf("\n");   
+	if (*fingerprint && (memcmp(server_fingerprint, *fingerprint, 16) != 0)) {
+		hexdump("fingerprint",*fingerprint,16);printf("\n");   
+		printf("Incorrect fingerprint\n");
+		return -1;
+	}
+	
+	// Store the new fingerprint if it was not yet defined
+	if (!*fingerprint)
+		*fingerprint=malloc(16);
+	memcpy(*fingerprint, server_fingerprint, 16);
+
+	return 0;
+}
+
+// ------------------------------------------------------------------
+//
+// ssh_login() - Login to an SSH server
+//
+
+static int ssh_login(struct tSsh* ssh, const char* username, const char* default_password) {
+	char* userauthlist = libssh2_userauth_list(ssh->session, username, strlen(username));
+	printf("Authentication methods: %s\n", userauthlist);
+
+	// Is there a default password defined
+	gchar* password = NULL;
+	if (default_password && *default_password)
+		password = strdup(default_password);
+
+	// Stay in the loop until, we logged in, or the user cancelled
+	while(1) {
+		// If a password is given, try that one...
+		if (password) {
+			int err = libssh2_userauth_password(ssh->session, username, password);
+			g_free(password);
+			// We could authenticate via password
+			if (err == 0) {
+				printf("Authentication by password succeeded.\n");
+				return 0;
+			}
+			printf("Authentication by password failed!\n");
+		}
+		password = gtk_password_dialog(NULL, "Enter password for SSH server");
+		if (!password)
+			return 1;
+	}
+}
+
+// ------------------------------------------------------------------
+//
+// ssh_read() - Read data frm an ssh handle
+//
+
+static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t* length) {
 	// SFTP...
 	fprintf(stderr, "Perform: libssh2_sftp_init()\n");
-	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(session);
+	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(ssh->session);
 	if (!sftp_session) {
 		fprintf(stderr, "Unable to init SFTP session\n");
-		goto shutdown;
+		return -1;
 	}
 	else {
 		fprintf(stderr, "SFTP session initialized\n");
 	}
 
 	// Request a file via SFTP
-	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",kvo->filename);
-	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, kvo->filename, LIBSSH2_FXF_READ, 0);
+	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",filename);
+	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename, LIBSSH2_FXF_READ, 0);
 	if (!sftp_handle) {
 		fprintf(stderr, "Unable to open file with SFTP\n");
-		goto shutdown;
+		libssh2_sftp_shutdown(sftp_session);
+		return -1;
 	}
 	else {
 		fprintf(stderr, "SFTP handle openened\n");
@@ -127,7 +143,9 @@ ssh_password_succeeded:
 	int err = libssh2_sftp_fstat(sftp_handle, &attrs);
 	if (err) {
 		fprintf(stderr, "Could not stat the file\n");
-		goto shutdown;
+		libssh2_sftp_close(sftp_handle);
+		libssh2_sftp_shutdown(sftp_session);
+		return -1;
 	}
 
 	// Allocate memory to store the file
@@ -148,12 +166,120 @@ ssh_password_succeeded:
 
 	libssh2_sftp_close(sftp_handle);
 	libssh2_sftp_shutdown(sftp_session);
+	return 0;
+}
+
+// ------------------------------------------------------------------
+//
+// ssh_write() - Write data frm an ssh handle
+//
+
+static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t length) {
+	// SFTP...
+	fprintf(stderr, "Perform: libssh2_sftp_init()\n");
+	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(ssh->session);
+	if (!sftp_session) {
+		fprintf(stderr, "Unable to init SFTP session\n");
+		return -1;
+	}
+	else {
+		fprintf(stderr, "SFTP session initialized\n");
+	}
+
+	// Request a file via SFTP
+	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",filename);
+	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename, LIBSSH2_FXF_WRITE, 0);
+	if (!sftp_handle) {
+		fprintf(stderr, "Unable to open file with SFTP\n");
+		libssh2_sftp_shutdown(sftp_session);
+		return -1;
+	}
+	else {
+		fprintf(stderr, "SFTP handle openened\n");
+	}
+	
+	// TODO: libssh2_sftp_rename
+
+	// Start writing
+	fprintf(stderr, "Sending data\n");	
+	int total=0;
+	while(total < length) {
+		printf(".");
+		int tx = tx-total;
+		tx=libssh2_sftp_write(sftp_handle, data+total, tx);
+		if (tx <= 0) break;
+		total+=tx;
+	}
+
+	libssh2_sftp_close(sftp_handle);
+	libssh2_sftp_shutdown(sftp_session);
+	return 0;
+}
+
+// ------------------------------------------------------------------
+//
+// ssh_get_file() - Read a file from a SSH server
+//
+
+int ssh_get_file(tFileDescription* kvo, void** data, ssize_t* length) {
+	*length=0;
+	int err=0;
+
+	struct tSsh* ssh = mallocz(sizeof(struct tSsh));
+
+	// Connect to the server
+	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
+	if (err) goto shutdown;
+
+	// check what authentication methods are available
+	err = ssh_login(ssh, kvo->username, kvo->password);
+	if (err) goto shutdown;
+
+	// Read the file...
+	err = ssh_read(ssh, kvo->filename, data, length);
+	if (err) goto shutdown;
 
 shutdown:
-	libssh2_session_disconnect(session, "Normal Shutdown, Thank you for playing");
-	libssh2_session_free(session);
+	if (ssh->session) {
+		libssh2_session_disconnect(ssh->session, "Normal Shutdown, Thank you for playing");
+		libssh2_session_free(ssh->session);
+	}
 
-	close(sock);
+	if (ssh->sock)
+		close(ssh->sock);
 
 	return *length;
+}
+
+// ------------------------------------------------------------------
+//
+// ssh_put_file() - Write a file from a SSH server
+//
+
+int ssh_put_file(tFileDescription* kvo, void* data, ssize_t length) {
+	int err=0;
+	struct tSsh* ssh = mallocz(sizeof(struct tSsh));
+
+	// Connect to the server
+	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
+	if (err) goto shutdown;
+
+	// check what authentication methods are available
+	err = ssh_login(ssh, kvo->username, kvo->password);
+	if (err) goto shutdown;
+
+	// Read the file...
+	err = ssh_write(ssh, kvo->filename, data, length);
+	if (err) goto shutdown;
+
+shutdown:
+	if (ssh->session) {
+		libssh2_session_disconnect(ssh->session, "Normal Shutdown, Thank you for playing");
+		libssh2_session_free(ssh->session);
+	}
+
+	if (ssh->sock)
+		close(ssh->sock);
+
+	return err;
 }

@@ -18,7 +18,7 @@ typedef struct {
 	char* username;		// username (network protocol)
 	char* password;		// password (network protocol)
 	// SSH specific...
-	unsigned char* fingerprint;		// The SSH fingerprint
+	void* fingerprint;		// The SSH fingerprint
 } tFileDescription;
 
 typedef struct {

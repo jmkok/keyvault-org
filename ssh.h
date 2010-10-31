@@ -4,5 +4,6 @@
 #include "structures.h"
 
 extern int ssh_get_file(tFileDescription*, void** data, ssize_t* length);
+extern int ssh_put_file(tFileDescription*, void* data, ssize_t length);
 	
 #endif
