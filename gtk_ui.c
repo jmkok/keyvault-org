@@ -191,11 +191,39 @@ static void menu_file_open_ssh(GtkWidget *widget, gpointer unused) {
 //
 
 static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
+	tFileDescription* kvo = kvo_pointer;
+	//~ if (!dialog_request_kvo(main_window, kvo))
+		//~ return;
+
 	//~ tFileDescription* kvo = kvo_pointer;
 	//~ if (!dialog_request_kvo(main_window, kvo))
 		//~ return;
-	todo();
-	exit(1);
+
+	// Create an encrypted xml document
+	xmlDoc* doc = export_treestore_to_xml(treedata->treestore);
+	if (!active_passphrase)
+		active_passphrase = gtk_password_dialog(NULL,"Enter passphrase");
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, active_passphrase);
+
+	xmlChar* data;
+	int len;
+	xmlDocDumpMemory(enc_doc, &data, &len);
+
+	g_printf("menu_save_recent_file()\n");
+	g_printf("hostname: %s\n",kvo->hostname);
+	g_printf("username: %s\n",kvo->username);
+	g_printf("filename: %s\n",kvo->filename);
+	if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
+		// encrypted-xml => disk
+		FILE* fp = fopen(kvo->filename, "w");
+		if (fp) {
+			xmlDocDump(fp, enc_doc);
+			fclose(fp);
+		}
+	}
+	else if (strcmp(kvo->protocol,"ssh") == 0) {
+		ssh_put_file(kvo,data,len);
+	}
 }
 
 static void menu_file_save_ssh(GtkWidget *widget, gpointer unused) {

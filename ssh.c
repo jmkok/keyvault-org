@@ -150,16 +150,15 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 
 	// Allocate memory to store the file
 	*length = attrs.filesize;
-	printf("filesize: %zi\n", *length);
 	*data = malloc(*length);
 
 	// Open the local file for writing
-	fprintf(stderr, "libssh2_sftp_open() is done, now receive data!\n");	
+	fprintf(stderr, "Rreceive %u bytes!\n",*length);
 	int total=0;
-	while(total < attrs.filesize) {
-		printf(".");
-		int rx = attrs.filesize-total;
+	while(total < *length) {
+		int rx = *length-total;
 		rx=libssh2_sftp_read(sftp_handle, *data+total, rx);
+		fprintf(stderr, "rx: %u (%u / %u)\n",rx,total,*length);	
 		if (rx <= 0) break;
 		total+=rx;
 	}
@@ -188,7 +187,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 
 	// Request a file via SFTP
 	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",filename);
-	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename, LIBSSH2_FXF_WRITE, 0);
+	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename,  LIBSSH2_FXF_WRITE|LIBSSH2_FXF_CREAT|LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR|LIBSSH2_SFTP_S_IWUSR);
 	if (!sftp_handle) {
 		fprintf(stderr, "Unable to open file with SFTP\n");
 		libssh2_sftp_shutdown(sftp_session);
@@ -201,12 +200,12 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	// TODO: libssh2_sftp_rename
 
 	// Start writing
-	fprintf(stderr, "Sending data\n");	
+	fprintf(stderr, "Sending %u bytes\n", length);	
 	int total=0;
 	while(total < length) {
-		printf(".");
-		int tx = tx-total;
+		int tx = length-total;
 		tx=libssh2_sftp_write(sftp_handle, data+total, tx);
+		//~ fprintf(stderr, "tx: %u (%u / %u)\n",tx,total,length);	
 		if (tx <= 0) break;
 		total+=tx;
 	}
