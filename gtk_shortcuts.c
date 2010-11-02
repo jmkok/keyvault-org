@@ -76,3 +76,49 @@ GtkFileFilter* gtk_add_filter(GtkFileChooser* parent, const char* title, const c
 		gtk_file_chooser_set_filter(parent, widget);
 	return widget;
 }
+
+/* 
+ * Adds a vertical scrollbar to a tree view, returning an hbox holding them both 
+ */ 
+
+static void treeview_map_handler(GtkWidget *treeView, gpointer data)
+{ 
+	GtkWidget *padBox = (GtkWidget*)data; 
+	gint x, y; 
+	g_assert(GTK_IS_HBOX(padBox)); 
+
+	/* Set the size of the padding above the tree view's vertical scrollbar to the 
+	* height of its header_window (i.e. the offset to the top of its bin_window) */ 
+	gtk_tree_view_convert_bin_window_to_widget_coords(GTK_TREE_VIEW(treeView), 0, 0, &x, &y); 
+	gtk_widget_set_size_request(padBox, -1, y); 
+} 
+
+GtkWidget *add_scroll_bar_to_treeview(GtkWidget *treeView) {
+	GtkAdjustment *pAdj = gtk_tree_view_get_vadjustment(GTK_TREE_VIEW(treeView)); 
+	GtkWidget *vScroll = gtk_vscrollbar_new(pAdj); 
+	GtkWidget *padBox, *hBox, *vBox; 
+
+	hBox = gtk_hbox_new(FALSE, 0); 
+
+	/* First insert the tree view */ 
+	gtk_box_pack_start(GTK_BOX(hBox), treeView, TRUE, TRUE, 0); 
+	gtk_widget_show(treeView); 
+
+	/* Then, packed up against its right side, add in a vbox containing a 
+	 * box for padding at the top and the scrollbar below that */ 
+	vBox = gtk_vbox_new(FALSE, 0); 
+	gtk_box_pack_start(GTK_BOX(hBox), vBox, FALSE, FALSE, 0); 
+	gtk_widget_show(vBox); 
+	padBox = gtk_hbox_new(FALSE, 0); 
+	gtk_box_pack_start(GTK_BOX(vBox), padBox, FALSE, FALSE, 0); 
+	gtk_widget_show(padBox); 
+	gtk_box_pack_start(GTK_BOX(vBox), vScroll, TRUE, TRUE, 0); 
+	gtk_widget_show(vScroll); 
+
+	/* The padding box above the scroll bar needs to be set to the height of the
+	 * tree view's header_window, but we can't do that until it is mapped */ 
+	g_signal_connect(G_OBJECT(treeView), "map", G_CALLBACK(treeview_map_handler), padBox); 
+
+	return hBox; 
+} 
+

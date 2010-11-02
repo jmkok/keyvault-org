@@ -689,7 +689,7 @@ static struct tTreeData* create_view_and_model(void) {
 	td->treefilter = gtk_tree_model_filter_new(GTK_TREE_MODEL(td->treestore), NULL);
 	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(td->treefilter), treemodel_visible_func, NULL, NULL);
 	td->treeview = gtk_tree_view_new_with_model(td->treefilter);
-	
+
 	// Create column 1 and set the title
   GtkTreeViewColumn* col1 = gtk_tree_view_column_new();
   gtk_tree_view_column_set_title(col1, "Titles");
@@ -827,12 +827,18 @@ int create_main_window(const char* filename) {
 	gtk_entry_set_icon_from_stock(GTK_ENTRY(filter_entry), GTK_ENTRY_ICON_SECONDARY, GTK_STOCK_CLEAR);
 	gtk_box_pack_start(GTK_BOX(vbox_left), filter_entry, FALSE, TRUE, 1);
 
-	// The treeview
-  gtk_box_pack_start(GTK_BOX(vbox_left), td->treeview , TRUE, TRUE, 1);
-
+	// Add scrolling capabilities (noi mouse support...)
+	//~ GtkWidget* sw = addScrollBarToTreeView(td->treeview);
+	//~ gtk_box_pack_start(GTK_BOX(vbox_left), sw , TRUE, TRUE, 1);
+	
+	// Add scrolling capabilities
+	GtkWidget* treeview_scroll = gtk_scrolled_window_new(NULL, NULL);
+	gtk_box_pack_start(GTK_BOX(vbox_left), treeview_scroll , TRUE, TRUE, 1);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(treeview_scroll), td->treeview);
+	
 	// POPUP MENU
-  g_signal_connect(G_OBJECT (td->treeview), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
-  g_signal_connect(G_OBJECT (td->treeview), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
+  g_signal_connect(G_OBJECT(td->treeview), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
+  g_signal_connect(G_OBJECT(td->treeview), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
 
 	popup_menu = gtk_menu_new ();
 	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);

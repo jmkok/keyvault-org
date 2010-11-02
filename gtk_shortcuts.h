@@ -12,5 +12,7 @@ extern GtkWidget* gtk_add_menu(GtkWidget* menu, gchar* title);
 extern void gtk_remove_menu_item(GtkWidget* menu_item, GtkWidget* parent);
 
 extern GtkFileFilter* gtk_add_filter(GtkFileChooser* widget, const char* title, const char* filter, int selected);
-	
+
+extern GtkWidget* add_scroll_bar_to_treeview(GtkWidget *treeView);
+
 #endif
