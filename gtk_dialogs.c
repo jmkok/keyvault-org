@@ -9,7 +9,7 @@
 
 gchar* gtk_password_dialog(GtkWindow* parent, gchar* title) {
 	/* Create the dialog */
-	GtkWidget* dialog = gtk_dialog_new_with_buttons (title,
+	GtkWidget* dialog = gtk_dialog_new_with_buttons ("Password",
 																	 parent,
 																	 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
 																	 NULL);
@@ -33,7 +33,7 @@ gchar* gtk_password_dialog(GtkWindow* parent, gchar* title) {
   gtk_container_add(GTK_CONTAINER(content_area), vbox);
 	
 	/* Add the passphrase */
-	GtkWidget* passphrase_entry = gtk_add_labeled_entry(vbox, "Passphrase", NULL);
+	GtkWidget* passphrase_entry = gtk_add_labeled_entry(vbox, title, NULL);
 	gtk_entry_set_visibility(GTK_ENTRY(passphrase_entry), FALSE);
 
 	/* Attach the enter key to the OK button */
