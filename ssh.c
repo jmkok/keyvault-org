@@ -153,12 +153,12 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 	*data = malloc(*length);
 
 	// Open the local file for writing
-	fprintf(stderr, "Rreceive %u bytes!\n",*length);
+	fprintf(stderr, "Rreceive %zu bytes!\n",*length);
 	int total=0;
 	while(total < *length) {
 		int rx = *length-total;
 		rx=libssh2_sftp_read(sftp_handle, *data+total, rx);
-		fprintf(stderr, "rx: %u (%u / %u)\n",rx,total,*length);	
+		fprintf(stderr, "rx: %u (%u / %zu)\n",rx,total,*length);	
 		if (rx <= 0) break;
 		total+=rx;
 	}
@@ -200,7 +200,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	// TODO: libssh2_sftp_rename
 
 	// Start writing
-	fprintf(stderr, "Sending %u bytes\n", length);	
+	fprintf(stderr, "Sending %zu bytes\n", length);	
 	int total=0;
 	while(total < length) {
 		int tx = length-total;

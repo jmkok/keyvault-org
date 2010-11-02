@@ -42,7 +42,7 @@ void read_configuration(tList* kvo_list) {
 			kvo->username = (char*)xmlGetContents(node, BAD_CAST "username");
 			kvo->password = (char*)xmlGetContents(node, BAD_CAST "password");
 			kvo->filename = (char*)xmlGetContents(node, BAD_CAST "filename");
-			unsigned int size;
+			gsize size;
 			char* fingerprint_base64 = (char*)xmlGetContents(node, BAD_CAST "fingerprint");
 			kvo->fingerprint = g_base64_decode(fingerprint_base64, &size);
 			free(fingerprint_base64);
