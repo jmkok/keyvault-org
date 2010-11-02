@@ -50,7 +50,7 @@ static FILE* random_handle;
 void random_init(void) {
  	random_handle = fopen("/dev/urandom","r");
  	if (!random_handle) {
-		gtk_error_dialog("Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating password is insecure !!!");
+		gtk_error_dialog("Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating passwords is insecure !!!");
 		srand(time(NULL));
 	}
 }

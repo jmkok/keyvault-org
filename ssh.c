@@ -48,14 +48,14 @@ int tcp_connect(const char* hostname, int port) {
 static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** fingerprint) {
 	ssh->sock = tcp_connect(hostname, port);
 	if (!ssh->sock) {
-		fprintf(stderr, "failed to connect!\n");
+		gtk_error_dialog("Failed to connect to the SSH server");
 		return -1;
 	}
 	
 	// Open an SSH session...
 	ssh->session = libssh2_session_init();
 	if (libssh2_session_startup(ssh->session, ssh->sock)) {
-		fprintf(stderr, "Failure establishing SSH session\n");
+		gtk_error_dialog("Failed establishing an SSH session");
 		return -1;
 	}
 
@@ -63,8 +63,8 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 	const void* server_fingerprint = libssh2_hostkey_hash(ssh->session, LIBSSH2_HOSTKEY_HASH_MD5);
 	hexdump("fingerprint", server_fingerprint, 16);printf("\n");   
 	if (*fingerprint && (memcmp(server_fingerprint, *fingerprint, 16) != 0)) {
-		hexdump("fingerprint",*fingerprint,16);printf("\n");   
-		printf("Incorrect fingerprint\n");
+		hexdump("fingerprint",*fingerprint,16);printf("\n");
+		gtk_error_dialog("Incorrect fingerprint for remote SSH server\nMore info: http://en.wikipedia.org/wiki/Public_key_fingerprint");
 		return -1;
 	}
 	
@@ -116,33 +116,33 @@ static int ssh_login(struct tSsh* ssh, const char* username, const char* default
 
 static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t* length) {
 	// SFTP...
-	fprintf(stderr, "Perform: libssh2_sftp_init()\n");
+	printf("Perform: libssh2_sftp_init()\n");
 	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(ssh->session);
 	if (!sftp_session) {
-		fprintf(stderr, "Unable to init SFTP session\n");
+		gtk_error_dialog("Unable to initialize the SFTP session");
 		return -1;
 	}
 	else {
-		fprintf(stderr, "SFTP session initialized\n");
+		printf("SFTP session initialized\n");
 	}
 
 	// Request a file via SFTP
-	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",filename);
+	printf("Perform: libssh2_sftp_open('%s')\n",filename);
 	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename, LIBSSH2_FXF_READ, 0);
 	if (!sftp_handle) {
-		fprintf(stderr, "Unable to open file with SFTP\n");
+		gtk_error_dialog("Unable to open the requested file using SFTP");
 		libssh2_sftp_shutdown(sftp_session);
 		return -1;
 	}
 	else {
-		fprintf(stderr, "SFTP handle openened\n");
+		printf("SFTP handle openened\n");
 	}
 
 	// Stat the file
 	struct _LIBSSH2_SFTP_ATTRIBUTES attrs;
 	int err = libssh2_sftp_fstat(sftp_handle, &attrs);
 	if (err) {
-		fprintf(stderr, "Could not stat the file\n");
+		gtk_error_dialog("Could not stat the file on the SSH server");
 		libssh2_sftp_close(sftp_handle);
 		libssh2_sftp_shutdown(sftp_session);
 		return -1;
@@ -153,12 +153,12 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 	*data = malloc(*length);
 
 	// Open the local file for writing
-	fprintf(stderr, "Rreceive %zu bytes!\n",*length);
+	printf("Receive %zu bytes!\n",*length);
 	int total=0;
 	while(total < *length) {
 		int rx = *length-total;
 		rx=libssh2_sftp_read(sftp_handle, *data+total, rx);
-		fprintf(stderr, "rx: %u (%u / %zu)\n",rx,total,*length);	
+		printf("rx: %u (%u / %zu)\n",rx,total,*length);	
 		if (rx <= 0) break;
 		total+=rx;
 	}
@@ -175,37 +175,37 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 
 static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t length) {
 	// SFTP...
-	fprintf(stderr, "Perform: libssh2_sftp_init()\n");
+	printf("Perform: libssh2_sftp_init()\n");
 	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(ssh->session);
 	if (!sftp_session) {
-		fprintf(stderr, "Unable to init SFTP session\n");
+		gtk_error_dialog("Unable to initialize the SFTP session");
 		return -1;
 	}
 	else {
-		fprintf(stderr, "SFTP session initialized\n");
+		printf("SFTP session initialized\n");
 	}
 
 	// Request a file via SFTP
-	fprintf(stderr, "Perform: libssh2_sftp_open('%s')\n",filename);
+	printf("Perform: libssh2_sftp_open('%s')\n",filename);
 	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename,  LIBSSH2_FXF_WRITE|LIBSSH2_FXF_CREAT|LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR|LIBSSH2_SFTP_S_IWUSR);
 	if (!sftp_handle) {
-		fprintf(stderr, "Unable to open file with SFTP\n");
+		gtk_error_dialog("Unable to open the requested file using SFTP");
 		libssh2_sftp_shutdown(sftp_session);
 		return -1;
 	}
 	else {
-		fprintf(stderr, "SFTP handle openened\n");
+		printf("SFTP handle openened\n");
 	}
 	
 	// TODO: libssh2_sftp_rename
 
 	// Start writing
-	fprintf(stderr, "Sending %zu bytes\n", length);	
+	printf("Sending %zu bytes\n", length);	
 	int total=0;
 	while(total < length) {
 		int tx = length-total;
 		tx=libssh2_sftp_write(sftp_handle, data+total, tx);
-		//~ fprintf(stderr, "tx: %u (%u / %u)\n",tx,total,length);	
+		//~ printf("tx: %u (%u / %u)\n",tx,total,length);	
 		if (tx <= 0) break;
 		total+=tx;
 	}
