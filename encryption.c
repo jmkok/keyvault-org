@@ -212,7 +212,7 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	gsize data_len;
 	char* data_base64 = (char*)xmlNodeGetContent(data_node);
 	guchar* data = g_base64_decode(data_base64, &data_len);
-	printf("data_len: %zu\n", data_len);
+	printf("data_len: %lu\n", data_len);
 
 	// Read the PBKDF2 proporties
 	xmlNode* pbkdf2_node = xmlFindNode(root, BAD_CAST "pbkdf2", 0);
