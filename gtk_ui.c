@@ -275,7 +275,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 static void menu_file_save_as(GtkWidget *widget, gpointer ptr)
 {
-	gchar* filename = dialog_save_file(widget, main_window);
+	gchar* filename = dialog_save_file(widget, main_window, 0);
 	if (filename) {
 		GtkTreeStore* treestore = ptr;
 		save_to_file(filename, treestore);
@@ -307,9 +307,17 @@ static void menu_file_save(GtkWidget *widget, gpointer ptr)
 static void menu_file_import(GtkWidget *widget, gpointer ptr)
 {
 	gchar* filename = dialog_open_file(widget, main_window, 1);
-	if (filename) {
+	if (strstr(filename,".csv")) {
 		GtkTreeStore* treestore = ptr;
 		import_treestore_from_csv(treestore, filename);
+	}
+	if (strstr(filename,".xml")) {
+		GtkTreeStore* treestore = ptr;
+		xmlDoc* doc = xmlParseFile(filename);
+		if (doc) {
+			import_xml_into_treestore(treestore, doc);
+			xmlFree(doc);
+		}
 	}
 }
 
@@ -321,10 +329,22 @@ static void menu_file_import(GtkWidget *widget, gpointer ptr)
 static void menu_file_export(GtkWidget *widget, gpointer ptr)
 {
 	gtk_error_dialog("You are about to save your information unencrypted");
-	gchar* filename = dialog_save_file(widget, main_window);
-	if (filename) {
+	gchar* filename = dialog_save_file(widget, main_window, 1);
+	if (strstr(filename,".csv")) {
 		GtkTreeStore* treestore = ptr;
 		export_treestore_to_csv(treestore, filename);
+	}
+	if (strstr(filename,".xml")) {
+		GtkTreeStore* treestore = ptr;
+		xmlDoc* doc = export_treestore_to_xml(treestore);
+		if (doc) {
+			FILE* fp = fopen(filename, "w");
+			if (fp) {
+				xmlDocFormatDump(fp, doc, 1);
+				fclose(fp);
+			}
+			xmlFree(doc);
+		}
 	}
 }
 

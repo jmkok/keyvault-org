@@ -10,7 +10,6 @@ extern void gtk_error_dialog(const gchar *message);
 extern gboolean dialog_request_kvo(GtkWidget* parent, tFileDescription* );
 
 extern gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window, int filter);
-extern gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window);
-
+extern gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window, int filter);
 
 #endif

@@ -193,7 +193,9 @@ gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window, int filter)
 								NULL);
 	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Keyvault files", "*.kvo", (filter == 0));
 	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Comma separated files", "*.csv", (filter == 1));
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "XML files", "*.xml", (filter == 2));
 	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "All files", "*.*", 0);
+
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK) {
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
 	}
@@ -201,7 +203,7 @@ gchar* dialog_open_file(GtkWidget *widget, gpointer parent_window, int filter)
 	return filename;
 }
 
-gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window)
+gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window, int filter)
 {
 	gchar* filename=NULL;
 	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Save File",parent_window,GTK_FILE_CHOOSER_ACTION_SAVE,
@@ -209,6 +211,10 @@ gchar* dialog_save_file(GtkWidget *widget, gpointer parent_window)
 								GTK_STOCK_SAVE, GTK_RESPONSE_OK,
 								NULL);
 	gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER (dialog), TRUE);
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Keyvault files", "*.kvo", (filter == 0));
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "Comma separated files", "*.csv", (filter == 1));
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "XML files", "*.xml", (filter == 2));
+	gtk_add_filter(GTK_FILE_CHOOSER(dialog), "All files", "*.*", 0);
 
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK) {
 		filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
