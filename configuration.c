@@ -44,8 +44,10 @@ void read_configuration(tList* kvo_list) {
 			kvo->filename = (char*)xmlGetContents(node, BAD_CAST "filename");
 			gsize size;
 			char* fingerprint_base64 = (char*)xmlGetContents(node, BAD_CAST "fingerprint");
-			kvo->fingerprint = g_base64_decode(fingerprint_base64, &size);
-			free(fingerprint_base64);
+			if (fingerprint_base64) {
+				kvo->fingerprint = g_base64_decode(fingerprint_base64, &size);
+				free(fingerprint_base64);
+			}
 		}
 		node = node->next;
 	}
