@@ -157,7 +157,8 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 	else if (strcmp(kvo->protocol,"ssh") == 0) {
 		void* data;
 		ssize_t len;
-		ssh_get_file(kvo,&data,&len);
+		if (ssh_get_file(kvo,&data,&len) != 0)
+			return;
 		
 		// Read the data into an xml structure
 		xmlDoc* doc_enc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);

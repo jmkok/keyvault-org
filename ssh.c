@@ -247,7 +247,7 @@ shutdown:
 	if (ssh->sock)
 		close(ssh->sock);
 
-	return *length;
+	return err;
 }
 
 // ------------------------------------------------------------------
