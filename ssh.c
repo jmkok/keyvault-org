@@ -25,6 +25,9 @@ struct tSsh {
 
 int tcp_connect(const char* hostname, int port) {
 	// TODO: hostname must be numerical...
+	printf("tcp_connect('%s',%i)\n",hostname, port);
+	if (!port)
+		port=22;
 	unsigned long hostaddr = inet_addr(hostname);
 	if (!hostaddr)
 		return 0;
