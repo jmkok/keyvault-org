@@ -78,7 +78,7 @@ static void update_recent_list(tList* kvo_list);
 //
 
 static int encrypted_xml_to_treestore(xmlDoc* doc_enc, GtkTreeStore* treestore) {
-	//~ xmlDocDump(stdout, doc_enc);puts("");
+	//~ xmlDocFormatDump(stdout, doc_enc, 1);puts("");
 
 	// Request the passphrase to decode the file ("secret")
 	//~ gchar* passphrase = "secret";
@@ -100,12 +100,12 @@ static int encrypted_xml_to_treestore(xmlDoc* doc_enc, GtkTreeStore* treestore) 
 		}
 		break;
 	}
-	//~ xmlDocDump(stdout, doc);puts("");
+	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 
 	// treestore => xml
 	import_xml_into_treestore(treestore, doc);
 	//~ xmlDoc* doc = export_reestore_to_xml(treestore);
-	//~ xmlDocDump(stdout, doc);puts("");
+	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 	return 1;
 }
 
@@ -207,7 +207,7 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 
 	xmlChar* data;
 	int len;
-	xmlDocDumpMemory(enc_doc, &data, &len);
+	xmlDocDumpFormatMemory(enc_doc, &data, &len, 1);
 
 	g_printf("menu_save_recent_file()\n");
 	g_printf("hostname: %s\n",kvo->hostname);
@@ -217,7 +217,7 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 		// encrypted-xml => disk
 		FILE* fp = fopen(kvo->filename, "w");
 		if (fp) {
-			xmlDocDump(fp, enc_doc);
+			xmlDocFormatDump(fp, enc_doc, 1);
 			fclose(fp);
 		}
 	}
@@ -249,7 +249,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 	// treestore => xml
 	xmlDoc* doc = export_treestore_to_xml(treestore);
-	//~ xmlDocDump(stdout, doc);puts("");
+	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 
 	// Request the passphrase to encode the file ("secret")
 	if (!active_passphrase)
@@ -257,12 +257,12 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 	// xml => encrypted-xml
 	xmlDoc* enc_doc = xml_doc_encrypt(doc, active_passphrase);
-	//~ xmlDocDump(stdout, enc_doc);puts("");
+	//~ xmlDocFormatDump(stdout, enc_doc, 1);puts("");
 
 	// encrypted-xml => disk
 	FILE* fp = fopen(filename, "w");
 	if (fp) {
-		xmlDocDump(fp, enc_doc);
+		xmlDocFormatDump(fp, enc_doc, 1);
 		fclose(fp);
 	}
 }
