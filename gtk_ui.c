@@ -103,7 +103,7 @@ static int encrypted_xml_to_treestore(xmlDoc* doc_enc, GtkTreeStore* treestore) 
 	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 
 	// treestore => xml
-	import_xml_into_treestore(treestore, doc);
+	import_treestore_from_xml(treestore, doc);
 	//~ xmlDoc* doc = export_reestore_to_xml(treestore);
 	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 	return 1;
@@ -315,7 +315,7 @@ static void menu_file_import(GtkWidget *widget, gpointer ptr)
 		GtkTreeStore* treestore = ptr;
 		xmlDoc* doc = xmlParseFile(filename);
 		if (doc) {
-			import_xml_into_treestore(treestore, doc);
+			import_treestore_from_xml(treestore, doc);
 			xmlFree(doc);
 		}
 	}
@@ -677,8 +677,8 @@ static struct tTreeData* create_view_and_model(void) {
 
 	// Create the treestore (8 strings fields)
 	td->treestore = gtk_tree_store_new(NUM_COLS,
-		G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,
-		G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING,G_TYPE_STRING
+		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT
 	);
 
 	// Sort on title

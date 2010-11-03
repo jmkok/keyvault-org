@@ -3,6 +3,14 @@
 
 #include "xml.h"
 
+xmlNode* xmlNewChildInteger(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const int value) {
+	gchar* tmp = malloc(32);
+	g_sprintf(tmp, "%u", value);
+	xmlNode* node = xmlNewChild(parent, ns, name, BAD_CAST tmp);
+	g_free(tmp);
+	return node;
+}
+
 xmlAttr* xmlNewPropInteger(xmlNode* node, const xmlChar* name, const int value) {
 	gchar* tmp = malloc(32);
 	g_sprintf(tmp, "%u", value);
