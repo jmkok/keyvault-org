@@ -151,9 +151,8 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 // write a while record into the treestore
 //
 
-static void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* info, const int time_created, const int time_modified) {
+void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* info, time_t time_created, time_t time_modified) {
 	gtk_tree_store_append(treestore, iter, parent);
-trace();
 	gtk_tree_store_set(treestore, iter,
 		COL_ID, id, 
 		COL_TITLE, title, 
@@ -164,7 +163,6 @@ trace();
 		COL_TIME_CREATED, time_created,
 		COL_TIME_MODIFIED, time_modified,
 		-1);
-trace();
 }
 
 // -----------------------------------------------------------
@@ -256,11 +254,5 @@ void import_treestore_from_csv(GtkTreeStore* treestore, const char* filename) {
 		int time_created = time_to_int(array[6]);
 		int time_modified = time_to_int(array[7]);
 		treestore_add_record(treestore, &iter, NULL, array[0], array[1], array[2], array[3], array[4], array[5], time_created, time_modified);
-		//~ gtk_tree_store_append(treestore, &iter, NULL);
-		//~ gtk_tree_store_set(treestore, &iter, COL_TITLE, title, -1);
-		//~ gtk_tree_store_set(treestore, &iter, COL_USERNAME, username, -1);
-		//~ gtk_tree_store_set(treestore, &iter, COL_PASSWORD, password, -1);
-		//~ gtk_tree_store_set(treestore, &iter, COL_URL, url, -1);
-		//~ gtk_tree_store_set(treestore, &iter, COL_INFO, info, -1);
 	}
 }

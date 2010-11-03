@@ -26,5 +26,6 @@ extern void export_treestore_to_csv(GtkTreeStore* treestore, const char* filenam
 
 //~ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* title, const char* username, const char* password, const char* url, const char* info);
 //~ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* info, const char* time_created, const char* time_modified);
+void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* info, time_t time_created, time_t time_modified);
 
 #endif

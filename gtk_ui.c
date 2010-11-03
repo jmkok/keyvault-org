@@ -55,6 +55,8 @@ GtkWidget* username_entry;
 GtkWidget* password_entry;
 GtkWidget* url_entry;
 GtkWidget* info_text;
+GtkWidget* time_created_label;
+GtkWidget* time_modified_label;
 
 // The data tree
 struct tTreeData {
@@ -306,7 +308,7 @@ static void menu_file_save(GtkWidget *widget, gpointer ptr)
 
 static void menu_file_import(GtkWidget *widget, gpointer ptr)
 {
-	gchar* filename = dialog_open_file(widget, main_window, 1);
+	gchar* filename = dialog_open_file(widget, main_window, 2);
 	if (strstr(filename,".csv")) {
 		GtkTreeStore* treestore = ptr;
 		import_treestore_from_csv(treestore, filename);
@@ -401,6 +403,7 @@ void write_changes_to_treestore(GtkWidget *widget, gpointer selection) {
 			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(password_entry)),
 			COL_URL, gtk_entry_get_text(GTK_ENTRY(url_entry)),
 			COL_INFO, info,
+			COL_TIME_MODIFIED, time(0),
 			-1);
 	}
 }
@@ -445,8 +448,9 @@ static void click_add_item(GtkWidget *widget, gpointer treestore_ptr) {
 	GtkTreeIter iter;
 	// Insert a new record with a random password
 	gchar* password = create_random_password(12);
-	gtk_tree_store_append(treedata->treestore, &iter, NULL);
-	gtk_tree_store_set(treedata->treestore, &iter, COL_TITLE, "NEW", COL_USERNAME, "", COL_PASSWORD, password, COL_URL, "", COL_INFO, "", -1);
+	gchar* id = create_random_password(16);
+	treestore_add_record(treedata->treestore, &iter, NULL, id, "NEW", "", password, "http://", "", time(0), time(0));
+	g_free(id);
 	g_free(password);
 	// Set focus...
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treedata->treeview));
@@ -576,27 +580,63 @@ static void update_recent_list(tList* kvo_list) {
 // The selection has changed
 //
 
+static char* strdup_ctime(time_t time) {
+	char* tmp=malloc(32);
+	ctime_r(&time,tmp);
+	tmp[strlen(tmp)-1]=0;
+	return tmp;
+}
+
 static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 {
   GtkTreeIter iter;
   GtkTreeModel *model;
+  char* id;
   char* title;
-	char* name;
+	char* username;
   char* password;
 	char* url;
   char* info;
+  time_t time_created;
+  time_t time_modified;
 
   if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(widget), &model, &iter)) {
-    gtk_tree_model_get(model, &iter, COL_TITLE, &title, COL_USERNAME, &name, COL_PASSWORD, &password, COL_URL, &url, COL_INFO, &info,  -1);
+		// Read the item
+    gtk_tree_model_get(model, &iter, 
+			COL_ID, &id,
+			COL_TITLE, &title, 
+			COL_USERNAME, &username,
+			COL_PASSWORD, &password, 
+			COL_URL, &url, 
+			COL_INFO, &info,
+			COL_TIME_CREATED, &time_created,
+			COL_TIME_MODIFIED, &time_modified, -1);
+
+		// Update the status bar
+		char* time_created_text = strdup_ctime(time_created);
+		char* time_modified_text = strdup_ctime(time_modified);
     gtk_statusbar_push(GTK_STATUSBAR(statusbar),gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar),title), title);
-		gtk_entry_set_text(GTK_ENTRY(title_entry),title);
-		gtk_entry_set_text(GTK_ENTRY(username_entry),name);
-		gtk_entry_set_text(GTK_ENTRY(password_entry),password);
-		gtk_entry_set_text(GTK_ENTRY(url_entry),url);
-		GtkTextBuffer* buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(info_text));
-		gtk_text_buffer_set_text(buffer,info,-1);
+
+		// Update the input fields
+		gtk_entry_set_text(GTK_ENTRY(title_entry),(title?title:""));
+		gtk_entry_set_text(GTK_ENTRY(username_entry),(username?username:""));
+		gtk_entry_set_text(GTK_ENTRY(password_entry),(password?password:""));
+		gtk_entry_set_text(GTK_ENTRY(url_entry),(url?url:""));
+		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(info_text));
+		if (info)
+			gtk_text_buffer_set_text(buffer,info,-1);
+		else
+			gtk_text_buffer_set_text(buffer,"",-1);
+		gtk_label_set_markup(GTK_LABEL(time_created_label), time_created_text);
+		gtk_label_set_markup(GTK_LABEL(time_modified_label), time_modified_text);
+
+    free(time_modified_text);
+    free(time_created_text);
+
+		// Free
+    g_free(id);
     g_free(title);
-    g_free(name);
+    g_free(username);
     g_free(password);
     g_free(url);
     g_free(info);
@@ -630,7 +670,6 @@ static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter,
 // treestore sort_func()
 //
 
-// Sort function
 static gint treestore_sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data){
 	gchar *str1,*str2;
 	gtk_tree_model_get (model, a, COL_TITLE, &str1, -1);
@@ -651,9 +690,8 @@ static gint treestore_sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter
 // treestore_click_col1()
 //
 
-// Reverse the sort order
 int sort_order=0;
-static void treestore_click_col1(GtkWidget *widget, gpointer ptr) {
+static void treestore_reverse_sort_order(GtkWidget *widget, gpointer ptr) {
 	GtkTreeViewColumn* col1 = (GtkTreeViewColumn*)widget;
 	GtkTreeStore* treestore = (GtkTreeStore*)ptr;
 	sort_order = 1-sort_order;
@@ -675,7 +713,7 @@ static struct tTreeData* create_view_and_model(void) {
 	td->filter_title=malloc(1024);
 	*td->filter_title=0;
 
-	// Create the treestore (8 strings fields)
+	// Create the treestore (6 strings fields + 2 time fields)
 	td->treestore = gtk_tree_store_new(NUM_COLS,
 		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
 		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT
@@ -696,7 +734,7 @@ static struct tTreeData* create_view_and_model(void) {
   gtk_tree_view_column_set_clickable(col1, TRUE);
   gtk_tree_view_column_set_sort_indicator(col1, TRUE);
   //~ gtk_tree_view_column_set_sort_column_id(col1, COL_TITLE);	// Is this easier ? It currently only gives me trouble...
-  g_signal_connect(G_OBJECT (col1), "clicked", G_CALLBACK(treestore_click_col1), td->treestore);
+  g_signal_connect(G_OBJECT (col1), "clicked", G_CALLBACK(treestore_reverse_sort_order), td->treestore);
   gtk_tree_view_append_column(GTK_TREE_VIEW(td->treeview), col1);
   
   // Define how column 1 looks like
@@ -898,6 +936,16 @@ int create_main_window(const char* filename) {
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll),info_text);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_box_pack_start(GTK_BOX(vbox_right), scroll , TRUE, TRUE, 1);
+
+	// Add the created time label
+	time_created_label = gtk_label_new("CREATED");
+	gtk_misc_set_alignment (GTK_MISC(time_created_label), 0, 0);
+  gtk_box_pack_start(GTK_BOX(vbox_right), time_created_label , FALSE, TRUE, 1);
+
+	// Add the modified time label
+	time_modified_label = gtk_label_new("MODIFIED");
+	gtk_misc_set_alignment (GTK_MISC(time_modified_label), 0, 0);
+  gtk_box_pack_start(GTK_BOX(vbox_right), time_modified_label , FALSE, TRUE, 1);
 
 	// The record save button
   GtkWidget* record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
