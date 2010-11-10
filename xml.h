@@ -6,6 +6,7 @@ xmlChar* xmlGetContents(xmlNode* root_node, const xmlChar* name);
 int xmlGetContentsInteger(xmlNode* root_node, const xmlChar* name);
 
 xmlNode* xmlNewChildInteger(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const int value);
+xmlNode* xmlNewChildBase64(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const void* data, const int size);
 
 xmlAttr* xmlNewPropInteger(xmlNodePtr node, const xmlChar* name, const int value);
 xmlAttr* xmlNewPropBase64(xmlNodePtr node, const xmlChar* name, const void* data, const int size);

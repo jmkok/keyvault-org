@@ -6,6 +6,14 @@ Installing under Ubuntu (or Debian)
 sudo apt-get install libgtk2.0-dev libssh2-1-dev libmxml-dev
 
 ------ ENCRYPTION SCHEME ------
+
+PASSPHRASE
+	key for decrypting data
+		2048 rounds + "keyvault-data"
+	key for decrypting config items
+		2048 rounds + "keyvault-config"
+	key for keyvault.org login
+		2048 rounds + "keyvault-login"
  
- (todo)
+(todo)
 An entered passphrase will be immediatly converted into a sha1

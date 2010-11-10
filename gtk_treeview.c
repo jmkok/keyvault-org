@@ -23,6 +23,8 @@ extern GtkTreeModel* data_treemodel;
 //
 
 static long int time_to_int(const char* text) {
+	if (!text || !*text)
+		return time(0);
 	if (strchr(text,':') || strchr(text,'-')) {
 		struct tm* time = mallocz(sizeof(struct tm));
 		int retval = sscanf(text,"%d-%d-%d %d:%d:%d",&time->tm_mday, &time->tm_mon, &time->tm_year, &time->tm_hour, &time->tm_min, &time->tm_sec);

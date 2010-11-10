@@ -11,6 +11,13 @@ xmlNode* xmlNewChildInteger(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, c
 	return node;
 }
 
+xmlNode* xmlNewChildBase64(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const void* data, const int size) {
+	gchar* tmp = g_base64_encode(data, size);
+	xmlNode* node = xmlNewChild(parent, ns, name, BAD_CAST tmp);
+	g_free(tmp);
+	return node;
+}
+
 xmlAttr* xmlNewPropInteger(xmlNode* node, const xmlChar* name, const int value) {
 	gchar* tmp = malloc(32);
 	g_sprintf(tmp, "%u", value);

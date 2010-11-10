@@ -27,12 +27,30 @@
 
 // -----------------------------------------------------------
 //
+// The encryption variables
+// The keys are built from the same passphrase, but with different salts and rounds
+//
+
+static int passphrase_valid = 0;
+static u_char passphrase_data[32];		// This key is used to encrypt/decrypt the container
+static u_char passphrase_config[32];	// This key is used to encrypt/decrypt some of the configuration fields
+static u_char passphrase_login[32];		// This key is used to login to keyvault.org (todo)
+
+// The salts and rounds for the keys (not secret, they just need to be different)
+#define KEYVAULT_DATA   "5NewDdGpLQ0W-keyvault-data"
+#define KEYVAULT_CONFIG "n41JFWQAdmcf-keyvault-config"
+#define KEYVAULT_LOGIN  "S3ftaw7kgXlc-keyvault-login"
+#define KEYVAULT_DATA_ROUNDS   (4*1024)
+#define KEYVAULT_CONFIG_ROUNDS (5*1024)
+#define KEYVAULT_LOGIN_ROUNDS  (6*1024)
+
+// -----------------------------------------------------------
+//
 // Global variables
 //
 
 struct tGlobal* global;
 
-static char* active_passphrase = NULL;
 static char* active_filename = NULL;
 //~ static tFileDescription* active_file;
 GtkWidget* popup_menu;
@@ -76,6 +94,35 @@ static void update_recent_list(tList* kvo_list);
 
 // -----------------------------------------------------------
 //
+// Ask the user for the passphrase, and calculate the derived keys from it
+//
+
+static int gtk_request_passphrase(void) {
+	int err=0;
+	// Request the passphrase from the user
+	gchar* passphrase = gtk_password_dialog(NULL,"Enter passphrase");
+	if (!passphrase) {
+		passphrase_valid = 0;
+		memset(passphrase_data, 0, 32);
+		memset(passphrase_config, 0, 32);
+		memset(passphrase_login, 0, 32);
+		return -1;
+	}
+
+	// Create the keyvault-data keys
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_DATA,   KEYVAULT_DATA_ROUNDS,   passphrase_data);
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_CONFIG, KEYVAULT_CONFIG_ROUNDS, passphrase_config);
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_LOGIN,  KEYVAULT_LOGIN_ROUNDS,  passphrase_login);
+	passphrase_valid = 1;
+
+	// Cleanup
+	memset(passphrase, 0 ,strlen(passphrase));
+	g_free(passphrase);
+	return err;
+}
+
+// -----------------------------------------------------------
+//
 // load_from_file - load a file into the treestore
 //
 
@@ -84,20 +131,15 @@ static int encrypted_xml_to_treestore(xmlDoc* doc_enc, GtkTreeStore* treestore) 
 
 	// Request the passphrase to decode the file ("secret")
 	//~ gchar* passphrase = "secret";
-	
 
 	// xml => encrypted-xml
 	xmlDoc* doc = NULL;
 	while(1) {
-		if (!active_passphrase) {
-			active_passphrase = gtk_password_dialog(NULL,"Enter passphrase");
-			if (!active_passphrase)
-				return 0;
-		}
-		doc = xml_doc_decrypt(doc_enc, active_passphrase);
+		if (!passphrase_valid && (gtk_request_passphrase() != 0))
+			return 0;
+		doc = xml_doc_decrypt(doc_enc, passphrase_data);
 		if (!doc) {
-			free(active_passphrase);
-			active_passphrase = NULL;
+			passphrase_valid = 0;
 			continue;
 		}
 		break;
@@ -171,13 +213,21 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 
 		// Move the encrypted xml into the treestore
 		encrypted_xml_to_treestore(doc_enc, treedata->treestore);
+		
+		// Valid passphrase, then encrypt the username and password
+		if (passphrase_valid) {
+			if (!kvo->username_enc) {
+				kvo->username_enc = malloc(strlen(kvo->username));
+				memcpy(kvo->username_enc, kvo->username, strlen(kvo->username));
+				evp_cipher(EVP_aes_256_ofb(), kvo->username_enc, strlen(kvo->username), passphrase_config, 0);
+			}
+		}
 	}
 }
 
 static void menu_file_open_ssh(GtkWidget *widget, gpointer unused) {
 	// Create a new kvo file
-	tFileDescription* kvo=malloc(sizeof(tFileDescription));
-	memset(kvo,0,sizeof(tFileDescription));
+	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
 	// Let the use fill in all required fields...
 	if (dialog_request_kvo(main_window, kvo)) {
 		// Store the kvo to the list
@@ -202,11 +252,16 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 	//~ if (!dialog_request_kvo(main_window, kvo))
 		//~ return;
 
+	// Get a passphrase if not yet available
+	if (!passphrase_valid) {
+		if (gtk_request_passphrase() != 0)
+			return;
+		passphrase_valid = 1;
+	}
+
 	// Create an encrypted xml document
 	xmlDoc* doc = export_treestore_to_xml(treedata->treestore);
-	if (!active_passphrase)
-		active_passphrase = gtk_password_dialog(NULL,"Enter passphrase");
-	xmlDoc* enc_doc = xml_doc_encrypt(doc, active_passphrase);
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, passphrase_data);
 
 	xmlChar* data;
 	int len;
@@ -231,8 +286,7 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 
 static void menu_file_save_ssh(GtkWidget *widget, gpointer unused) {
 	// Create a new kvo file
-	tFileDescription* kvo=malloc(sizeof(tFileDescription));
-	memset(kvo,0,sizeof(tFileDescription));
+	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
 	// Let the use fill in all required fields...
 	if (dialog_request_kvo(main_window, kvo)) {
 		// Store the kvo to the list
@@ -255,11 +309,14 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 
 	// Request the passphrase to encode the file ("secret")
-	if (!active_passphrase)
-		active_passphrase = gtk_password_dialog(NULL,"Enter passphrase");
+	if (!passphrase_valid) {
+		if (gtk_request_passphrase() != 0)
+			return;
+		passphrase_valid = 1;
+	}
 
 	// xml => encrypted-xml
-	xmlDoc* enc_doc = xml_doc_encrypt(doc, active_passphrase);
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, passphrase_data);
 	//~ xmlDocFormatDump(stdout, enc_doc, 1);puts("");
 
 	// encrypted-xml => disk
@@ -532,12 +589,11 @@ void menu_test_passphrase(GtkWidget *widget, gpointer tree_view) {
 //
 
 void menu_edit_change_passphrase(GtkWidget *widget, gpointer ptr) {
-	gchar* passphrase = gtk_password_dialog(NULL,"Enter passphrase");
-	if (passphrase) {
-		if (active_passphrase)
-			g_free(active_passphrase);
-		active_passphrase = passphrase;
-	}
+	int err = gtk_request_passphrase();
+	if (err)
+		passphrase_valid = 0;
+	else
+		passphrase_valid = 1;
 }
 
 // -----------------------------------------------------------
@@ -561,6 +617,7 @@ static void update_recent_list(tList* kvo_list) {
 	gtk_add_menu_item_clickable(open_recent_menu, "SSH...", G_CALLBACK(menu_file_open_ssh), NULL);
 	gtk_add_separator(open_recent_menu);
 	list_foreach(kvo_list, add_to_open_menu);
+	gtk_widget_show_all(open_recent_menu);
 
 	// Then add all items in the kvo_list to the recent menu
 	void add_to_save_menu(tList* kvo_list, void* data) {
@@ -570,9 +627,7 @@ static void update_recent_list(tList* kvo_list) {
 	gtk_add_menu_item_clickable(save_recent_menu, "SSH...", G_CALLBACK(menu_file_save_ssh), NULL);
 	gtk_add_separator(save_recent_menu);
 	list_foreach(kvo_list, add_to_save_menu);
-
-	// Show the recent menu
-	gtk_widget_show_all(open_recent_menu);
+	gtk_widget_show_all(save_recent_menu);
 }
 
 // -----------------------------------------------------------
@@ -705,8 +760,7 @@ static void treestore_reverse_sort_order(GtkWidget *widget, gpointer ptr) {
 //
 
 static struct tTreeData* create_view_and_model(void) {
-	struct tTreeData* td = malloc(sizeof(struct tTreeData));
-	memset(td, 0, sizeof(struct tTreeData));
+	struct tTreeData* td = mallocz(sizeof(struct tTreeData));
 	treedata = td;
 
 	// Malloc the filter
@@ -784,8 +838,7 @@ int create_main_window(const char* filename) {
 	srand(tv.tv_sec ^ tv.tv_usec);
 
 	// Initialize the generic global component
-	global=malloc(sizeof(struct tGlobal));
-	memset(global,0,sizeof(struct tGlobal));
+	global = mallocz(sizeof(struct tGlobal));
 	global->kvo_list=list_create();
 
 

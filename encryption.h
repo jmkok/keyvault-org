@@ -13,8 +13,10 @@ extern unsigned int random_integer(unsigned int max);
 
 extern gchar* create_random_password(int len);
 
-extern xmlDoc* xml_doc_encrypt(xmlDoc* doc, const gchar* passphrase);
-extern xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase);
+extern xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char key[32]);
+extern xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char key[32]);
+
+extern void pkcs5_pbkdf2_hmac_sha1(const char* passphrase, const char* salt, int rounds, unsigned char key[32]);
 
 //~ extern void shuffle_data(void* data, int len);
 //~ extern void read_random(void* ptr, int len);

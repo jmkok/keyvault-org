@@ -74,7 +74,7 @@ static void read_random(void* ptr, int len) {
 
 gchar* create_random_password(int len) {
 	char random_charset[]="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	gchar* password=g_malloc(len+1);
+	gchar* password = g_malloc(len+1);
 	memset(password,0,len+1);
 	int i;
 	for (i=0;i<len;i++) {
@@ -125,7 +125,7 @@ unsigned int random_integer(unsigned int max) {
 // Encrypt an xmlDoc
 //
 
-xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
+xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	xmlChar* xml_text;
 	int xml_size;
 	unsigned char* rc4_ivec = malloc_random(16);
@@ -146,13 +146,12 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 	u_char encryption_key[32];
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(
-			passphrase, strlen(passphrase),
+			(char*)passphrase_key, 32,
 			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
 			pbkdf2_rounds, 32, encryption_key);
 	}
 	else {
-		memset(encryption_key,0,32);
-		strncpy((char*)encryption_key,passphrase,32);
+		memcpy(encryption_key, passphrase_key, 32);
 	}
 	hexdump("encryption_key",encryption_key,32);
 
@@ -187,7 +186,7 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const char* passphrase) {
 // Decrypt an xmlDoc
 //
 
-xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
+xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	// get the root
 	xmlNode* root = xmlDocGetRootElement(doc);
 	xmlElemDump(stdout, NULL, root);puts("");
@@ -227,13 +226,12 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 	u_char encryption_key[32];
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(
-			passphrase, strlen(passphrase),
+			(char*)passphrase_key, 32,
 			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
 			pbkdf2_rounds, 32, encryption_key);
 	}
 	else {
-		memset(encryption_key,0,32);
-		strncpy((char*)encryption_key,passphrase,32);
+		memcpy(encryption_key, passphrase_key, 32);
 	}
 
 	// Decrypt the data
@@ -257,6 +255,14 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const gchar* passphrase) {
 
 	// Convert into xml
 	xmlDoc* doc_dec = xmlParseMemory((char*)data, data_len);
+	xmlDocFormatDump(stdout, doc_dec, 1);puts("");
 
 	return doc_dec;
+}
+
+extern void pkcs5_pbkdf2_hmac_sha1(const char* passphrase, const char* salt, int rounds, unsigned char key[32]) {
+	PKCS5_PBKDF2_HMAC_SHA1(
+		passphrase, strlen(passphrase),
+		(unsigned char*)salt, strlen(salt), 
+		rounds, 32, key);
 }
