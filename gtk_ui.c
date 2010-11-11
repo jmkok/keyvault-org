@@ -90,7 +90,7 @@ struct tTreeData* treedata;
 // static functions (needed as they reference each other)
 //
 
-static void update_recent_list(tList* kvo_list);
+static void update_recent_list(tList* config_list);
 
 // -----------------------------------------------------------
 //
@@ -186,14 +186,25 @@ static void menu_file_open(GtkWidget *widget, gpointer ptr)
 // MENU: file -> open_advanced
 //
 
-static void menu_open_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
-	tFileDescription* kvo = kvo_pointer;
+static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
+	tConfigDescription* config = config_pointer;
+	tFileDescription* kvo = NULL;
+	while (!kvo) {
+		if (passphrase_valid) {
+			kvo = get_configuration(config, passphrase_config);
+			if (kvo) break;
+		}
+		if (gtk_request_passphrase() != 0)
+			return;
+	}
+
 	//~ if (!dialog_request_kvo(main_window, kvo))
 		//~ return;
 
 	g_printf("open_kvo_file_real()\n");
 	g_printf("hostname: %s\n",kvo->hostname);
 	g_printf("username: %s\n",kvo->username);
+	g_printf("password: %s\n",kvo->password);
 	g_printf("filename: %s\n",kvo->filename);
 	if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
 		trace();
@@ -216,25 +227,26 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 		
 		// Valid passphrase, then encrypt the username and password
 		if (passphrase_valid) {
-			if (!kvo->username_enc) {
-				kvo->username_enc = malloc(strlen(kvo->username));
-				memcpy(kvo->username_enc, kvo->username, strlen(kvo->username));
-				evp_cipher(EVP_aes_256_ofb(), kvo->username_enc, strlen(kvo->username), passphrase_config, 0);
-			}
+			put_configuration(kvo, passphrase_config);
+			//~ if (!kvo->username_enc) {
+				//~ kvo->username_enc = malloc(strlen(kvo->username));
+				//~ memcpy(kvo->username_enc, kvo->username, strlen(kvo->username));
+				//~ evp_cipher(EVP_aes_256_ofb(), kvo->username_enc, strlen(kvo->username), passphrase_config, 0);
+			//~ }
 		}
 	}
 }
 
 static void menu_file_open_ssh(GtkWidget *widget, gpointer unused) {
 	// Create a new kvo file
-	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
+	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
 	// Let the use fill in all required fields...
-	if (dialog_request_kvo(main_window, kvo)) {
+	if (dialog_request_config(main_window, config, passphrase_config)) {
 		// Store the kvo to the list
-		list_add(global->kvo_list, kvo);
-		update_recent_list(global->kvo_list);
+		list_add(global->config_list, config);
+		update_recent_list(global->config_list);
 		// Open the file...
-		menu_open_recent_file(NULL, kvo);
+		menu_open_recent_file(NULL, config);
 	}
 }
 
@@ -243,8 +255,18 @@ static void menu_file_open_ssh(GtkWidget *widget, gpointer unused) {
 // Save (and edit) a recently used KVO file
 //
 
-static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
-	tFileDescription* kvo = kvo_pointer;
+static void menu_save_recent_file(GtkWidget *widget, gpointer config_pointer) {
+	tConfigDescription* config = config_pointer;
+	tFileDescription* kvo = NULL;
+	while (!kvo) {
+		if (passphrase_valid) {
+			kvo = get_configuration(config, passphrase_config);
+			if (kvo) break;
+		}
+		if (gtk_request_passphrase() != 0)
+			return;
+	}
+
 	//~ if (!dialog_request_kvo(main_window, kvo))
 		//~ return;
 
@@ -282,18 +304,19 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer kvo_pointer) {
 	else if (strcmp(kvo->protocol,"ssh") == 0) {
 		ssh_put_file(kvo,data,len);
 	}
+	put_configuration(kvo, passphrase_config);
 }
 
 static void menu_file_save_ssh(GtkWidget *widget, gpointer unused) {
 	// Create a new kvo file
-	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
+	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
 	// Let the use fill in all required fields...
-	if (dialog_request_kvo(main_window, kvo)) {
+	if (dialog_request_config(main_window, config, passphrase_config)) {
 		// Store the kvo to the list
-		list_add(global->kvo_list, kvo);
-		update_recent_list(global->kvo_list);
+		list_add(global->config_list, config);
+		update_recent_list(global->config_list);
 		// Open the file...
-		menu_save_recent_file(NULL, kvo);
+		menu_save_recent_file(NULL, config);
 	}
 }
 
@@ -601,7 +624,7 @@ void menu_edit_change_passphrase(GtkWidget *widget, gpointer ptr) {
 // Update the list of recent files
 //
 
-static void update_recent_list(tList* kvo_list) {
+static void update_recent_list(tList* config_list) {
 	// First remove all items in the recent menu
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer unused) {
 		gtk_remove_menu_item(open_recent_menu, menu_item);
@@ -609,24 +632,24 @@ static void update_recent_list(tList* kvo_list) {
 	gtk_container_foreach(GTK_CONTAINER(open_recent_menu), cb_remove_menu_item, 0);
 	gtk_container_foreach(GTK_CONTAINER(save_recent_menu), cb_remove_menu_item, 0);
 
-	// Then add all items in the kvo_list to the recent menu
-	void add_to_open_menu(tList* kvo_list, void* data) {
-		tFileDescription* kvo = data;
+	// Then add all items in the config_list to the recent menu
+	void add_to_open_menu(tList* config_list, void* data) {
+		tConfigDescription* kvo = data;
 		gtk_add_menu_item_clickable(open_recent_menu, kvo->title, G_CALLBACK(menu_open_recent_file), kvo);
 	}
 	gtk_add_menu_item_clickable(open_recent_menu, "SSH...", G_CALLBACK(menu_file_open_ssh), NULL);
 	gtk_add_separator(open_recent_menu);
-	list_foreach(kvo_list, add_to_open_menu);
+	list_foreach(config_list, add_to_open_menu);
 	gtk_widget_show_all(open_recent_menu);
 
-	// Then add all items in the kvo_list to the recent menu
-	void add_to_save_menu(tList* kvo_list, void* data) {
-		tFileDescription* kvo = data;
-		gtk_add_menu_item_clickable(save_recent_menu, kvo->title, G_CALLBACK(menu_save_recent_file), kvo);
+	// Then add all items in the config_list to the recent menu
+	void add_to_save_menu(tList* config_list, void* data) {
+		tConfigDescription* config = data;
+		gtk_add_menu_item_clickable(save_recent_menu, config->title, G_CALLBACK(menu_save_recent_file), config);
 	}
 	gtk_add_menu_item_clickable(save_recent_menu, "SSH...", G_CALLBACK(menu_file_save_ssh), NULL);
 	gtk_add_separator(save_recent_menu);
-	list_foreach(kvo_list, add_to_save_menu);
+	list_foreach(config_list, add_to_save_menu);
 	gtk_widget_show_all(save_recent_menu);
 }
 
@@ -839,7 +862,7 @@ int create_main_window(const char* filename) {
 
 	// Initialize the generic global component
 	global = mallocz(sizeof(struct tGlobal));
-	global->kvo_list=list_create();
+	global->config_list=list_create();
 
 
 	GtkWidget* label;
@@ -1044,8 +1067,8 @@ int create_main_window(const char* filename) {
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
 	// Read the configuration...
-	read_configuration(global->kvo_list);
-	update_recent_list(global->kvo_list);
+	read_configuration(global->config_list);
+	update_recent_list(global->config_list);
 
 	// Show the application
   gtk_widget_show_all(main_window);
@@ -1058,7 +1081,7 @@ int create_main_window(const char* filename) {
   gtk_main();
 
 	// Save the configuration...
-	save_configuration(global->kvo_list);
+	save_configuration(global->config_list);
 
   return 0;
 }

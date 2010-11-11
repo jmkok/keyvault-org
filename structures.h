@@ -2,6 +2,7 @@
 #define _structures_h_
 
 #include "stdint.h"
+#include <libxml/parser.h>
 
 // -----------------------------------------------------------
 //
@@ -9,16 +10,21 @@
 //
 
 typedef struct {
-	char* title;			// title
+	char* title;						// title
+	xmlDoc* doc;						// The xml doc that contains this description
+	xmlNode* node;					// The node inside
+	void* passphrase_check;	// The passphrase check
+} tConfigDescription;
+
+typedef struct {
+	tConfigDescription* config;
 	char* protocol;		// protocol (local / ssh)
 	char* filename;		// filename
 	// network
 	char* hostname;		// hostname (network protocol)
 	uint16_t port;		// port (network protocol)
 	char* username;		// username (network protocol)
-	unsigned char* username_enc;		// username (network protocol)
 	char* password;		// password (network protocol)
-	unsigned char* password_enc;		// password (network protocol)
 	// SSH specific...
 	void* fingerprint;		// The SSH fingerprint
 } tFileDescription;

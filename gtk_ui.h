@@ -16,7 +16,7 @@
 int create_main_window(const char* filename);
 
 struct tGlobal {
-	tList* kvo_list;
+	tList* config_list;
 };
 
 extern struct tGlobal* global;

@@ -1,7 +1,27 @@
+#include <assert.h>
+#include <string.h>
 #include <libxml/parser.h>
 #include <glib/gprintf.h>
+#include <openssl/evp.h>
 
 #include "xml.h"
+#include "encryption.h"
+#include "functions.h"
+
+xmlNode* xmlNewChildEncrypted(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const xmlChar* value, const unsigned char passphrase_key[32]) {
+	unsigned char* ivec = malloc_random(16);
+	int len = (xmlStrlen(value) & ~63) + 64;
+	unsigned char* enlarged_value = mallocz(len+1);
+	strcpy((char*)enlarged_value, (char*)value);
+	evp_cipher(EVP_aes_256_ofb(), enlarged_value, len, passphrase_key, ivec);
+	gchar* tmp = g_base64_encode(enlarged_value, len);
+	xmlNode* node = xmlNewChild(parent, ns, name, BAD_CAST tmp);
+	xmlNewProp(node, BAD_CAST "encrypted", BAD_CAST "yes");
+	xmlNewPropBase64(node, BAD_CAST "ivec", ivec, 16);
+	g_free(tmp);
+	free(enlarged_value);
+	return node;
+}
 
 xmlNode* xmlNewChildInteger(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const int value) {
 	gchar* tmp = malloc(32);
@@ -78,7 +98,7 @@ static int xmlCharFreeAndReturnInteger(xmlChar* text) {
 //
 
 xmlChar* xmlGetContents(xmlNode* root_node, const xmlChar* name) {
-	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
+	xmlNode* node = xmlFindNode(root_node, name, 0);
 	if (node)
 		return xmlNodeGetContent(node);
 	return NULL;
@@ -91,6 +111,39 @@ int xmlGetContentsInteger(xmlNode* root_node, const xmlChar* name) {
 		return xmlCharFreeAndReturnInteger(text);
 	}
 	return 0;
+}
+
+xmlChar* xmlGetPropBase64(xmlNode* node, const xmlChar* name) {
+	char* tmp = (char*)xmlGetProp(node, name);
+	gsize data_len;
+	return g_base64_decode(tmp, &data_len);
+}
+
+xmlChar* xmlGetContentsEncrypted(xmlNode* root_node, const xmlChar* name, const unsigned char passphrase_key[32]) {
+	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
+	if (!node) return NULL;
+
+	xmlChar* rawdata = xmlNodeGetContent(node);
+	if (!rawdata) return NULL;
+
+	xmlChar* encrypted = xmlGetProp(node, BAD_CAST "encrypted");
+	if (!encrypted) return rawdata;
+	gsize data_len;
+	unsigned char* data = g_base64_decode((char*)rawdata, &data_len);
+	xmlFree(encrypted);
+	xmlFree(rawdata);
+	//~ #undef rawdata
+	//~ rawdata=malloc(10);
+
+	xmlChar* rawivec = xmlGetProp(node, BAD_CAST "ivec");
+	gsize ivec_len;
+	unsigned char* ivec = g_base64_decode((char*)rawivec, &ivec_len);
+	assert(ivec_len == 16);
+	hexdump("ivec", ivec, ivec_len);
+	evp_cipher(EVP_aes_256_ofb(), data, data_len, passphrase_key, ivec);
+	hexdump("data", data, data_len);
+	
+	return data;
 }
 
 // OLD

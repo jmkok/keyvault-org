@@ -5,6 +5,7 @@
 #include "gtk_dialogs.h"
 #include "gtk_shortcuts.h"
 #include "gtk_dialogs.h"
+#include "configuration.h"
 #include "functions.h"
 
 gchar* gtk_password_dialog(GtkWindow* parent, gchar* title) {
@@ -50,10 +51,11 @@ gchar* gtk_password_dialog(GtkWindow* parent, gchar* title) {
 	return retval;
 }
 
-gboolean dialog_request_kvo (GtkWidget* parent, tFileDescription* kvo) {
+gboolean dialog_request_config (GtkWidget* parent, tConfigDescription* config, const unsigned char passphrase_key[32]) {
 	trace();
-	if (!kvo) 
+	if (!config)
 		return FALSE;
+	tFileDescription* kvo = get_configuration(config, passphrase_key);
 	gboolean retval=FALSE;
 	/* Create the dialog */
 	GtkWidget* dialog = gtk_dialog_new_with_buttons ("File configuration",
@@ -89,7 +91,7 @@ gboolean dialog_request_kvo (GtkWidget* parent, tFileDescription* kvo) {
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),1);
 
 	/* Add the fields */
-	GtkWidget* title_entry = gtk_add_labeled_entry(vbox, "Title",kvo->title);
+	GtkWidget* title_entry = gtk_add_labeled_entry(vbox, "Title",kvo->config->title);
 	GtkWidget* hostname_label = gtk_add_label(vbox,"Hostname");
 	GtkWidget* hostname_entry = gtk_add_entry(vbox,kvo->hostname);
 	GtkWidget* username_label = gtk_add_label(vbox,"Username");
@@ -134,8 +136,8 @@ gboolean dialog_request_kvo (GtkWidget* parent, tFileDescription* kvo) {
 
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
 		// Update the fields in the kvo structure...
-		if (kvo->title) free(kvo->title);
-		kvo->title=strdup(gtk_entry_get_text(GTK_ENTRY(title_entry)));
+		if (kvo->config->title) free(kvo->config->title);
+		kvo->config->title=strdup(gtk_entry_get_text(GTK_ENTRY(title_entry)));
 		if (kvo->protocol) free(kvo->protocol);
 		kvo->protocol=gtk_combo_box_get_active_text(GTK_COMBO_BOX(combo_box));
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(combo_box)) >= 1) {

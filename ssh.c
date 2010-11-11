@@ -84,7 +84,7 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 // ssh_login() - Login to an SSH server
 //
 
-static int ssh_login(struct tSsh* ssh, const char* username, const char* default_password) {
+static int ssh_login(struct tSsh* ssh, tFileDescription* kvo, const char* username, const char* default_password) {
 	char* userauthlist = libssh2_userauth_list(ssh->session, username, strlen(username));
 	printf("Authentication methods: %s\n", userauthlist);
 
@@ -98,12 +98,18 @@ static int ssh_login(struct tSsh* ssh, const char* username, const char* default
 		// If a password is given, try that one...
 		if (password) {
 			int err = libssh2_userauth_password(ssh->session, username, password);
-			g_free(password);
 			// We could authenticate via password
 			if (err == 0) {
+				if (!kvo->password)
+					kvo->password = password;
+				else if (strcmp(kvo->password, password) != 0) {
+					free(kvo->password);
+					kvo->password = password;
+				}
 				printf("Authentication by password succeeded.\n");
 				return 0;
 			}
+			g_free(password);
 			printf("Authentication by password failed!\n");
 		}
 		password = gtk_password_dialog(NULL, "Enter password for SSH server");
@@ -234,7 +240,7 @@ int ssh_get_file(tFileDescription* kvo, void** data, ssize_t* length) {
 	if (err) goto shutdown;
 
 	// check what authentication methods are available
-	err = ssh_login(ssh, kvo->username, kvo->password);
+	err = ssh_login(ssh, kvo, kvo->username, kvo->password);
 	if (err) goto shutdown;
 
 	// Read the file...
@@ -267,7 +273,7 @@ int ssh_put_file(tFileDescription* kvo, void* data, ssize_t length) {
 	if (err) goto shutdown;
 
 	// check what authentication methods are available
-	err = ssh_login(ssh, kvo->username, kvo->password);
+	err = ssh_login(ssh, kvo, kvo->username, kvo->password);
 	if (err) goto shutdown;
 
 	// Read the file...
