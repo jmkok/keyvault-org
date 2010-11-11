@@ -8,7 +8,7 @@
 #define LIST_SIZE_STEP 8
 //~ #define sizeof(void*)
 
-tList* list_create(void) {
+tList* listCreate(void) {
 	tList* list = malloc(sizeof(tList));
 	memset(list,0,sizeof(tList));
 	list->data = malloc(sizeof(void*) * LIST_SIZE_STEP);
@@ -17,16 +17,16 @@ tList* list_create(void) {
 	return list;
 }
 
-void list_destroy(tList* list) {
+void listDestroy(tList* list) {
 	free(list->data);
 	free(list);
 }
 
-void* ListData(tList* list,uint16_t num) {
+void* listData(tList* list,uint16_t num) {
 	return list->data[num];
 }
 
-void list_status(tList* list) {
+void listStatus(tList* list) {
 	printf("count: %u/%u\n",list->count,list->allocated);
 	int i;
 	for (i=0;i<list->count;i++) {
@@ -35,7 +35,7 @@ void list_status(tList* list) {
 	//~ LogWordMemory("data: ",list->data,list->count);
 }
 
-void list_add(tList* list,void* data) {
+void listAdd(tList* list,void* data) {
 	//~ printf("ListAdd(0x%04X)",data);
 	if (list->count == list->allocated) {
 		list->data=realloc(list->data, sizeof(void*) * (list->allocated + LIST_SIZE_STEP));
@@ -44,7 +44,7 @@ void list_add(tList* list,void* data) {
 	list->data[list->count++]=data;
 }
 
-void list_remove(tList* list,void* data) {
+void listRemove(tList* list,void* data) {
 	//~ printf("ListRemove(0x%04X)",data);
 	int i;
 	for (i=0;i<list->count;i++) {
@@ -57,31 +57,43 @@ void list_remove(tList* list,void* data) {
 	}
 }
 
-void list_foreach(tList* list,void* function) {
-	trace();
+void listForeach(tList* list, void (*function)(tList*,void*)) {
 	int i;
-	void (*f)(tList*,void*);
-	f=function;
-	for (i=0;i<list->count;i++) {
-	trace();
-		(*f)(list,list->data[i]);
-	trace();
-	}
-	trace();
+	for (i=0;i<list->count;i++)
+		(*function)(list,list->data[i]);
 }
 
-void ListSwap(tList* list,uint16_t n1,uint16_t n2) {
+void listSwap(tList* list,uint16_t n1,uint16_t n2) {
 	void* tmp=list->data[n1];
 	list->data[n1] = list->data[n2];
 	list->data[n2] = tmp;
 }
 
-void ListShuffle(tList* list,const uint8_t* key, size_t keylen) {
+void listShuffle(tList* list,const uint8_t* key, size_t keylen) {
 	int16_t i;
 	static uint16_t j=0;
 	int16_t count=list->count;
 	for(i=0; i<count; i++) {
 		j = j + key[i%keylen] + 256*key[keylen-i%keylen];
-		ListSwap(list,i,j%count);
+		listSwap(list,i,j%count);
 	}
+}
+
+tList* listExplode(const char* __src, const char* pattern) {
+	tList* list = listCreate();
+	char* tmp = strdup(__src);
+	char* src = tmp;
+	while(src && *src) {
+		//~ printf(">> %s\n",src);
+		char* ptr=strstr(src,pattern);
+		if (ptr) {
+			*ptr=0;
+			ptr+=strlen(pattern);
+		}
+		trim(src);
+		listAdd(list, strdup(src));
+		src=ptr;
+	}
+	free(src);
+	return list;
 }

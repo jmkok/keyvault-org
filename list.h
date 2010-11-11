@@ -17,16 +17,17 @@ typedef struct {
 // List functions
 //
 
-tList* list_create(void);
-void list_destroy(tList* list);
+tList* listCreate(void);
+void listDestroy(tList* list);
 
-void list_status(tList* list);
-void list_add(tList* list,void* item);
-void list_remove(tList* list,void* item);
+void listStatus(tList* list);
+void listAdd(tList* list,void* item);
+void listRemove(tList* list,void* item);
 
-void list_swap(tList* list,uint16_t n1,uint16_t n2);
-void list_shuffle(tList* list,const uint8_t* key, size_t keylen);
+void listSwap(tList* list,uint16_t n1,uint16_t n2);
+void listShuffle(tList* list,const uint8_t* key, size_t keylen);
 
-void list_foreach(tList* list,void* function);
+void listForeach(tList* list, void (*function)(tList*,void*));
+tList* listExplode(const char* __src, const char* pattern);
 
 #endif
