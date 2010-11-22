@@ -153,7 +153,8 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	else {
 		memcpy(encryption_key, passphrase_key, 32);
 	}
-	hexdump("encryption_key",encryption_key,32);
+	printf("encryption_key >");
+	hexdump(encryption_key,32);
 
 	// Store the pbkdf2 setup
 	xmlNode* pbkdf2_node = xmlNewChild(root, NULL, BAD_CAST "pbkdf2", NULL);
@@ -243,7 +244,7 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 			char* ivec_base64 = (char*)xmlGetProp(node, BAD_CAST "ivec");
 			gsize ivec_len;
 			unsigned char* ivec = g_base64_decode(ivec_base64, &ivec_len);
-			hexdump("ivec", ivec, (int)ivec_len);
+			printf("ivec"); hexdump(ivec, (int)ivec_len);
 			if (xmlStrEqual(cipher, BAD_CAST "rc4"))
 				evp_cipher(EVP_rc4(), data, data_len, encryption_key, ivec);
 			if (xmlStrEqual(cipher, BAD_CAST "aes_256_ofb"))

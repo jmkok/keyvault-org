@@ -64,9 +64,9 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 
 	// Verify the fingerprint...
 	const void* server_fingerprint = libssh2_hostkey_hash(ssh->session, LIBSSH2_HOSTKEY_HASH_MD5);
-	hexdump("fingerprint", server_fingerprint, 16);printf("\n");   
+	hexdump(server_fingerprint, 16);
 	if (*fingerprint && (memcmp(server_fingerprint, *fingerprint, 16) != 0)) {
-		hexdump("fingerprint",*fingerprint,16);printf("\n");
+		hexdump(*fingerprint,16);
 		gtk_error_dialog("Incorrect fingerprint for remote SSH server\nMore info: http://en.wikipedia.org/wiki/Public_key_fingerprint");
 		return -1;
 	}

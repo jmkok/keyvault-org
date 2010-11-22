@@ -5,6 +5,8 @@
 
 #include <glib/gprintf.h>
 
+#include "functions.h"
+
 // -----------------------------------------------------------
 //
 // hexdump
@@ -18,14 +20,11 @@
 	//~ }
 //~ }
 
-void hexdump(char* text, void* ptr, int len) {
+void hexdump(const void* ptr, int len) {
 	volatile unsigned int i,j;
-	unsigned char* data=ptr;
+	const unsigned char* data = ptr;
 	for (i=0;i<len;i+=16) {
-		if (text)
-			printf("%s:",text);
-		else
-			printf("0x%04zX:",(ssize_t)&data[i]-(ssize_t)ptr);
+		printf("0x%04zX:",(ssize_t)&data[i]-(ssize_t)ptr);
 		for (j=0;j<16;j++) {
 			if (j==8)
 				printf(" ");
