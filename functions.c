@@ -110,3 +110,30 @@ void* mallocz(int size) {
 	memset(ptr,0,size);
 	return ptr;
 }
+
+// -----------------------------------------------------------
+//
+// string trimming
+//
+
+void ltrim(char* src) {
+	if (!src) return;
+	char* dst=src;
+	while ((*src != 0x00) && (*src <= 0x20))
+		src++;
+	if (src != dst)
+		strcpy(dst,src);
+}
+
+void rtrim(char* src) {
+	if (!src) return;
+	int len=strlen(src);
+	while ((len>0) && (src[len-1] <= 0x20))
+		len--;
+	src[len]=0;
+}
+
+void trim(char* src) {
+	ltrim(src);
+	rtrim(src);
+}

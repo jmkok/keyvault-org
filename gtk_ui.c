@@ -243,7 +243,7 @@ static void menu_file_open_ssh(GtkWidget *widget, gpointer unused) {
 	// Let the use fill in all required fields...
 	if (dialog_request_config(main_window, config, passphrase_config)) {
 		// Store the kvo to the list
-		list_add(global->config_list, config);
+		listAdd(global->config_list, config);
 		update_recent_list(global->config_list);
 		// Open the file...
 		menu_open_recent_file(NULL, config);
@@ -313,7 +313,7 @@ static void menu_file_save_ssh(GtkWidget *widget, gpointer unused) {
 	// Let the use fill in all required fields...
 	if (dialog_request_config(main_window, config, passphrase_config)) {
 		// Store the kvo to the list
-		list_add(global->config_list, config);
+		listAdd(global->config_list, config);
 		update_recent_list(global->config_list);
 		// Open the file...
 		menu_save_recent_file(NULL, config);
@@ -639,7 +639,7 @@ static void update_recent_list(tList* config_list) {
 	}
 	gtk_add_menu_item_clickable(open_recent_menu, "SSH...", G_CALLBACK(menu_file_open_ssh), NULL);
 	gtk_add_separator(open_recent_menu);
-	list_foreach(config_list, add_to_open_menu);
+	listForeach(config_list, add_to_open_menu);
 	gtk_widget_show_all(open_recent_menu);
 
 	// Then add all items in the config_list to the recent menu
@@ -649,7 +649,7 @@ static void update_recent_list(tList* config_list) {
 	}
 	gtk_add_menu_item_clickable(save_recent_menu, "SSH...", G_CALLBACK(menu_file_save_ssh), NULL);
 	gtk_add_separator(save_recent_menu);
-	list_foreach(config_list, add_to_save_menu);
+	listForeach(config_list, add_to_save_menu);
 	gtk_widget_show_all(save_recent_menu);
 }
 
@@ -862,7 +862,7 @@ int create_main_window(const char* filename) {
 
 	// Initialize the generic global component
 	global = mallocz(sizeof(struct tGlobal));
-	global->config_list=list_create();
+	global->config_list=listCreate();
 
 
 	GtkWidget* label;

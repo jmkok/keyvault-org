@@ -7,6 +7,164 @@
 #include "xml.h"
 #include "encryption.h"
 #include "functions.h"
+#include "list.h"
+
+// -------------------------------------------------------------------------------
+//
+// Convert a text string into a specific EVP_CIPHER
+//
+
+const EVP_CIPHER* evp_cipher_text(const char* text) {
+	if (strcmp(text,"null") == 0)					return EVP_enc_null();
+	if (strcmp(text,"rc4") == 0)					return EVP_rc4();
+	if (strcmp(text,"des_ofb") == 0)			return EVP_des_ofb();
+	if (strcmp(text,"aes_128_ofb") == 0)	return EVP_aes_128_ofb();
+	if (strcmp(text,"aes_192_ofb") == 0)	return EVP_aes_192_ofb();
+	if (strcmp(text,"aes_256_ofb") == 0)	return EVP_aes_256_ofb();
+	// Serious problem, I do not uderstand the request
+	return NULL;
+}
+
+#define NODE_NAME BAD_CAST "vault"
+#define NODE_NS BAD_CAST "http://keyvault.org"
+
+
+// -------------------------------------------------------------------------------
+//
+// Encrypt an xmlNode
+//
+
+void xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols) {
+	// Get the raw data...
+	xmlBuffer* xbuf = xmlBufferCreate();
+	xmlNodeDump(xbuf, NULL, node, 0, 1);
+
+	//~ xmlDoc* doc = xmlReadDoc(xbuf->content,NULL,NULL,0);
+	//~ xmlDocFormatDump(stdout, doc, 1);
+
+	// Create the "vault" node
+	xmlNode* enode = xmlNewNode(NULL, NODE_NAME);
+	xmlNs* ns = xmlNewNs(enode, NODE_NS, NULL);
+
+	// PBKDF2 the passphrase
+	char* pbkdf2_salt = malloc_random(32);
+	unsigned int pbkdf2_rounds = 20000 + random_integer(1000);
+	u_char encryption_key[32];
+	if (pbkdf2_rounds) {
+		PKCS5_PBKDF2_HMAC_SHA1(
+			(char*)passphrase_key, 32,
+			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
+			pbkdf2_rounds, 32, encryption_key);
+	}
+	else {
+		memcpy(encryption_key, passphrase_key, 32);
+	}
+
+	// Store the pbkdf2 setup
+	xmlNode* pbkdf2_node = xmlNewChild(enode, ns, BAD_CAST "pbkdf2", NULL);
+	xmlNewPropBase64(pbkdf2_node, BAD_CAST "salt", BAD_CAST pbkdf2_salt, 32);
+	xmlNewPropInteger(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
+
+	void evp_cipher_protocol(tList* list, void* data) {
+		char* protocol = data;
+		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
+		unsigned char* ivec = malloc_random(16);
+		evp_cipher(cipher, xbuf->content, xbuf->use, encryption_key, ivec);
+		xmlNode* encryption_node = xmlNewChild(enode, ns, BAD_CAST "encryption", NULL);
+		xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST protocol);
+		xmlNewPropBase64(encryption_node, BAD_CAST "ivec", ivec, 16);
+	}
+
+	tList* proto_list = listExplode(protocols,",");
+	listForeach(proto_list, evp_cipher_protocol);
+	listDestroy(proto_list);
+
+	// Add the encrypted data
+	gchar* tmp=g_base64_encode((unsigned char*)xbuf->content, xbuf->use);
+	xmlNode* data_node = xmlNewChild(enode, ns, BAD_CAST "data", BAD_CAST tmp);
+	g_free(tmp);
+	xmlNewPropInteger(data_node, BAD_CAST "size", xbuf->use);
+
+	// Replace the node with the encrypted node
+	xmlReplaceNode(node, enode);
+	xmlFreeNode(node);
+}
+
+// -------------------------------------------------------------------------------
+//
+// Decrypt an xmlNode
+//
+
+void xmlNodeDecrypt(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols) {
+	printf("node->name: %s\n",node->name);
+	if (!xmlStrEqual(node->name, NODE_NAME))
+		return;
+	if (!node || !node->nsDef || !node->nsDef->href) return;
+	printf("node->nsDef->href: %s\n",node->nsDef->href);
+	if (!xmlStrEqual(node->nsDef->href, NODE_NS))
+		return;
+	return;
+	
+	// Get the raw data...
+	xmlBuffer* xbuf = xmlBufferCreate();
+	xmlNodeDump(xbuf, NULL, node, 0, 1);
+
+	//~ xmlDoc* doc = xmlReadDoc(xbuf->content,NULL,NULL,0);
+	//~ xmlDocFormatDump(stdout, doc, 1);
+
+	// Create the "vault" node
+	//~ xmlNode* enode = xmlNewChild(parent, NULL, BAD_CAST "vault", NULL);
+	xmlNode* enode = xmlNewNode(NULL, BAD_CAST "vault");
+	xmlNs* ns = xmlNewNs(enode, BAD_CAST "http://keyvault.org", NULL);
+
+	// PBKDF2 the passphrase
+	char* pbkdf2_salt = malloc_random(32);
+	unsigned int pbkdf2_rounds = 20000 + random_integer(1000);
+	u_char encryption_key[32];
+	if (pbkdf2_rounds) {
+		PKCS5_PBKDF2_HMAC_SHA1(
+			(char*)passphrase_key, 32,
+			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
+			pbkdf2_rounds, 32, encryption_key);
+	}
+	else {
+		memcpy(encryption_key, passphrase_key, 32);
+	}
+
+	// Store the pbkdf2 setup
+	xmlNode* pbkdf2_node = xmlNewChild(enode, ns, BAD_CAST "pbkdf2", NULL);
+	xmlNewPropBase64(pbkdf2_node, BAD_CAST "salt", BAD_CAST pbkdf2_salt, 32);
+	xmlNewPropInteger(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
+
+	void evp_cipher_protocol(tList* list, void* data) {
+		char* protocol = data;
+		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
+		unsigned char* ivec = malloc_random(16);
+		evp_cipher(cipher, xbuf->content, xbuf->use, encryption_key, ivec);
+		xmlNode* encryption_node = xmlNewChild(enode, ns, BAD_CAST "encryption", NULL);
+		xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST protocol);
+		xmlNewPropBase64(encryption_node, BAD_CAST "ivec", ivec, 16);
+	}
+
+	tList* proto_list = listExplode(protocols,",");
+	listForeach(proto_list, evp_cipher_protocol);
+	listDestroy(proto_list);
+
+	// Add the encrypted data
+	gchar* tmp=g_base64_encode((unsigned char*)xbuf->content, xbuf->use);
+	xmlNode* data_node = xmlNewChild(enode, ns, BAD_CAST "data", BAD_CAST tmp);
+	g_free(tmp);
+	xmlNewPropInteger(data_node, BAD_CAST "size", xbuf->use);
+
+	// Replace the node with the encrypted node
+	xmlReplaceNode(node, enode);
+	xmlFreeNode(node);
+}
+
+// -------------------------------------------------------------------------------
+//
+// 
+//
 
 xmlNode* xmlNewChildEncrypted(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const xmlChar* value, const unsigned char passphrase_key[32]) {
 	unsigned char* ivec = malloc_random(16);

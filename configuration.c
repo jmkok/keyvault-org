@@ -62,7 +62,7 @@ void read_configuration(tList* config_list) {
 			//~ xmlElemDump(stdout, NULL, node);puts("");
 			// Create a new kvo_file
 			tConfigDescription* config = mallocz(sizeof(tConfigDescription));
-			list_add(config_list, config);
+			listAdd(config_list, config);
 			// Analyze all items for this kvo_file
 			config->title = (char*)xmlGetContents(node, BAD_CAST "title");
 			config->doc = configDoc;

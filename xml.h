@@ -13,4 +13,7 @@ xmlNode* xmlNewChildBase64(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, co
 xmlAttr* xmlNewPropInteger(xmlNodePtr node, const xmlChar* name, const int value);
 xmlAttr* xmlNewPropBase64(xmlNodePtr node, const xmlChar* name, const void* data, const int size);
 
+void xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols);
+void xmlNodeDecrypt(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols);
+
 #endif
