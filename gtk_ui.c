@@ -188,15 +188,24 @@ static void menu_file_open(GtkWidget *widget, gpointer ptr)
 
 static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 	tConfigDescription* config = config_pointer;
-	tFileDescription* kvo = NULL;
-	while (!kvo) {
+	
+	// First we have to decrypt the node...
+	xmlNode* config_node = config->node;
+	while (xmlIsNodeEncrypted(config->node)) {
 		if (passphrase_valid) {
-			kvo = get_configuration(config, passphrase_config);
-			if (kvo) break;
+			xmlNode* tmp = xmlNodeDecrypt(config->node, passphrase_config);
+			if (tmp) {
+				config_node = tmp;
+				break;
+			}
 		}
 		if (gtk_request_passphrase() != 0)
 			return;
 	}
+	
+	tFileDescription* kvo = node_to_kvo(config_node);
+	if (!kvo)
+		return;
 
 	//~ if (!dialog_request_kvo(main_window, kvo))
 		//~ return;
@@ -225,14 +234,15 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 		// Move the encrypted xml into the treestore
 		encrypted_xml_to_treestore(doc_enc, treedata->treestore);
 		
-		// Valid passphrase, then encrypt the username and password
+		// Valid passphrase, then store the configuration
 		if (passphrase_valid) {
-			put_configuration(kvo, passphrase_config);
-			//~ if (!kvo->username_enc) {
-				//~ kvo->username_enc = malloc(strlen(kvo->username));
-				//~ memcpy(kvo->username_enc, kvo->username, strlen(kvo->username));
-				//~ evp_cipher(EVP_aes_256_ofb(), kvo->username_enc, strlen(kvo->username), passphrase_config, 0);
-			//~ }
+			xmlNode* new = kvo_to_node(kvo);
+			xmlNode* enc_new = xmlNodeEncrypt(new, passphrase_config, NULL);
+			if (enc_new) {
+				xmlNewProp(enc_new, BAD_CAST "title", BAD_CAST kvo->title);
+				xmlReplaceNode(config->node, enc_new);
+				xmlFreeNode(config->node);
+			}
 		}
 	}
 }
@@ -260,7 +270,7 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer config_pointer) {
 	tFileDescription* kvo = NULL;
 	while (!kvo) {
 		if (passphrase_valid) {
-			kvo = get_configuration(config, passphrase_config);
+			kvo = node_to_kvo(config->node);
 			if (kvo) break;
 		}
 		if (gtk_request_passphrase() != 0)
@@ -304,7 +314,17 @@ static void menu_save_recent_file(GtkWidget *widget, gpointer config_pointer) {
 	else if (strcmp(kvo->protocol,"ssh") == 0) {
 		ssh_put_file(kvo,data,len);
 	}
-	put_configuration(kvo, passphrase_config);
+
+	// Valid passphrase, then store the configuration
+	if (passphrase_valid) {
+		xmlNode* new = kvo_to_node(kvo);
+		xmlNode* enc_new = xmlNodeEncrypt(new, passphrase_config, NULL);
+		if (enc_new) {
+			xmlNewProp(enc_new, BAD_CAST "title", BAD_CAST kvo->title);
+			xmlReplaceNode(config->node, enc_new);
+			xmlFreeNode(config->node);
+		}
+	}
 }
 
 static void menu_file_save_ssh(GtkWidget *widget, gpointer unused) {

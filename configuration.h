@@ -19,7 +19,7 @@
 extern void save_configuration(tList* kvo_list);
 extern void read_configuration(tList* kvo_list);
 
-tFileDescription* get_configuration(tConfigDescription* config, const unsigned char passphrase_key[32]);
-void put_configuration(tFileDescription* kvo, const unsigned char passphrase_key[32]);
+tFileDescription* node_to_kvo(xmlNode* node);
+xmlNode* kvo_to_node(tFileDescription* kvo);
 
 #endif

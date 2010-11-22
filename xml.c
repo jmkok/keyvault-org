@@ -105,6 +105,8 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], c
 	// Get the raw data...
 	xmlBuffer* xbuf = xmlBufferCreate();
 	xmlNodeDump(xbuf, NULL, node, 0, 1);
+	if (!protocols)
+		protocols = "rc4,aes_128_ofb";
 
 	//~ xmlDoc* doc = xmlReadDoc(xbuf->content,NULL,NULL,0);
 	//~ xmlDocFormatDump(stdout, doc, 1);
@@ -173,7 +175,6 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 	if (!xmlStrEqual(root->nsDef->href, NODE_NS))
 		return NULL;
 
-
 	// <pbkdf2>
 	u_char encryption_key[32];
 	memcpy(encryption_key, passphrase_key, 32);
@@ -220,13 +221,31 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 		node = node->next;
 	}
 
-	// Convertthe xml text into an xmlNode object
+	// Convert the xml text into an xmlNode object
 	xmlDoc* doc = xmlReadDoc(data,NULL,NULL,0);
 	xmlDocFormatDump(stdout, doc, 1);
 	xmlNode* xnode = xmlDocGetRootElement(doc);
 	xmlUnlinkNode(xnode);
 	xmlFreeDoc(doc);
 	return xnode;
+}
+
+// -------------------------------------------------------------------------------
+//
+// 
+//
+
+int xmlIsNodeEncrypted(xmlNode* root) {
+	// Test to see if it is a keyvault.org node
+	printf("root->name: %s\n",root->name);
+	if (!xmlStrEqual(root->name, NODE_NAME))
+		return 0;
+	if (!root || !root->nsDef || !root->nsDef->href)
+		return 0;
+	printf("root->nsDef->href: %s\n",root->nsDef->href);
+	if (!xmlStrEqual(root->nsDef->href, NODE_NS))
+		return 0;
+	return 1;
 }
 
 // -------------------------------------------------------------------------------

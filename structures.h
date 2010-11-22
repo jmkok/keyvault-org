@@ -17,7 +17,7 @@ typedef struct {
 } tConfigDescription;
 
 typedef struct {
-	tConfigDescription* config;
+	char* title;						// title
 	char* protocol;		// protocol (local / ssh)
 	char* filename;		// filename
 	// network
