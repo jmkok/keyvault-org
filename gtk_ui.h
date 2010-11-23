@@ -13,7 +13,7 @@
 // variables
 //
 
-int create_main_window(const char* filename);
+int create_main_window(const char* default_filename);
 
 struct tGlobal {
 	tList* config_list;

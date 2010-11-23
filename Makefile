@@ -16,8 +16,6 @@ LIBRARIES=glib-2.0 gtk+-2.0 libxml-2.0 openssl libssh2
 CFLAGS=$(CROSS) `pkg-config --cflags $(LIBRARIES)` -Wall -Werror
 LIBS=$(CROSS) `pkg-config --libs $(LIBRARIES)`
 
-.cc.o:
-
 all: $(TARG)
 
 run: $(TARG)

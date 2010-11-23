@@ -458,6 +458,11 @@ static void menu_file_export(GtkWidget *widget, gpointer ptr)
 void click_launch_button(GtkWidget *widget, gpointer ptr) {
 	const gchar* url=gtk_entry_get_text(GTK_ENTRY(url_entry));
 	printf("Launch: %s\n",url);
+	char* cmd = malloc(strlen(url) + 64);
+	sprintf(cmd,"/usr/bin/xdg-open %s",url);
+	FILE* fp = popen(cmd,"r");
+	if (fp)
+		fclose(fp);
 }
 
 // -----------------------------------------------------------
@@ -874,7 +879,7 @@ static void click_about(GtkWidget *widget, gpointer parent_window)
 	// GTK_STOCK_CLEAR
 	// GTK_STOCK_DIALOG_AUTHENTICATION
 
-int create_main_window(const char* filename) {
+int create_main_window(const char* default_filename) {
 	// Initialize random generator
 	struct timeval tv;
 	gettimeofday(&tv,0);
@@ -1093,9 +1098,9 @@ int create_main_window(const char* filename) {
 	// Show the application
   gtk_widget_show_all(main_window);
 
-	// Is a filename given, then read that file
-	if (filename)
-		load_from_file(filename, td->treestore);
+	// Is a default filename given, then read that file
+	if (default_filename)
+		load_from_file(default_filename, td->treestore);
 
 	// Run the app
   gtk_main();
