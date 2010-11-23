@@ -33,9 +33,9 @@ static xmlDoc* new_configuration(void) {
 //
 
 void read_configuration(tList* config_list) {
-	printf("read_configuration()\n");
+	printf("read_configuration(%p)\n", config_list);
 	configDoc = xmlParseFile("config.xml");
-	xmlDocFormatDump(stdout, configDoc, 1);
+	//~ xmlDocFormatDump(stdout, configDoc, 1);
 	if (!configDoc)
 		configDoc = new_configuration();
 	assert(configDoc);
@@ -48,7 +48,7 @@ void read_configuration(tList* config_list) {
 	// Walk all children
 	xmlNode* node = root->children;
 	while(node) {
-		xmlElemDump(stdout, NULL, node);puts("");
+		//~ xmlElemDump(stdout, NULL, node);puts("");
 		if (node->type == XML_ELEMENT_NODE) {
 			char* title = NULL;
 			if (xmlIsNodeEncrypted(node))
@@ -63,8 +63,10 @@ void read_configuration(tList* config_list) {
 				config->doc = configDoc;
 				config->node = node;
 				char* tmp = (char*)xmlGetProp(node, BAD_CAST "check");
-				gsize data_len;
-				config->passphrase_check = g_base64_decode(tmp, &data_len);
+				if (tmp) {
+					gsize data_len;
+					config->passphrase_check = g_base64_decode(tmp, &data_len);
+				}
 			}
 		}
 		node = node->next;
@@ -127,7 +129,7 @@ xmlNode* kvo_to_node(tFileDescription* kvo) {
 //
 
 void save_configuration(tList* config_list) {
-	printf("save_configuration()\n");
+	printf("save_configuration(%p)\n", config_list);
 
 	// Write the configuration to the disk
 	FILE* fp = fopen("config.xml", "w");

@@ -53,6 +53,7 @@ static long int time_to_int(const char* text) {
 //
 
 xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
+	debugf("export_treestore_to_xml(%p)\n", treestore);
 	// Callback per treenode
 	gboolean treenode_to_xml(GtkTreeModel *model, GtkTreePath *path, GtkTreeIter *iter, gpointer data) {
 		char* id;
@@ -60,6 +61,7 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 		char* username;
 		char* password;
 		char* url;
+		char* group;
 		char* info;
 		int time_created;
 		int time_modified;
@@ -70,30 +72,31 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 			COL_USERNAME, &username, 
 			COL_PASSWORD, &password, 
 			COL_URL, &url, 
+			COL_GROUP, &group,
 			COL_INFO, &info,
 			COL_TIME_CREATED, &time_created,
 			COL_TIME_MODIFIED, &time_modified,
 			-1);
 
 		xmlNode* keyvault = data;
-		xmlNode* group = xmlNewChild(keyvault, NULL, BAD_CAST "node", NULL);
-		xmlNewChild(group, NULL, BAD_CAST "id", BAD_CAST id);
-		xmlNewChild(group, NULL, BAD_CAST "title", BAD_CAST title);
-		xmlNewChild(group, NULL, BAD_CAST "username", BAD_CAST username);
-		xmlNewChild(group, NULL, BAD_CAST "password", BAD_CAST password);
-		xmlNewChild(group, NULL, BAD_CAST "url", BAD_CAST url);
-		xmlNewChild(group, NULL, BAD_CAST "info", BAD_CAST info);
-		xmlNewChildInteger(group, NULL, BAD_CAST "time-created", time_created);
-		xmlNewChildInteger(group, NULL, BAD_CAST "time-modified", time_modified);
+		xmlNode* node = xmlNewChild(keyvault, NULL, BAD_CAST "node", NULL);
+		xmlNewChild(node, NULL, BAD_CAST "id", BAD_CAST id);
+		xmlNewChild(node, NULL, BAD_CAST "title", BAD_CAST title);
+		xmlNewChild(node, NULL, BAD_CAST "username", BAD_CAST username);
+		xmlNewChild(node, NULL, BAD_CAST "password", BAD_CAST password);
+		xmlNewChild(node, NULL, BAD_CAST "url", BAD_CAST url);
+		xmlNewChild(node, NULL, BAD_CAST "info", BAD_CAST info);
+		xmlNewChild(node, NULL, BAD_CAST "group", BAD_CAST group);
+		xmlNewChildInteger(node, NULL, BAD_CAST "time-created", time_created);
+		xmlNewChildInteger(node, NULL, BAD_CAST "time-modified", time_modified);
 
 		g_free(id);
 		g_free(title);
 		g_free(username);
 		g_free(password);
 		g_free(url);
+		g_free(group);
 		g_free(info);
-		//~ g_free(time_created);
-		//~ g_free(time_modified);
 		return FALSE;
 	}
 
@@ -125,6 +128,7 @@ static void xml_contents_into_treestore_column(xmlNode* node, char* name, GtkTre
 }
 
 void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
+	debugf("import_treestore_from_xml(%p,%p)\n", treestore, doc);
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 
@@ -140,6 +144,7 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 			xml_contents_into_treestore_column(node, "username", treestore, &iter, COL_USERNAME);
 			xml_contents_into_treestore_column(node, "password", treestore, &iter, COL_PASSWORD);
 			xml_contents_into_treestore_column(node, "url", treestore, &iter, COL_URL);
+			xml_contents_into_treestore_column(node, "group", treestore, &iter, COL_GROUP);
 			xml_contents_into_treestore_column(node, "info", treestore, &iter, COL_INFO);
 			xml_contents_into_treestore_column(node, "time-created", treestore, &iter, COL_TIME_CREATED);
 			xml_contents_into_treestore_column(node, "time-modified", treestore, &iter, COL_TIME_MODIFIED);
@@ -153,7 +158,7 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 // write a while record into the treestore
 //
 
-void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* info, time_t time_created, time_t time_modified) {
+void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* group, const char* info, time_t time_created, time_t time_modified) {
 	gtk_tree_store_append(treestore, iter, parent);
 	gtk_tree_store_set(treestore, iter,
 		COL_ID, id, 
@@ -161,6 +166,7 @@ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIte
 		COL_USERNAME, username, 
 		COL_PASSWORD, password, 
 		COL_URL, url, 
+		COL_GROUP, group,
 		COL_INFO, info, 
 		COL_TIME_CREATED, time_created,
 		COL_TIME_MODIFIED, time_modified,
@@ -173,6 +179,7 @@ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIte
 //
 
 void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
+	debugf("export_treestore_to_csv(%p,'%s')\n", treestore, filename);
 	// Callback per treenode
 	gboolean treenode_to_csv(GtkTreeModel *model, GtkTreePath *path, GtkTreeIter *iter, gpointer data) {
 		FILE* fh = data;
@@ -181,6 +188,7 @@ void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
 		char* username;
 		char* password;
 		char* url;
+		char* group;
 		char* info;
 		int time_created;
 		int time_modified;
@@ -191,17 +199,19 @@ void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
 			COL_USERNAME, &username, 
 			COL_PASSWORD, &password, 
 			COL_URL, &url, 
+			COL_GROUP, &group,
 			COL_INFO, &info,
 			COL_TIME_CREATED, &time_created,
 			COL_TIME_MODIFIED, &time_modified,
 			-1);
-		fprintf(fh,"\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%u\",\"%u\"\n",id,title,username,password,url,info,time_created,time_modified);
+		fprintf(fh,"\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%u\",\"%u\"\n", id, title, username, password, url, group, info, time_created, time_modified);
 
 		g_free(id);
 		g_free(title);
 		g_free(username);
 		g_free(password);
 		g_free(url);
+		g_free(group);
 		g_free(info);
 		return FALSE;
 	}
@@ -241,6 +251,7 @@ char** read_csv_line(char* line) {
 }
 
 void import_treestore_from_csv(GtkTreeStore* treestore, const char* filename) {
+	debugf("import_treestore_from_csv(%p,'%s')\n", treestore, filename);
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 
@@ -252,9 +263,9 @@ void import_treestore_from_csv(GtkTreeStore* treestore, const char* filename) {
 	GtkTreeIter iter;
 	while(fgets(line, 16384, fh)) {
 		char** array = read_csv_line(line);
-		printf("array: %s / %s / %s / %s / %s / %s / %s / %s\n", array[0], array[1], array[2], array[3], array[4], array[5], array[6], array[7]);
-		int time_created = time_to_int(array[6]);
-		int time_modified = time_to_int(array[7]);
-		treestore_add_record(treestore, &iter, NULL, array[0], array[1], array[2], array[3], array[4], array[5], time_created, time_modified);
+		printf("array: %s / %s / %s / %s / %s / %s / %s / %s / %s\n", array[0], array[1], array[2], array[3], array[4], array[5], array[6], array[7], array[8]);
+		int time_created = time_to_int(array[7]);
+		int time_modified = time_to_int(array[8]);
+		treestore_add_record(treestore, &iter, NULL, array[0], array[1], array[2], array[3], array[4], array[5], array[6], time_created, time_modified);
 	}
 }

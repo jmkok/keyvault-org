@@ -72,6 +72,7 @@ GtkWidget* title_entry;
 GtkWidget* username_entry;
 GtkWidget* password_entry;
 GtkWidget* url_entry;
+GtkWidget* group_entry;
 GtkWidget* info_text;
 GtkWidget* time_created_label;
 GtkWidget* time_modified_label;
@@ -123,42 +124,40 @@ static int gtk_request_passphrase(void) {
 
 // -----------------------------------------------------------
 //
-// load_from_file - load a file into the treestore
+// user_decrypt_xml - decrypt an encrypted doc (if needed request passphrase from user)
 //
 
-static int encrypted_xml_to_treestore(xmlDoc* doc_enc, GtkTreeStore* treestore) {
-	//~ xmlDocFormatDump(stdout, doc_enc, 1);puts("");
-
-	// Request the passphrase to decode the file ("secret")
-	//~ gchar* passphrase = "secret";
-
-	// xml => encrypted-xml
-	xmlDoc* doc = NULL;
+static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 	while(1) {
 		if (!passphrase_valid && (gtk_request_passphrase() != 0))
-			return 0;
-		doc = xml_doc_decrypt(doc_enc, passphrase_data);
-		if (!doc) {
-			passphrase_valid = 0;
-			continue;
+			break;
+		xmlDoc* decrypted_doc = xml_doc_decrypt(encrypted_doc, passphrase_data);
+		if (decrypted_doc) {
+			//~ xmlDocFormatDump(stdout, decrypted_doc, 1);puts("");
+			return decrypted_doc;
 		}
-		break;
+		passphrase_valid = 0;
 	}
-	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
-
-	// treestore => xml
-	import_treestore_from_xml(treestore, doc);
-	//~ xmlDoc* doc = export_reestore_to_xml(treestore);
-	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
-	return 1;
+	return NULL;
 }
 
+// -----------------------------------------------------------
+//
+// user_decrypt_xml - decrypt an encrypted doc (if needed request passphrase from user)
+//
+
 static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
+	debugf("load_from_file('%s',%p)\n", filename, treestore);
 	// Read the file
-	xmlDoc* doc_enc = xmlParseFile(filename);
-	
+	xmlDoc* encrypted_doc = xmlParseFile(filename);
+
+	// Decrypt the doc
+	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
+
 	// Move the encrypted xml into the treestore
-	return encrypted_xml_to_treestore(doc_enc, treestore);
+	import_treestore_from_xml(treestore, doc);
+	
+	return 1;
 }
 
 // -----------------------------------------------------------
@@ -187,6 +186,7 @@ static void menu_file_open(GtkWidget *widget, gpointer ptr)
 //
 
 static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
+	debugf("menu_open_recent_file(%p,%p)\n", widget, config_pointer);
 	tConfigDescription* config = config_pointer;
 	
 	// First we have to decrypt the node...
@@ -225,14 +225,17 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 			return;
 		
 		// Read the data into an xml structure
-		xmlDoc* doc_enc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
-		if (!doc_enc) {
+		xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
+		if (!encrypted_doc) {
 			gtk_error_dialog("Invalid XML document");
 			return;
 		}
 
+		// Decrypt the doc
+		xmlDoc* doc = user_decrypt_xml(encrypted_doc);
+
 		// Move the encrypted xml into the treestore
-		encrypted_xml_to_treestore(doc_enc, treedata->treestore);
+		import_treestore_from_xml(treedata->treestore, doc);
 		
 		// Valid passphrase, then store the configuration
 		if (passphrase_valid) {
@@ -351,7 +354,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 	xmlDoc* doc = export_treestore_to_xml(treestore);
 	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
 
-	// Request the passphrase to encode the file ("secret")
+	// Request the passphrase to encode the file
 	if (!passphrase_valid) {
 		if (gtk_request_passphrase() != 0)
 			return;
@@ -507,6 +510,7 @@ void write_changes_to_treestore(GtkWidget *widget, gpointer selection) {
 			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(username_entry)), 
 			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(password_entry)),
 			COL_URL, gtk_entry_get_text(GTK_ENTRY(url_entry)),
+			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(group_entry)),
 			COL_INFO, info,
 			COL_TIME_MODIFIED, time(0),
 			-1);
@@ -554,7 +558,7 @@ static void click_add_item(GtkWidget *widget, gpointer treestore_ptr) {
 	// Insert a new record with a random password
 	gchar* password = create_random_password(12);
 	gchar* id = create_random_password(16);
-	treestore_add_record(treedata->treestore, &iter, NULL, id, "NEW", "", password, "http://", "", time(0), time(0));
+	treestore_add_record(treedata->treestore, &iter, NULL, id, "NEW", "", password, "http://", "", "", time(0), time(0));
 	g_free(id);
 	g_free(password);
 	// Set focus...
@@ -699,6 +703,7 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 	char* username;
   char* password;
 	char* url;
+  char* group;
   char* info;
   time_t time_created;
   time_t time_modified;
@@ -711,6 +716,7 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 			COL_USERNAME, &username,
 			COL_PASSWORD, &password, 
 			COL_URL, &url, 
+			COL_GROUP, &group,
 			COL_INFO, &info,
 			COL_TIME_CREATED, &time_created,
 			COL_TIME_MODIFIED, &time_modified, -1);
@@ -725,6 +731,7 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 		gtk_entry_set_text(GTK_ENTRY(username_entry),(username?username:""));
 		gtk_entry_set_text(GTK_ENTRY(password_entry),(password?password:""));
 		gtk_entry_set_text(GTK_ENTRY(url_entry),(url?url:""));
+		gtk_entry_set_text(GTK_ENTRY(group_entry),(group?group:""));
 		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(info_text));
 		if (info)
 			gtk_text_buffer_set_text(buffer,info,-1);
@@ -742,6 +749,7 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
     g_free(username);
     g_free(password);
     g_free(url);
+    g_free(group);
     g_free(info);
   }
 }
@@ -818,7 +826,8 @@ static struct tTreeData* create_view_and_model(void) {
 	// Create the treestore (6 strings fields + 2 time fields)
 	td->treestore = gtk_tree_store_new(NUM_COLS,
 		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT
+		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, 
+		G_TYPE_UINT, G_TYPE_UINT
 	);
 
 	// Sort on title
@@ -1022,6 +1031,9 @@ int create_main_window(const char* default_filename) {
 		gtk_box_pack_start(GTK_BOX(box), url_entry , TRUE, TRUE, 0);
 		GtkWidget* launch_button = gtk_button_new_with_label("Launch");
 		gtk_box_pack_start(GTK_BOX(box), launch_button , FALSE, TRUE, 0);
+
+	// Add the group entry
+	group_entry = gtk_add_labeled_entry(vbox_right, "Group", NULL);
 
 	// Add the information text area
 	label = gtk_label_new("Information");

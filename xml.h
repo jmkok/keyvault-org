@@ -14,7 +14,9 @@ xmlAttr* xmlNewPropInteger(xmlNodePtr node, const xmlChar* name, const int value
 xmlAttr* xmlNewPropBase64(xmlNodePtr node, const xmlChar* name, const void* data, const int size);
 
 xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols);
+xmlNode* xmlNodeEncryptAndReplace(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols);
 xmlNode* xmlNodeDecrypt(xmlNode* node, const unsigned char passphrase_key[32]);
+xmlNode* xmlNodeDecryptAndReplace(xmlNode* node, const unsigned char passphrase_key[32]);
 int xmlIsNodeEncrypted(xmlNode* root);
 
 #endif

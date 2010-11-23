@@ -11,25 +11,12 @@
 
 // -------------------------------------------------------------------------------
 //
-// helper
-//
-
-static int xmlCharFreeAndReturnInteger(xmlChar* text) {
-	if (text) {
-		int retval = atol((char*)text);
-		xmlFree(text);
-		return retval;
-	}
-	return 0;
-}
-
-// -------------------------------------------------------------------------------
-//
 // Read proiporties of a node
 //
 
 xmlChar* xmlGetPropBase64(xmlNode* node, const xmlChar* name) {
 	char* tmp = (char*)xmlGetProp(node, name);
+	if (!tmp) return NULL;
 	gsize data_len;
 	return g_base64_decode(tmp, &data_len);
 }
@@ -62,18 +49,22 @@ xmlChar* xmlGetContentsBase64(xmlNode* root_node, const xmlChar* name) {
 	if (!node)
 		return NULL;
 	xmlChar* tmp = xmlNodeGetContent(node);
+	if (!tmp) return NULL;
 	gsize data_len;
 	return g_base64_decode((void*)tmp, &data_len);
 }
 
-
 int xmlGetContentsInteger(xmlNode* root_node, const xmlChar* name) {
+	// Get the node
 	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
-	if (node) {
+	if (!node) return 0;
+	// Read the text
 	xmlChar* text = xmlNodeGetContent(node);
-		return xmlCharFreeAndReturnInteger(text);
-	}
-	return 0;
+	if (!text) return 0;
+	// Convert to integer
+	int retval = atol((char*)text);
+	xmlFree(text);
+	return retval;
 }
 
 // -------------------------------------------------------------------------------
@@ -82,6 +73,7 @@ int xmlGetContentsInteger(xmlNode* root_node, const xmlChar* name) {
 //
 
 const EVP_CIPHER* evp_cipher_text(const char* text) {
+	debugf("evp_cipher_text('%s')\n", text);
 	if (strcmp(text,"null") == 0)					return EVP_enc_null();
 	if (strcmp(text,"rc4") == 0)					return EVP_rc4();
 	if (strcmp(text,"des_ofb") == 0)			return EVP_des_ofb();
@@ -95,21 +87,34 @@ const EVP_CIPHER* evp_cipher_text(const char* text) {
 #define NODE_NAME BAD_CAST "vault"
 #define NODE_NS BAD_CAST "http://keyvault.org"
 
+// -------------------------------------------------------------------------------
+//
+// Encrypt an xmlNode (IN PLACE)
+//
+
+xmlNode* xmlNodeEncryptInPlace(xmlNode* node, const unsigned char passphrase[32], const char* protocols) {
+	debugf("xmlNodeEncryptInPlace(%p,%p,'%s')\n", node, passphrase, protocols);
+	xmlNode* node_encrypted = xmlNodeEncrypt(node, passphrase, NULL);
+	if (node_encrypted) {
+		xmlReplaceNode(node, node_encrypted);
+		xmlFreeNode(node);
+	}
+	return node_encrypted;
+}
 
 // -------------------------------------------------------------------------------
 //
 // Encrypt an xmlNode
 //
 
-xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], const char* protocols) {
+xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const char* protocols) {
+	debugf("xmlNodeEncrypt(%p,%p,'%s')\n", node, passphrase, protocols);
+	
 	// Get the raw data...
 	xmlBuffer* xbuf = xmlBufferCreate();
 	xmlNodeDump(xbuf, NULL, node, 0, 1);
 	if (!protocols)
 		protocols = "rc4,aes_128_ofb";
-
-	//~ xmlDoc* doc = xmlReadDoc(xbuf->content,NULL,NULL,0);
-	//~ xmlDocFormatDump(stdout, doc, 1);
 
 	// Create the "vault" node
 	xmlNode* enode = xmlNewNode(NULL, NODE_NAME);
@@ -117,24 +122,25 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], c
 
 	// Copy the passphrase key into the encryption key
 	u_char encryption_key[32];
-	memcpy(encryption_key, passphrase_key, 32);
+	memcpy(encryption_key, passphrase, 32);
 
 	// PBKDF2 the passphrase
 	char* pbkdf2_salt = malloc_random(32);
 	unsigned int pbkdf2_rounds = 20000 + random_integer(1000);
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(
-			(char*)passphrase_key, 32,
+			(char*)passphrase, 32,
 			(unsigned char*)pbkdf2_salt, 32,
 			pbkdf2_rounds, 32, encryption_key);
 	}
-	hexdump(encryption_key, 32);
+	//~ hexdump(encryption_key, 32);
 
 	// Store the pbkdf2 setup
 	xmlNode* pbkdf2_node = xmlNewChild(enode, ns, BAD_CAST "pbkdf2", NULL);
 	xmlNewPropBase64(pbkdf2_node, BAD_CAST "salt", BAD_CAST pbkdf2_salt, 32);
 	xmlNewPropInteger(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
 
+	// The cipher functions
 	void evp_cipher_protocol(tList* list, void* data) {
 		char* protocol = data;
 		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
@@ -145,6 +151,7 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], c
 		xmlNewPropBase64(encryption_node, BAD_CAST "ivec", ivec, 16);
 	}
 
+	// Call the cipher function for each requested cipher
 	tList* proto_list = listExplode(protocols,",");
 	listForeach(proto_list, evp_cipher_protocol);
 	listDestroy(proto_list);
@@ -164,20 +171,16 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase_key[32], c
 // Decrypt an xmlNode
 //
 
-xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
+xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase[32]) {
+	debugf("xmlNodeDecrypt(%p,%p)\n", root, passphrase);
+
 	// Test to see if it is a keyvault.org node
-	printf("root->name: %s\n",root->name);
-	if (!xmlStrEqual(root->name, NODE_NAME))
-		return NULL;
-	if (!root || !root->nsDef || !root->nsDef->href)
-		return NULL;
-	printf("root->nsDef->href: %s\n",root->nsDef->href);
-	if (!xmlStrEqual(root->nsDef->href, NODE_NS))
+	if (!xmlIsNodeEncrypted(root))
 		return NULL;
 
 	// <pbkdf2>
 	u_char encryption_key[32];
-	memcpy(encryption_key, passphrase_key, 32);
+	memcpy(encryption_key, passphrase, 32);
 	xmlNode* node = root->children;
 	while(node) {
 		if (xmlStrEqual(node->name, BAD_CAST "pbkdf2")) {
@@ -185,12 +188,12 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 			unsigned int pbkdf2_rounds = xmlGetPropInteger(node, BAD_CAST "rounds");
 			if (pbkdf2_rounds) {
 				PKCS5_PBKDF2_HMAC_SHA1(
-					(char*)passphrase_key, 32,
+					(char*)passphrase, 32,
 					pbkdf2_salt, 32, 
 					pbkdf2_rounds, 32, encryption_key);
 			}
 			free(pbkdf2_salt);
-			hexdump(encryption_key, 32);
+			//~ hexdump(encryption_key, 32);
 		}
 		node = node->next;
 	}
@@ -201,7 +204,7 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 	node = root->children;
 	while(node) {
 		if (xmlStrEqual(node->name, BAD_CAST "data")) {
-			xmlElemDump(stdout, NULL, node);
+			//~ xmlElemDump(stdout, NULL, node);
 			size = xmlGetPropInteger(node, BAD_CAST "size");
 			data = xmlGetContentsBase64(node, NULL);
 		}
@@ -212,7 +215,7 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 	node = root->children;
 	while(node) {
 		if (xmlStrEqual(node->name, BAD_CAST "encryption")) {
-			xmlElemDump(stdout, NULL, node);
+			//~ xmlElemDump(stdout, NULL, node);
 			char* protocol = (char*) xmlGetProp(node, BAD_CAST "cipher");
 			unsigned char* ivec = xmlGetPropBase64(node, BAD_CAST "ivec");
 			const EVP_CIPHER* cipher = evp_cipher_text(protocol);
@@ -223,7 +226,7 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 
 	// Convert the xml text into an xmlNode object
 	xmlDoc* doc = xmlReadDoc(data,NULL,NULL,0);
-	xmlDocFormatDump(stdout, doc, 1);
+	//~ xmlDocFormatDump(stdout, doc, 1);
 	xmlNode* xnode = xmlDocGetRootElement(doc);
 	xmlUnlinkNode(xnode);
 	xmlFreeDoc(doc);
@@ -232,18 +235,19 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase_key[32]) {
 
 // -------------------------------------------------------------------------------
 //
-// 
+// xmlIsNodeEncrypted
+// The node should look like <vault xmlns="http://keyvault.org">
+// Note that it may contain additional attributes (like a title or something alike)
 //
 
 int xmlIsNodeEncrypted(xmlNode* root) {
 	// Test to see if it is a keyvault.org node
-	printf("root->name: %s\n",root->name);
-	if (!xmlStrEqual(root->name, NODE_NAME))
+	assert(root);
+	//~ printf("root->name: %s\n",root->name);
+	if (!root->name || !xmlStrEqual(root->name, NODE_NAME))
 		return 0;
-	if (!root || !root->nsDef || !root->nsDef->href)
-		return 0;
-	printf("root->nsDef->href: %s\n",root->nsDef->href);
-	if (!xmlStrEqual(root->nsDef->href, NODE_NS))
+	//~ printf("root->nsDef->href: %s\n",root->nsDef->href);
+	if (!root->nsDef || !root->nsDef->href || !xmlStrEqual(root->nsDef->href, NODE_NS))
 		return 0;
 	return 1;
 }
@@ -328,7 +332,7 @@ xmlNode* xmlFindNode(xmlNode* root_node, const xmlChar* name, int depth) {
 // Extracte and duplicate data from a node
 //
 
-xmlChar* xmlGetContentsEncrypted(xmlNode* root_node, const xmlChar* name, const unsigned char passphrase_key[32]) {
+xmlChar* xmlGetContentsEncrypted_DEPRECATED(xmlNode* root_node, const xmlChar* name, const unsigned char passphrase_key[32]) {
 	xmlNode* node = xmlFindNode(root_node, BAD_CAST name, 0);
 	if (!node) return NULL;
 

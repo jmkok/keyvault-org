@@ -126,6 +126,24 @@ unsigned int random_integer(unsigned int max) {
 //
 
 xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
+	xmlNode* root = xmlDocGetRootElement(doc);
+	xmlNode* encrypted_node = xmlNodeEncrypt(root, passphrase_key, NULL);
+	if (!encrypted_node) {
+		gtk_error_dialog("Could not encrypt file");
+		return NULL;
+	}
+	// Create the doc
+	xmlDoc* encrypted_doc = xmlNewDoc(BAD_CAST "1.0"); 
+	xmlDocSetRootElement(encrypted_doc, encrypted_node);
+	return encrypted_doc;
+}
+
+// -------------------------------------------------------------------------------
+//
+// Encrypt an xmlDoc (OLD)
+//
+
+xmlDoc* xml_doc_encrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	xmlChar* xml_text;
 	int xml_size;
 	unsigned char* rc4_ivec = malloc_random(16);
@@ -188,6 +206,24 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 //
 
 xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
+	xmlNode* root = xmlDocGetRootElement(doc);
+	xmlNode* decrypted_node = xmlNodeDecrypt(root, passphrase_key);
+	if (!decrypted_node) {
+		gtk_error_dialog("Could not decrypt file");
+		return NULL;
+	}
+	// Create the doc
+	xmlDoc* decrypted_doc = xmlNewDoc(BAD_CAST "1.0"); 
+	xmlDocSetRootElement(decrypted_doc, decrypted_node);
+	return decrypted_doc;
+}
+
+// -------------------------------------------------------------------------------
+//
+// Decrypt an xmlDoc (OLD)
+//
+
+xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	// get the root
 	xmlNode* root = xmlDocGetRootElement(doc);
 	xmlElemDump(stdout, NULL, root);puts("");
