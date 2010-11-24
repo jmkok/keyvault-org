@@ -50,16 +50,16 @@ void read_configuration(tList* config_list) {
 	while(node) {
 		//~ xmlElemDump(stdout, NULL, node);puts("");
 		if (node->type == XML_ELEMENT_NODE) {
-			char* title = NULL;
+			xmlChar* title = NULL;
 			if (xmlIsNodeEncrypted(node))
-				title = (char*)xmlGetProp(node, BAD_CAST "title");
+				title = xmlGetProp(node, BAD_CAST "title");
 			else if (xmlStrEqual(node->name, BAD_CAST "kvo_file"))
-				title = (char*)xmlGetContents(node, BAD_CAST "title");
+				title = xmlGetTextContents(node, BAD_CAST "title");
 			if (title) {
 				// Create a new kvo_file
 				tConfigDescription* config = mallocz(sizeof(tConfigDescription));
 				listAdd(config_list, config);
-				config->title = title;
+				config->title = (char*)title;
 				config->doc = configDoc;
 				config->node = node;
 				char* tmp = (char*)xmlGetProp(node, BAD_CAST "check");
@@ -82,14 +82,14 @@ tFileDescription* node_to_kvo(xmlNode* node) {
 	printf("node_to_kvo(%p)\n",node);
 	assert(node);
 	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
-	kvo->title = (char*)xmlGetContents(node, BAD_CAST "title");
-	kvo->protocol = (char*)xmlGetContents(node, BAD_CAST "protocol");
-	kvo->hostname = (char*)xmlGetContents(node, BAD_CAST "hostname");
-	kvo->port = xmlGetContentsInteger(node, BAD_CAST "port");
-	kvo->username = (char*)xmlGetContents(node, BAD_CAST "username");
-	kvo->password = (char*)xmlGetContents(node, BAD_CAST "password");
-	kvo->filename = (char*)xmlGetContents(node, BAD_CAST "filename");
-	kvo->fingerprint = (char*)xmlGetContentsBase64(node, BAD_CAST "fingerprint");
+	kvo->title = (char*)xmlGetTextContents(node, BAD_CAST "title");
+	kvo->protocol = (char*)xmlGetTextContents(node, BAD_CAST "protocol");
+	kvo->hostname = (char*)xmlGetTextContents(node, BAD_CAST "hostname");
+	kvo->port = xmlGetIntegerContents(node, BAD_CAST "port");
+	kvo->username = (char*)xmlGetTextContents(node, BAD_CAST "username");
+	kvo->password = (char*)xmlGetTextContents(node, BAD_CAST "password");
+	kvo->filename = (char*)xmlGetTextContents(node, BAD_CAST "filename");
+	kvo->fingerprint = (char*)xmlGetBase64Contents(node, BAD_CAST "fingerprint");
 	return kvo;
 }
 
@@ -104,21 +104,21 @@ xmlNode* kvo_to_node(tFileDescription* kvo) {
 	assert(kvo->title);
 	xmlNode* root = xmlNewNode(NULL, BAD_CAST "kvo_file");
 	assert(root);
-	xmlNewChild(root, NULL, BAD_CAST "title", BAD_CAST kvo->title);
+	xmlNewTextChild(root, NULL, BAD_CAST "title", BAD_CAST kvo->title);
 	if (kvo->protocol)
-		xmlNewChild(root, NULL, BAD_CAST "protocol", BAD_CAST kvo->protocol);
+		xmlNewTextChild(root, NULL, BAD_CAST "protocol", BAD_CAST kvo->protocol);
 	if (kvo->hostname)
-		xmlNewChild(root, NULL, BAD_CAST "hostname", BAD_CAST kvo->hostname);
+		xmlNewTextChild(root, NULL, BAD_CAST "hostname", BAD_CAST kvo->hostname);
 	if (kvo->port)
-		xmlNewChildInteger(root, NULL, BAD_CAST "port", kvo->port);
+		xmlNewIntegerChild(root, NULL, BAD_CAST "port", kvo->port);
 	if (kvo->username)
-		xmlNewChild(root, NULL, BAD_CAST "username", BAD_CAST kvo->username);
+		xmlNewTextChild(root, NULL, BAD_CAST "username", BAD_CAST kvo->username);
 	if (kvo->password)
-		xmlNewChild(root, NULL, BAD_CAST "password", BAD_CAST kvo->password);
+		xmlNewTextChild(root, NULL, BAD_CAST "password", BAD_CAST kvo->password);
 	if (kvo->filename)
-		xmlNewChild(root, NULL, BAD_CAST "filename", BAD_CAST kvo->filename);
+		xmlNewTextChild(root, NULL, BAD_CAST "filename", BAD_CAST kvo->filename);
 	if (kvo->fingerprint)
-		xmlNewChildBase64(root, NULL, BAD_CAST "fingerprint", BAD_CAST kvo->fingerprint, 16);
+		xmlNewBase64Child(root, NULL, BAD_CAST "fingerprint", BAD_CAST kvo->fingerprint, 16);
 	return root;
 }
 

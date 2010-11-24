@@ -177,25 +177,25 @@ xmlDoc* xml_doc_encrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	// Store the pbkdf2 setup
 	xmlNode* pbkdf2_node = xmlNewChild(root, NULL, BAD_CAST "pbkdf2", NULL);
 	xmlNewProp(pbkdf2_node, BAD_CAST "salt", BAD_CAST pbkdf2_salt);
-	xmlNewPropInteger(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
+	xmlNewIntegerProp(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
 
 	// Encrypt the data using RC4
 	evp_cipher(EVP_rc4(), xml_text, xml_size, encryption_key, rc4_ivec);
 	xmlNode* encryption_node = xmlNewChild(root, NULL, BAD_CAST "encryption", NULL);
 	xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST "rc4");
-	xmlNewPropBase64(encryption_node, BAD_CAST "ivec", rc4_ivec, 16);
+	xmlNewBase64Prop(encryption_node, BAD_CAST "ivec", rc4_ivec, 16);
 
 	// Encrypt the data using AES_256_OFB
 	evp_cipher(EVP_aes_256_ofb(), xml_text, xml_size, encryption_key, aes_ivec);
 	encryption_node = xmlNewChild(root, NULL, BAD_CAST "encryption", NULL);
 	xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST "aes_256_ofb");
-	xmlNewPropBase64(encryption_node, BAD_CAST "ivec", BAD_CAST aes_ivec, 16);
+	xmlNewBase64Prop(encryption_node, BAD_CAST "ivec", BAD_CAST aes_ivec, 16);
 
 	// Add the encrypted data
 	gchar* tmp=g_base64_encode((unsigned char*)xml_text, xml_size);
-	xmlNode* data = xmlNewChild(root, NULL, BAD_CAST "data", BAD_CAST tmp);
+	xmlNode* data = xmlNewTextChild(root, NULL, BAD_CAST "data", BAD_CAST tmp);
 	g_free(tmp);
-	xmlNewPropInteger(data, BAD_CAST "size", xml_size);
+	xmlNewIntegerProp(data, BAD_CAST "size", xml_size);
 
 	return enc_doc;
 }

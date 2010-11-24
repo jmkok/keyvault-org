@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <libxml/parser.h>
 #include <string.h>
+#include <assert.h>
 
 #include "gtk_treeview.h"
 #include "main.h"
@@ -80,15 +81,18 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 
 		xmlNode* keyvault = data;
 		xmlNode* node = xmlNewChild(keyvault, NULL, BAD_CAST "node", NULL);
-		xmlNewChild(node, NULL, BAD_CAST "id", BAD_CAST id);
-		xmlNewChild(node, NULL, BAD_CAST "title", BAD_CAST title);
-		xmlNewChild(node, NULL, BAD_CAST "username", BAD_CAST username);
-		xmlNewChild(node, NULL, BAD_CAST "password", BAD_CAST password);
-		xmlNewChild(node, NULL, BAD_CAST "url", BAD_CAST url);
-		xmlNewChild(node, NULL, BAD_CAST "info", BAD_CAST info);
-		xmlNewChild(node, NULL, BAD_CAST "group", BAD_CAST group);
-		xmlNewChildInteger(node, NULL, BAD_CAST "time-created", time_created);
-		xmlNewChildInteger(node, NULL, BAD_CAST "time-modified", time_modified);
+		xmlNewTextChild(node, NULL, BAD_CAST "id", BAD_CAST id);
+		xmlNewTextChild(node, NULL, BAD_CAST "title", BAD_CAST title);
+		xmlNewTextChild(node, NULL, BAD_CAST "username", BAD_CAST username);
+		xmlNewTextChild(node, NULL, BAD_CAST "password", BAD_CAST password);
+		if (url)
+			xmlNewTextChild(node, NULL, BAD_CAST "url", BAD_CAST url);
+		if (info)
+			xmlNewTextChild(node, NULL, BAD_CAST "info", BAD_CAST info);
+		if (group)
+			xmlNewTextChild(node, NULL, BAD_CAST "group", BAD_CAST group);
+		xmlNewIntegerChild(node, NULL, BAD_CAST "time-created", time_created);
+		xmlNewIntegerChild(node, NULL, BAD_CAST "time-modified", time_modified);
 
 		g_free(id);
 		g_free(title);
@@ -119,25 +123,38 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 // import an xml text into the treestore
 //
 
-static void xml_contents_into_treestore_column(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIter* iter, int col) {
-	const char* text = (char*)xmlGetContents(node, BAD_CAST name);
+void xml_contents_into_treestore_column(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIter* iter, int col) {
+	xmlChar* text = xmlGetTextContents(node, BAD_CAST name);
 	if ((col == COL_TIME_CREATED) || (col == COL_TIME_MODIFIED))
-		gtk_tree_store_set(treestore, iter, col, time_to_int(text), -1);
+		gtk_tree_store_set(treestore, iter, col, time_to_int((char*)text), -1);
 	else
 		gtk_tree_store_set(treestore, iter, col, text, -1);
+	xmlFree(text);
 }
 
 void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 	debugf("import_treestore_from_xml(%p,%p)\n", treestore, doc);
+	assert(doc);
+	//~ xmlDocFormatDump(stdout, doc, 1);
+	
+	//~ FILE* fp = fopen("debug.xml","w");
+	//~ xmlDocFormatDump(fp, doc, 1);
+	//~ fclose(fp);
+	//~ doc = xmlParseFile("debug.xml");
+
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 
-	// Read all <node> items and place them inthe tree store
-	GtkTreeIter iter;
+	// Get the root
 	xmlNode* root = xmlDocGetRootElement(doc);
+	assert(root);
+	//~ xmlElemDump(stdout, NULL, root);exit(0);
+
+	// Read all <node> items and place them inthe tree store
 	xmlNode* node = root->children;
 	while(node) {
 		if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, BAD_CAST "node")) {
+			GtkTreeIter iter;
 			gtk_tree_store_append(treestore, &iter, NULL);
 			xml_contents_into_treestore_column(node, "id", treestore, &iter, COL_ID);
 			xml_contents_into_treestore_column(node, "title", treestore, &iter, COL_TITLE);
@@ -148,6 +165,10 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 			xml_contents_into_treestore_column(node, "info", treestore, &iter, COL_INFO);
 			xml_contents_into_treestore_column(node, "time-created", treestore, &iter, COL_TIME_CREATED);
 			xml_contents_into_treestore_column(node, "time-modified", treestore, &iter, COL_TIME_MODIFIED);
+		}
+		else {
+			printf("NODE: %s\n",node->name);
+			//~ xmlElemDump(stdout, NULL, node);
 		}
 		node = node->next;
 	}
