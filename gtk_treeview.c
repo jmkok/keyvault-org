@@ -137,10 +137,12 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 	assert(doc);
 	//~ xmlDocFormatDump(stdout, doc, 1);
 	
+	// TODO: When writing an intermediate file to disk it all works !!!
 	//~ FILE* fp = fopen("debug.xml","w");
 	//~ xmlDocFormatDump(fp, doc, 1);
 	//~ fclose(fp);
 	//~ doc = xmlParseFile("debug.xml");
+	exit(1);
 
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
