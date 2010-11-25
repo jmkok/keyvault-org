@@ -2,7 +2,7 @@
 #include "gtk_shortcuts.h"
 #include "functions.h"
 
-GtkWidget* gtk_add_labeled_entry(GtkWidget* vbox, gchar* title, gchar* value) {
+GtkWidget* gtk_add_labeled_entry(GtkWidget* vbox, const gchar* title, const gchar* value) {
 	/* 1. Add the label. */
 	GtkWidget* label = gtk_label_new(title);
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
@@ -18,14 +18,14 @@ GtkWidget* gtk_add_labeled_entry(GtkWidget* vbox, gchar* title, gchar* value) {
 	return entry;
 }
 
-GtkWidget* gtk_add_label(GtkWidget* vbox,gchar* title) {
+GtkWidget* gtk_add_label(GtkWidget* vbox, const gchar* title) {
 	GtkWidget* label = gtk_label_new(title);
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox), label , FALSE, TRUE, 1);
 	return label;
 }
 
-GtkWidget* gtk_add_entry(GtkWidget* vbox,gchar* value) {
+GtkWidget* gtk_add_entry(GtkWidget* vbox, const gchar* value) {
 	GtkWidget* entry = gtk_entry_new();
 	if (value)
 		gtk_entry_set_text(GTK_ENTRY(entry),value);
@@ -39,18 +39,18 @@ GtkWidget* gtk_add_separator(GtkWidget* parent) {
 	return separator;
 }
 
-void gtk_remove_menu_item(GtkWidget* menu_item, GtkWidget* parent) {
+void gtk_remove_menu_item(GtkWidget* UNUSED(menu_item), GtkWidget* UNUSED(parent)) {
 	todo();
 }
 
-GtkWidget* gtk_add_menu_item(GtkWidget* parent, gchar* title) {
+GtkWidget* gtk_add_menu_item(GtkWidget* parent, const gchar* title) {
 	GtkWidget* menu_item = gtk_menu_item_new_with_label(title);
 	gtk_menu_item_set_use_underline(GTK_MENU_ITEM(menu_item),TRUE);
 	gtk_menu_shell_append(GTK_MENU_SHELL(parent),menu_item);
 	return menu_item;
 }
 
-GtkWidget* gtk_add_menu_item_clickable(GtkWidget* parent, gchar* title, GCallback callback_f, void* ptr) {
+GtkWidget* gtk_add_menu_item_clickable(GtkWidget* parent, const gchar* title, GCallback callback_f, void* ptr) {
 	GtkWidget* menu_item = gtk_menu_item_new_with_label(title);
 	gtk_menu_item_set_use_underline(GTK_MENU_ITEM(menu_item),TRUE);
 	gtk_menu_shell_append(GTK_MENU_SHELL(parent),menu_item);
@@ -58,7 +58,7 @@ GtkWidget* gtk_add_menu_item_clickable(GtkWidget* parent, gchar* title, GCallbac
 	return menu_item;
 }
 
-GtkWidget* gtk_add_menu(GtkWidget* parent, gchar* title) {
+GtkWidget* gtk_add_menu(GtkWidget* parent, const gchar* title) {
 	GtkWidget* menu_item = gtk_menu_item_new_with_label(title);
 	gtk_menu_item_set_use_underline(GTK_MENU_ITEM(menu_item),TRUE);
 	gtk_menu_shell_append(GTK_MENU_SHELL(parent),menu_item);

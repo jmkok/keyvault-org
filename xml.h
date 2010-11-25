@@ -1,6 +1,9 @@
 #ifndef _xml_h_
 #define _xml_h_
 
+#define CONST_BAD_CAST XML_CHAR
+#define XML_CHAR (const xmlChar*)
+
 xmlNode* xmlFindNode(xmlNode* root_node, const xmlChar* name, int depth);
 
 xmlChar* xmlGetTextContents(xmlNode* root_node, const xmlChar* name);

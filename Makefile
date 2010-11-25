@@ -5,6 +5,7 @@
 # - libssh2-1-dev
 # Documentation
 # - http://library.gnome.org/devel/gtk/stable/
+# - http://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 
 TARG=keyvault
 SRCS=main.c \
@@ -13,7 +14,9 @@ SRCS=main.c \
 OBJS=$(SRCS:.c=.o)
 LIBRARIES=glib-2.0 gtk+-2.0 libxml-2.0 openssl libssh2
 #~ CROSS=-m32
-CFLAGS=$(CROSS) `pkg-config --cflags $(LIBRARIES)` -Wall -Werror
+CFLAGS=$(CROSS) `pkg-config --cflags $(LIBRARIES)` -Wall
+CFLAGS+=-Wextra -Werror -Wshadow -Wcast-qual -Wwrite-strings
+#~ CFLAGS+=-pedantic
 LIBS=$(CROSS) `pkg-config --libs $(LIBRARIES)`
 
 all: $(TARG)

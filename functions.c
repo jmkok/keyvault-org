@@ -21,7 +21,7 @@
 //~ }
 
 void hexdump(const void* ptr, int len) {
-	volatile unsigned int i,j;
+	int i,j;
 	const unsigned char* data = ptr;
 	for (i=0;i<len;i+=16) {
 		printf("0x%04zX:",(ssize_t)&data[i]-(ssize_t)ptr);
@@ -58,19 +58,6 @@ void bin2hex(char* dst,const char* src,int len) {
 		if (*dst) strcat(dst," ");			
 		sprintf(dst+strlen(dst),"%02X",(unsigned char)src[i]);
 	}
-}
-
-// -----------------------------------------------------------
-//
-// hex2bin
-//
-
-void hex2bin(char* dst,const char* src,int len) {
-	//~ int i;
-	//~ for (i=0;i<len;i++) {
-		//~ if (*dst) strcat(dst," ");			
-		//~ sprintf(dst+strlen(dst),"%02X",(unsigned char)src[i]);
-	//~ }
 }
 
 // -----------------------------------------------------------

@@ -28,9 +28,9 @@ void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer,size_t length, con
 
 	// Encrypt the data
 	if(EVP_EncryptUpdate(&ctx, outbuf, &outlen, buffer, length) == 0)
-		exit(1);
+		die("EVP_EncryptUpdate");
 	if(EVP_EncryptFinal_ex(&ctx, outbuf + outlen, &tmplen) == 0)
-		exit(1);
+		die("EVP_EncryptFinal_ex");
 
 	// Cleanup
 	EVP_CIPHER_CTX_cleanup(&ctx);
@@ -133,7 +133,7 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 		return NULL;
 	}
 	// Create the doc
-	xmlDoc* encrypted_doc = xmlNewDoc(BAD_CAST "1.0"); 
+	xmlDoc* encrypted_doc = xmlNewDoc(CONST_BAD_CAST "1.0"); 
 	xmlDocSetRootElement(encrypted_doc, encrypted_node);
 	return encrypted_doc;
 }
@@ -151,11 +151,11 @@ xmlDoc* xml_doc_encrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	xmlDocDumpFormatMemory(doc, &xml_text, &xml_size, 1);
 
 	// Create the doc
-	xmlDoc* enc_doc = xmlNewDoc(BAD_CAST "1.0"); 
+	xmlDoc* enc_doc = xmlNewDoc(CONST_BAD_CAST "1.0"); 
 
 	// Create the root of the doc
-	xmlNode* root = xmlNewNode(NULL, BAD_CAST "keyvault");
-	xmlNewProp(root, BAD_CAST "encrypted", BAD_CAST "yes");
+	xmlNode* root = xmlNewNode(NULL, CONST_BAD_CAST "keyvault");
+	xmlNewProp(root, CONST_BAD_CAST "encrypted", CONST_BAD_CAST "yes");
 	xmlDocSetRootElement(enc_doc, root);
 
 	// PBKDF2 the passphrase
@@ -164,7 +164,7 @@ xmlDoc* xml_doc_encrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	u_char encryption_key[32];
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(
-			(char*)passphrase_key, 32,
+			(const char*)passphrase_key, 32,
 			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
 			pbkdf2_rounds, 32, encryption_key);
 	}
@@ -175,27 +175,27 @@ xmlDoc* xml_doc_encrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	hexdump(encryption_key,32);
 
 	// Store the pbkdf2 setup
-	xmlNode* pbkdf2_node = xmlNewChild(root, NULL, BAD_CAST "pbkdf2", NULL);
-	xmlNewProp(pbkdf2_node, BAD_CAST "salt", BAD_CAST pbkdf2_salt);
-	xmlNewIntegerProp(pbkdf2_node, BAD_CAST "rounds", pbkdf2_rounds);
+	xmlNode* pbkdf2_node = xmlNewChild(root, NULL, CONST_BAD_CAST "pbkdf2", NULL);
+	xmlNewProp(pbkdf2_node, CONST_BAD_CAST "salt", BAD_CAST pbkdf2_salt);
+	xmlNewIntegerProp(pbkdf2_node, CONST_BAD_CAST "rounds", pbkdf2_rounds);
 
 	// Encrypt the data using RC4
 	evp_cipher(EVP_rc4(), xml_text, xml_size, encryption_key, rc4_ivec);
-	xmlNode* encryption_node = xmlNewChild(root, NULL, BAD_CAST "encryption", NULL);
-	xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST "rc4");
-	xmlNewBase64Prop(encryption_node, BAD_CAST "ivec", rc4_ivec, 16);
+	xmlNode* encryption_node = xmlNewChild(root, NULL, CONST_BAD_CAST "encryption", NULL);
+	xmlNewProp(encryption_node, CONST_BAD_CAST "cipher", CONST_BAD_CAST "rc4");
+	xmlNewBase64Prop(encryption_node, CONST_BAD_CAST "ivec", rc4_ivec, 16);
 
 	// Encrypt the data using AES_256_OFB
 	evp_cipher(EVP_aes_256_ofb(), xml_text, xml_size, encryption_key, aes_ivec);
-	encryption_node = xmlNewChild(root, NULL, BAD_CAST "encryption", NULL);
-	xmlNewProp(encryption_node, BAD_CAST "cipher", BAD_CAST "aes_256_ofb");
-	xmlNewBase64Prop(encryption_node, BAD_CAST "ivec", BAD_CAST aes_ivec, 16);
+	encryption_node = xmlNewChild(root, NULL, CONST_BAD_CAST "encryption", NULL);
+	xmlNewProp(encryption_node, CONST_BAD_CAST "cipher", CONST_BAD_CAST "aes_256_ofb");
+	xmlNewBase64Prop(encryption_node, CONST_BAD_CAST "ivec", BAD_CAST aes_ivec, 16);
 
 	// Add the encrypted data
 	gchar* tmp=g_base64_encode((unsigned char*)xml_text, xml_size);
-	xmlNode* data = xmlNewTextChild(root, NULL, BAD_CAST "data", BAD_CAST tmp);
+	xmlNode* data = xmlNewTextChild(root, NULL, CONST_BAD_CAST "data", BAD_CAST tmp);
 	g_free(tmp);
-	xmlNewIntegerProp(data, BAD_CAST "size", xml_size);
+	xmlNewIntegerProp(data, CONST_BAD_CAST "size", xml_size);
 
 	return enc_doc;
 }
@@ -213,7 +213,7 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 		return NULL;
 	}
 	// Create the doc
-	xmlDoc* decrypted_doc = xmlNewDoc(BAD_CAST "1.0"); 
+	xmlDoc* decrypted_doc = xmlNewDoc(CONST_BAD_CAST "1.0"); 
 	xmlDocSetRootElement(decrypted_doc, decrypted_node);
 	return decrypted_doc;
 }
@@ -229,18 +229,18 @@ xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	xmlElemDump(stdout, NULL, root);puts("");
 
 	// Test to see if it is encrypted anyway
-	xmlChar* encrypted = xmlGetProp(root, BAD_CAST "encrypted");
+	xmlChar* encrypted = xmlGetProp(root, CONST_BAD_CAST "encrypted");
 	if (!encrypted)
 		return doc;
 	xmlFree(encrypted);
 
 	// Get the data node
-	xmlNode* data_node = xmlFindNode(root, BAD_CAST "data", 0);
+	xmlNode* data_node = xmlFindNode(root, CONST_BAD_CAST "data", 0);
 	if (!data_node)
 		return doc;
 
 	// Read the data for this node
-	char* size_text = (char*)xmlGetProp(data_node, BAD_CAST "size");
+	char* size_text = (char*)xmlGetProp(data_node, CONST_BAD_CAST "size");
 	int size = atol(size_text);
 	printf("size: %u\n", size);
 
@@ -251,11 +251,11 @@ xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	printf("data_len: %i\n", (int)data_len);	// Casting to (int) prevents warnings on 32/64 systems
 
 	// Read the PBKDF2 proporties
-	xmlNode* pbkdf2_node = xmlFindNode(root, BAD_CAST "pbkdf2", 0);
+	xmlNode* pbkdf2_node = xmlFindNode(root, CONST_BAD_CAST "pbkdf2", 0);
 	assert(pbkdf2_node);
-	char* pbkdf2_salt = (char*)xmlGetProp(pbkdf2_node, BAD_CAST "salt");
+	char* pbkdf2_salt = (char*)xmlGetProp(pbkdf2_node, CONST_BAD_CAST "salt");
 	assert(pbkdf2_salt);
-	char* pbkdf2_rounds_text = (char*)xmlGetProp(pbkdf2_node, BAD_CAST "rounds");
+	char* pbkdf2_rounds_text = (char*)xmlGetProp(pbkdf2_node, CONST_BAD_CAST "rounds");
 	assert(pbkdf2_rounds_text);
 	int pbkdf2_rounds = atol(pbkdf2_rounds_text);
 	
@@ -263,7 +263,7 @@ xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	u_char encryption_key[32];
 	if (pbkdf2_rounds) {
 		PKCS5_PBKDF2_HMAC_SHA1(
-			(char*)passphrase_key, 32,
+			(const char*)passphrase_key, 32,
 			(unsigned char*)pbkdf2_salt, strlen(pbkdf2_salt), 
 			pbkdf2_rounds, 32, encryption_key);
 	}
@@ -275,15 +275,15 @@ xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 	xmlNode* node = root->children;
 	while(node) {
 		printf("> %s\n",node->name);
-		if (node->type == XML_ELEMENT_NODE && xmlStrEqual(node->name, BAD_CAST "encryption")) {
-			xmlChar* cipher = xmlGetProp(node, BAD_CAST "cipher");
-			char* ivec_base64 = (char*)xmlGetProp(node, BAD_CAST "ivec");
+		if (node->type == XML_ELEMENT_NODE && xmlStrEqual(node->name, CONST_BAD_CAST "encryption")) {
+			xmlChar* cipher = xmlGetProp(node, CONST_BAD_CAST "cipher");
+			char* ivec_base64 = (char*)xmlGetProp(node, CONST_BAD_CAST "ivec");
 			gsize ivec_len;
 			unsigned char* ivec = g_base64_decode(ivec_base64, &ivec_len);
 			printf("ivec"); hexdump(ivec, (int)ivec_len);
-			if (xmlStrEqual(cipher, BAD_CAST "rc4"))
+			if (xmlStrEqual(cipher, CONST_BAD_CAST "rc4"))
 				evp_cipher(EVP_rc4(), data, data_len, encryption_key, ivec);
-			if (xmlStrEqual(cipher, BAD_CAST "aes_256_ofb"))
+			if (xmlStrEqual(cipher, CONST_BAD_CAST "aes_256_ofb"))
 				evp_cipher(EVP_aes_256_ofb(), data, data_len, encryption_key, ivec);
 			xmlFree(cipher);
 		}
@@ -300,6 +300,6 @@ xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 extern void pkcs5_pbkdf2_hmac_sha1(const char* passphrase, const char* salt, int rounds, unsigned char key[32]) {
 	PKCS5_PBKDF2_HMAC_SHA1(
 		passphrase, strlen(passphrase),
-		(unsigned char*)salt, strlen(salt), 
+		(const unsigned char*)salt, strlen(salt), 
 		rounds, 32, key);
 }

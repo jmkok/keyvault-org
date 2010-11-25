@@ -27,17 +27,17 @@ static long int time_to_int(const char* text) {
 	if (!text || !*text)
 		return time(0);
 	if (strchr(text,':') || strchr(text,'-')) {
-		struct tm* time = mallocz(sizeof(struct tm));
-		int retval = sscanf(text,"%d-%d-%d %d:%d:%d",&time->tm_mday, &time->tm_mon, &time->tm_year, &time->tm_hour, &time->tm_min, &time->tm_sec);
+		struct tm* xtime = mallocz(sizeof(struct tm));
+		int retval = sscanf(text,"%d-%d-%d %d:%d:%d",&xtime->tm_mday, &xtime->tm_mon, &xtime->tm_year, &xtime->tm_hour, &xtime->tm_min, &xtime->tm_sec);
 		if ((retval == 3) || (retval == 6)) {
-			time->tm_mon--;
-			time->tm_year-=1900;
-			//~ printf("date: %02d-%02d-%04d\n", time->tm_mday, time->tm_mon+1, time->tm_year+1900);
-			//~ printf("time: %02d:%02d:%02d\n", time->tm_hour, time->tm_min, time->tm_sec);
+			xtime->tm_mon--;
+			xtime->tm_year-=1900;
+			//~ printf("date: %02d-%02d-%04d\n", xtime->tm_mday, xtime->tm_mon+1, xtime->tm_year+1900);
+			//~ printf("time: %02d:%02d:%02d\n", xtime->tm_hour, xtime->tm_min, xtime->tm_sec);
 			//~ char tmp[32];
-			//~ asctime_r(time,tmp);
+			//~ asctime_r(xtime,tmp);
 			//~ printf("asctime(): %s\n", tmp);
-			time_t unix_time = mktime(time);
+			time_t unix_time = mktime(xtime);
 			//~ printf("unix_time: %ld\n", unix_time);
 			return unix_time;
 		}
@@ -56,7 +56,7 @@ static long int time_to_int(const char* text) {
 xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 	debugf("export_treestore_to_xml(%p)\n", treestore);
 	// Callback per treenode
-	gboolean treenode_to_xml(GtkTreeModel *model, GtkTreePath *path, GtkTreeIter *iter, gpointer data) {
+	gboolean treenode_to_xml(GtkTreeModel *model, GtkTreePath* UNUSED(path), GtkTreeIter *iter, gpointer data) {
 		char* id;
 		char* title;
 		char* username;
@@ -80,19 +80,19 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 			-1);
 
 		xmlNode* keyvault = data;
-		xmlNode* node = xmlNewChild(keyvault, NULL, BAD_CAST "node", NULL);
-		xmlNewTextChild(node, NULL, BAD_CAST "id", BAD_CAST id);
-		xmlNewTextChild(node, NULL, BAD_CAST "title", BAD_CAST title);
-		xmlNewTextChild(node, NULL, BAD_CAST "username", BAD_CAST username);
-		xmlNewTextChild(node, NULL, BAD_CAST "password", BAD_CAST password);
+		xmlNode* node = xmlNewChild(keyvault, NULL, XML_CHAR "node", NULL);
+		xmlNewTextChild(node, NULL, XML_CHAR "id", BAD_CAST id);
+		xmlNewTextChild(node, NULL, XML_CHAR "title", BAD_CAST title);
+		xmlNewTextChild(node, NULL, XML_CHAR "username", BAD_CAST username);
+		xmlNewTextChild(node, NULL, XML_CHAR "password", BAD_CAST password);
 		if (url)
-			xmlNewTextChild(node, NULL, BAD_CAST "url", BAD_CAST url);
+			xmlNewTextChild(node, NULL, XML_CHAR "url", BAD_CAST url);
 		if (info)
-			xmlNewTextChild(node, NULL, BAD_CAST "info", BAD_CAST info);
+			xmlNewTextChild(node, NULL, XML_CHAR "info", BAD_CAST info);
 		if (group)
-			xmlNewTextChild(node, NULL, BAD_CAST "group", BAD_CAST group);
-		xmlNewIntegerChild(node, NULL, BAD_CAST "time-created", time_created);
-		xmlNewIntegerChild(node, NULL, BAD_CAST "time-modified", time_modified);
+			xmlNewTextChild(node, NULL, XML_CHAR "group", BAD_CAST group);
+		xmlNewIntegerChild(node, NULL, XML_CHAR "time-created", time_created);
+		xmlNewIntegerChild(node, NULL, XML_CHAR "time-modified", time_modified);
 
 		g_free(id);
 		g_free(title);
@@ -105,10 +105,10 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 	}
 
 	// Create the xml container
-	xmlDoc* doc = xmlNewDoc(BAD_CAST "1.0");
+	xmlDoc* doc = xmlNewDoc(XML_CHAR "1.0");
 
 	// Create the root node
-	xmlNode* keyvault = xmlNewNode(NULL, BAD_CAST "keyvault");
+	xmlNode* keyvault = xmlNewNode(NULL, XML_CHAR "keyvault");
 	xmlDocSetRootElement(doc, keyvault);
 
 	// Foreach node call "treenode_to_xml" and store the node into the <keyvault> element
@@ -123,8 +123,8 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 // import an xml text into the treestore
 //
 
-void xml_contents_into_treestore_column(xmlNode* node, char* name, GtkTreeStore* treestore, GtkTreeIter* iter, int col) {
-	xmlChar* text = xmlGetTextContents(node, BAD_CAST name);
+void xml_contents_into_treestore_column(xmlNode* node, const char* name, GtkTreeStore* treestore, GtkTreeIter* iter, int col) {
+	xmlChar* text = xmlGetTextContents(node, CONST_BAD_CAST name);
 	if ((col == COL_TIME_CREATED) || (col == COL_TIME_MODIFIED))
 		gtk_tree_store_set(treestore, iter, col, time_to_int((char*)text), -1);
 	else
@@ -155,7 +155,7 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 	// Read all <node> items and place them inthe tree store
 	xmlNode* node = root->children;
 	while(node) {
-		if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, BAD_CAST "node")) {
+		if ((node->type == XML_ELEMENT_NODE) && xmlStrEqual(node->name, XML_CHAR "node")) {
 			GtkTreeIter iter;
 			gtk_tree_store_append(treestore, &iter, NULL);
 			xml_contents_into_treestore_column(node, "id", treestore, &iter, COL_ID);
@@ -204,7 +204,7 @@ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIte
 void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
 	debugf("export_treestore_to_csv(%p,'%s')\n", treestore, filename);
 	// Callback per treenode
-	gboolean treenode_to_csv(GtkTreeModel *model, GtkTreePath *path, GtkTreeIter *iter, gpointer data) {
+	gboolean treenode_to_csv(GtkTreeModel *model, GtkTreePath* UNUSED(path), GtkTreeIter *iter, gpointer data) {
 		FILE* fh = data;
 		char* id;
 		char* title;
