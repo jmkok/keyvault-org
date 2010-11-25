@@ -127,7 +127,7 @@ unsigned int random_integer(unsigned int max) {
 
 xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	xmlNode* root = xmlDocGetRootElement(doc);
-	xmlNode* encrypted_node = xmlNodeEncrypt(root, passphrase_key, NULL);
+	xmlNode* encrypted_node = xmlNodeEncrypt(root, passphrase_key, "rc4,aes_256_ofb");
 	if (!encrypted_node) {
 		gtk_dialog_error("Could not encrypt file");
 		return NULL;

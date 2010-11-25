@@ -114,7 +114,7 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 	xmlBuffer* xbuf = xmlBufferCreate();
 	xmlNodeDump(xbuf, NULL, node, 0, 1);
 	if (!protocols)
-		protocols = "rc4,aes_128_ofb";
+		protocols = "aes_256_ofb";
 
 	// Create the "vault" node
 	xmlNode* enode = xmlNewNode(NULL, XML_NODE_NAME);
@@ -225,12 +225,17 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase[32]) {
 	}
 
 	// Convert the xml text into an xmlNode object
+	//~ xmlNewDocNode
 	xmlDoc* doc = xmlReadDoc(data,NULL,NULL,0);
-	//~ xmlDocFormatDump(stdout, doc, 1);
-	xmlNode* xnode = xmlDocGetRootElement(doc);
-	xmlUnlinkNode(xnode);
-	xmlFreeDoc(doc);
-	return xnode;
+	xmlNode* node_decrypted = xmlDocGetRootElement(doc);
+
+	// Unlink the node from the doc
+	xmlUnlinkNode(node_decrypted);
+	
+	// Free the parent doc (DO NOT DO THIS AS IT INVALIDATES THE NODE - EVEN IF WE UNLINKED IT)
+	//~ xmlFreeDoc(doc);
+
+	return node_decrypted;
 }
 
 // -------------------------------------------------------------------------------
@@ -409,7 +414,7 @@ void encryption_test(void) {
 		xmlNewChild(node, NULL, CONST_BAD_CAST "title", CONST_BAD_CAST "Title 1");
 		xmlNewChild(node, NULL, CONST_BAD_CAST "title", CONST_BAD_CAST "Title 2");
 		if (i==1) {
-			xmlNode* new = xmlNodeEncrypt(node, pass, "rc4,aes_128_ofb");
+			xmlNode* new = xmlNodeEncrypt(node, pass, "rc4,aes_256_ofb");
 			xmlReplaceNode(node, new);
 			xmlFreeNode(node);
 		}

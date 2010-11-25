@@ -1111,7 +1111,7 @@ int create_main_window(const char* default_filename) {
 		load_from_file(default_filename, td->treestore);
 
 	// Warn once
-	gtk_dialog_error("WARNING X");
+	//~ gtk_dialog_error("WARNING X");
 
 	// Run the app
   gtk_main();
