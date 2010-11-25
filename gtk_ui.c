@@ -1111,7 +1111,16 @@ int create_main_window(const char* default_filename) {
 		load_from_file(default_filename, td->treestore);
 
 	// Warn once
-	//~ gtk_dialog_error("WARNING X");
+	FILE* once = fopen(".keyvault-warning.once","r");
+	if (!once) {
+		gtk_dialog_error("WARNING: This software is very much in development.\nKeep an plain text version around somehwere\nFor example in a truecrypt drive\nThis warning will not be shown again");
+		once = fopen(".keyvault-warning.once","w");
+		if (once)
+			fclose(once);
+	}
+	else {
+		fclose(once);
+	}
 
 	// Run the app
   gtk_main();
