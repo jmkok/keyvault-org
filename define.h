@@ -5,6 +5,8 @@
 #define todo() printf("<%s:%u> TODO\n",__FILE__,__LINE__)
 #define die(args...) do {printf("<%s:%u> ERROR: ",__FILE__,__LINE__);printf(args);printf("\n");exit(1);} while(0)
 #define debugf(args...) printf(args)
-#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+
+// UNUSED items are not allowed to be used !!!
+#define UNUSED __attribute__((unused deprecated))
 
 #endif

@@ -56,7 +56,7 @@ static long int time_to_int(const char* text) {
 xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 	debugf("export_treestore_to_xml(%p)\n", treestore);
 	// Callback per treenode
-	gboolean treenode_to_xml(GtkTreeModel *model, GtkTreePath* UNUSED(path), GtkTreeIter *iter, gpointer data) {
+	gboolean treenode_to_xml(GtkTreeModel *model, UNUSED GtkTreePath* path, GtkTreeIter *iter, gpointer data) {
 		char* id;
 		char* title;
 		char* username;
@@ -204,7 +204,7 @@ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIte
 void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
 	debugf("export_treestore_to_csv(%p,'%s')\n", treestore, filename);
 	// Callback per treenode
-	gboolean treenode_to_csv(GtkTreeModel *model, GtkTreePath* UNUSED(path), GtkTreeIter *iter, gpointer data) {
+	gboolean treenode_to_csv(GtkTreeModel *model, UNUSED GtkTreePath* path, GtkTreeIter *iter, gpointer data) {
 		FILE* fh = data;
 		char* id;
 		char* title;

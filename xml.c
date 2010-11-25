@@ -141,7 +141,7 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 	xmlNewIntegerProp(pbkdf2_node, CONST_BAD_CAST "rounds", pbkdf2_rounds);
 
 	// The cipher functions
-	void evp_cipher_protocol(tList* UNUSED(list), void* data) {
+	void evp_cipher_protocol(UNUSED tList* list, void* data) {
 		char* protocol = data;
 		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
 		unsigned char* ivec = malloc_random(16);

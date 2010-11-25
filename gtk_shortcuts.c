@@ -39,7 +39,7 @@ GtkWidget* gtk_add_separator(GtkWidget* parent) {
 	return separator;
 }
 
-void gtk_remove_menu_item(GtkWidget* UNUSED(menu_item), GtkWidget* UNUSED(parent)) {
+void gtk_remove_menu_item(UNUSED GtkWidget* menu_item, UNUSED GtkWidget* parent) {
 	todo();
 }
 

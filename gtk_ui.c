@@ -165,7 +165,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 // MENU: file -> open
 //
 
-static void menu_file_open(GtkWidget* UNUSED(widget), gpointer treestore_ptr)
+static void menu_file_open(UNUSED GtkWidget* widget, gpointer treestore_ptr)
 {
 	gchar* filename=dialog_open_file(GTK_WINDOW(main_window), 0);
 	if (filename) {
@@ -250,7 +250,7 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 	}
 }
 
-static void menu_file_open_ssh(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void menu_file_open_ssh(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	// Create a new kvo file
 	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
 	// Let the use fill in all required fields...
@@ -267,7 +267,7 @@ static void menu_file_open_ssh(GtkWidget* UNUSED(widget), gpointer UNUSED(data))
 //
 // Save (and edit) a recently used KVO file
 //
-static void menu_save_recent_file(GtkWidget* UNUSED(widget), gpointer config_pointer) {
+static void menu_save_recent_file(UNUSED GtkWidget* widget, gpointer config_pointer) {
 	tConfigDescription* config = config_pointer;
 	tFileDescription* kvo = NULL;
 	while (!kvo) {
@@ -329,7 +329,7 @@ static void menu_save_recent_file(GtkWidget* UNUSED(widget), gpointer config_poi
 	}
 }
 
-static void menu_file_save_ssh(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void menu_file_save_ssh(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	// Create a new kvo file
 	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
 	// Let the use fill in all required fields...
@@ -377,7 +377,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 // MENU: file -> save as
 //
 
-static void menu_file_save_as(GtkWidget* UNUSED(widget), gpointer treestore_ptr)
+static void menu_file_save_as(UNUSED GtkWidget* widget, gpointer treestore_ptr)
 {
 	gchar* filename = dialog_save_file(GTK_WINDOW(main_window), 0);
 	if (filename) {
@@ -408,7 +408,7 @@ static void menu_file_save(GtkWidget *widget, gpointer ptr)
 // MENU: file -> import
 //
 
-static void menu_file_import(GtkWidget* UNUSED(widget), gpointer treestore_ptr)
+static void menu_file_import(UNUSED GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
 	gchar* filename = dialog_open_file(GTK_WINDOW(main_window), 2);
@@ -429,7 +429,7 @@ static void menu_file_import(GtkWidget* UNUSED(widget), gpointer treestore_ptr)
 // MENU: file -> export
 //
 
-static void menu_file_export(GtkWidget* UNUSED(widget), gpointer treestore_ptr)
+static void menu_file_export(UNUSED GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
 	gtk_error_dialog("You are about to save your information unencrypted");
@@ -455,7 +455,7 @@ static void menu_file_export(GtkWidget* UNUSED(widget), gpointer treestore_ptr)
 // Launch the URL
 //
 
-void click_launch_button(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+void click_launch_button(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	const gchar* url=gtk_entry_get_text(GTK_ENTRY(url_entry));
 	printf("Launch: %s\n",url);
 	char* cmd = malloc(strlen(url) + 64);
@@ -477,7 +477,7 @@ static void treemodel_filter_change(GtkWidget *widget, gpointer ptr) {
 	gtk_tree_model_filter_refilter(treefilter);
 }
 
-static void clear_filter(GtkEntry *entry, GtkEntryIconPosition UNUSED(icon_pos), GdkEvent* UNUSED(event), gpointer UNUSED(user_data)) {
+static void clear_filter(GtkEntry *entry, UNUSED GtkEntryIconPosition icon_pos, UNUSED GdkEvent* event, UNUSED gpointer user_data) {
 	gtk_entry_set_text(entry,"");
 }
 
@@ -486,7 +486,7 @@ static void clear_filter(GtkEntry *entry, GtkEntryIconPosition UNUSED(icon_pos),
 // Any changes made to the edit fields should be written into the tree store
 //
 
-void write_changes_to_treestore(GtkWidget* UNUSED(widget), gpointer selection) {
+void write_changes_to_treestore(UNUSED GtkWidget* widget, gpointer selection) {
   GtkTreeIter filter_iter;
   GtkTreeModel* filter_model;
 	GtkTreeIter child_iter;
@@ -519,7 +519,7 @@ void write_changes_to_treestore(GtkWidget* UNUSED(widget), gpointer selection) {
 // Load "save.kvo"
 //
 
-static void menu_test_quick_load(GtkWidget* UNUSED(widget), gpointer treestore_ptr) {
+static void menu_test_quick_load(UNUSED GtkWidget* widget, gpointer treestore_ptr) {
 	GtkTreeStore* treestore = treestore_ptr;
 	load_from_file("test.kvo", treestore);
 }
@@ -529,7 +529,7 @@ static void menu_test_quick_load(GtkWidget* UNUSED(widget), gpointer treestore_p
 // Save "save.kvo"
 //
 
-static void menu_test_quick_save(GtkWidget* UNUSED(widget), gpointer treestore_ptr) {
+static void menu_test_quick_save(UNUSED GtkWidget* widget, gpointer treestore_ptr) {
 	GtkTreeStore* treestore = treestore_ptr;
 	save_to_file("test.kvo", treestore);
 }
@@ -539,7 +539,7 @@ static void menu_test_quick_save(GtkWidget* UNUSED(widget), gpointer treestore_p
 // Create a random password
 //
 
-static void click_random_password(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void click_random_password(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	gchar* password = create_random_password(12);
 	gtk_entry_set_text(GTK_ENTRY(password_entry),password);
 	g_free(password);
@@ -550,7 +550,7 @@ static void click_random_password(GtkWidget* UNUSED(widget), gpointer UNUSED(dat
 // Add a new item
 //
 
-static void click_add_item(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void click_add_item(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	GtkTreeIter iter;
 	// Insert a new record with a random password
 	gchar* password = create_random_password(12);
@@ -563,11 +563,11 @@ static void click_add_item(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
 	gtk_tree_selection_select_iter(selection, &iter);
 }
 
-static void click_copy_username(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void click_copy_username(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	printf("click_copy_username\n");
 }
 
-static void click_copy_password(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void click_copy_password(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	printf("click_copy_password\n");
 }
 
@@ -576,12 +576,12 @@ static void click_copy_password(GtkWidget* UNUSED(widget), gpointer UNUSED(data)
 // Show and hide the contents of the password field
 //
 
-static void focus_in_password(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void focus_in_password(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	//~ GtkWidget*
 	gtk_entry_set_visibility(GTK_ENTRY(password_entry), TRUE);
 }
 
-static void focus_out_password(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+static void focus_out_password(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	//~ GtkWidget*
 	gtk_entry_set_visibility(GTK_ENTRY(password_entry), FALSE);
 }
@@ -592,7 +592,7 @@ static void focus_out_password(GtkWidget* UNUSED(widget), gpointer UNUSED(data))
 // http://library.gnome.org/devel/gtk/stable/gtk-migrating-checklist.html#checklist-popup-menu
 //
 
-static void do_popup_menu (GtkWidget* UNUSED(widget), GdkEventButton *event) {
+static void do_popup_menu (UNUSED GtkWidget* widget, GdkEventButton *event) {
 	int button, event_time;
 
 	if (event) {
@@ -626,7 +626,7 @@ static gboolean my_widget_popup_menu_handler (GtkWidget *widget) {
 // Request the user for a passphrase
 //
 
-void menu_test_passphrase(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+void menu_test_passphrase(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	gchar* passphrase = gtk_password_dialog(NULL,"Enter passphrase");
 	g_printf("passphrase: %s\n",passphrase);
 	g_free(passphrase);
@@ -637,7 +637,7 @@ void menu_test_passphrase(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
 // Request the user for a new passphrase
 //
 
-void menu_edit_change_passphrase(GtkWidget* UNUSED(widget), gpointer UNUSED(data)) {
+void menu_edit_change_passphrase(UNUSED GtkWidget* widget, UNUSED gpointer data) {
 	int err = gtk_request_passphrase();
 	if (err)
 		passphrase_valid = 0;
@@ -652,14 +652,14 @@ void menu_edit_change_passphrase(GtkWidget* UNUSED(widget), gpointer UNUSED(data
 
 static void update_recent_list(tList* config_list) {
 	// First remove all items in the recent menu
-	void cb_remove_menu_item(GtkWidget* menu_item, gpointer UNUSED(data)) {
+	void cb_remove_menu_item(GtkWidget* menu_item, UNUSED gpointer data) {
 		gtk_remove_menu_item(open_recent_menu, menu_item);
 	}
 	gtk_container_foreach(GTK_CONTAINER(open_recent_menu), cb_remove_menu_item, 0);
 	gtk_container_foreach(GTK_CONTAINER(save_recent_menu), cb_remove_menu_item, 0);
 
 	// Then add all items in the config_list to the recent menu
-	void add_to_open_menu(tList* UNUSED(list), void* data) {
+	void add_to_open_menu(UNUSED tList* list, void* data) {
 		tConfigDescription* kvo = data;
 		gtk_add_menu_item_clickable(open_recent_menu, kvo->title, G_CALLBACK(menu_open_recent_file), kvo);
 	}
@@ -669,7 +669,7 @@ static void update_recent_list(tList* config_list) {
 	gtk_widget_show_all(open_recent_menu);
 
 	// Then add all items in the config_list to the recent menu
-	void add_to_save_menu(tList* UNUSED(list), void* data) {
+	void add_to_save_menu(UNUSED tList* list, void* data) {
 		tConfigDescription* config = data;
 		gtk_add_menu_item_clickable(save_recent_menu, config->title, G_CALLBACK(menu_save_recent_file), config);
 	}
@@ -758,7 +758,7 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 // It filters the title column, but potentially could filter other columns
 //
 
-static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter, gpointer UNUSED(data))
+static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter, UNUSED gpointer data)
 {
 	gchar *str;
 	gboolean visible = FALSE;
@@ -778,7 +778,7 @@ static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter,
 // treestore sort_func()
 //
 
-static gint treestore_sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer UNUSED(data)){
+static gint treestore_sort_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, UNUSED gpointer data){
 	gchar *str1,*str2;
 	gtk_tree_model_get (model, a, COL_TITLE, &str1, -1);
 	gtk_tree_model_get (model, b, COL_TITLE, &str2, -1);
@@ -862,7 +862,7 @@ static struct tTreeData* create_view_and_model(void) {
 // main()
 //
 
-static void click_about(GtkWidget* UNUSED(widget), gpointer parent_window)
+static void click_about(UNUSED GtkWidget* widget, gpointer parent_window)
 {
 	const char* authors[]={"Jelle Martijn Kok <jmkok@youcom.nl>",NULL};
 	gtk_show_about_dialog (parent_window,

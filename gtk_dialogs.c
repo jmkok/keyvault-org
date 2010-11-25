@@ -103,7 +103,7 @@ gboolean dialog_request_config (GtkWidget* parent, tConfigDescription* config) {
 	GtkWidget* filename_entry = gtk_add_labeled_entry(vbox, "Filename",kvo->filename);
 
 	/* Protocol change */
-	void change_protocol(GtkWidget *widget, gpointer UNUSED(data)) {
+	void change_protocol(GtkWidget *widget, UNUSED gpointer data) {
 		gchar* protocol=gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
 		if (!protocol || strcmp(protocol,"local") == 0) {
 			gtk_widget_hide(hostname_label);
