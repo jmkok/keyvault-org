@@ -7,6 +7,7 @@
 #define debugf(args...) printf(args)
 
 // UNUSED items are not allowed to be used !!!
-#define UNUSED __attribute__((unused deprecated))
+#define _UNUSED_ __attribute__((unused deprecated))
+#define _DEPRECATED_ __attribute__((deprecated))
 
 #endif

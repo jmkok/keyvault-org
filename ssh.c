@@ -51,14 +51,14 @@ int tcp_connect(const char* hostname, int port) {
 static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** fingerprint) {
 	ssh->sock = tcp_connect(hostname, port);
 	if (!ssh->sock) {
-		gtk_error_dialog("Failed to connect to the SSH server");
+		gtk_dialog_error("Failed to connect to the SSH server");
 		return -1;
 	}
 	
 	// Open an SSH session...
 	ssh->session = libssh2_session_init();
 	if (libssh2_session_startup(ssh->session, ssh->sock)) {
-		gtk_error_dialog("Failed establishing an SSH session");
+		gtk_dialog_error("Failed establishing an SSH session");
 		return -1;
 	}
 
@@ -67,7 +67,7 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 	hexdump(server_fingerprint, 16);
 	if (*fingerprint && (memcmp(server_fingerprint, *fingerprint, 16) != 0)) {
 		hexdump(*fingerprint,16);
-		gtk_error_dialog("Incorrect fingerprint for remote SSH server\nMore info: http://en.wikipedia.org/wiki/Public_key_fingerprint");
+		gtk_dialog_error("Incorrect fingerprint for remote SSH server\nMore info: http://en.wikipedia.org/wiki/Public_key_fingerprint");
 		return -1;
 	}
 	
@@ -112,7 +112,7 @@ static int ssh_login(struct tSsh* ssh, tFileDescription* kvo, const char* userna
 			g_free(password);
 			printf("Authentication by password failed!\n");
 		}
-		password = gtk_password_dialog(NULL, "Enter password for SSH server");
+		password = gtk_dialog_password(NULL, "Enter password for SSH server");
 		if (!password)
 			return 1;
 	}
@@ -128,7 +128,7 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 	printf("Perform: libssh2_sftp_init()\n");
 	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(ssh->session);
 	if (!sftp_session) {
-		gtk_error_dialog("Unable to initialize the SFTP session");
+		gtk_dialog_error("Unable to initialize the SFTP session");
 		return -1;
 	}
 	else {
@@ -139,7 +139,7 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 	printf("Perform: libssh2_sftp_open('%s')\n",filename);
 	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename, LIBSSH2_FXF_READ, 0);
 	if (!sftp_handle) {
-		gtk_error_dialog("Unable to open the requested file using SFTP");
+		gtk_dialog_error("Unable to open the requested file using SFTP");
 		libssh2_sftp_shutdown(sftp_session);
 		return -1;
 	}
@@ -151,7 +151,7 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 	struct _LIBSSH2_SFTP_ATTRIBUTES attrs;
 	int err = libssh2_sftp_fstat(sftp_handle, &attrs);
 	if (err) {
-		gtk_error_dialog("Could not stat the file on the SSH server");
+		gtk_dialog_error("Could not stat the file on the SSH server");
 		libssh2_sftp_close(sftp_handle);
 		libssh2_sftp_shutdown(sftp_session);
 		return -1;
@@ -187,7 +187,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	printf("Perform: libssh2_sftp_init()\n");
 	LIBSSH2_SFTP* sftp_session = libssh2_sftp_init(ssh->session);
 	if (!sftp_session) {
-		gtk_error_dialog("Unable to initialize the SFTP session");
+		gtk_dialog_error("Unable to initialize the SFTP session");
 		return -1;
 	}
 	else {
@@ -198,7 +198,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	printf("Perform: libssh2_sftp_open('%s')\n",filename);
 	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(sftp_session, filename,  LIBSSH2_FXF_WRITE|LIBSSH2_FXF_CREAT|LIBSSH2_FXF_TRUNC, LIBSSH2_SFTP_S_IRUSR|LIBSSH2_SFTP_S_IWUSR);
 	if (!sftp_handle) {
-		gtk_error_dialog("Unable to open the requested file using SFTP");
+		gtk_dialog_error("Unable to open the requested file using SFTP");
 		libssh2_sftp_shutdown(sftp_session);
 		return -1;
 	}

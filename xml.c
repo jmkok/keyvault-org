@@ -141,7 +141,7 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 	xmlNewIntegerProp(pbkdf2_node, CONST_BAD_CAST "rounds", pbkdf2_rounds);
 
 	// The cipher functions
-	void evp_cipher_protocol(UNUSED tList* list, void* data) {
+	void evp_cipher_protocol(_UNUSED_ tList* list, void* data) {
 		char* protocol = data;
 		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
 		unsigned char* ivec = malloc_random(16);
@@ -257,7 +257,7 @@ int xmlIsNodeEncrypted(xmlNode* root) {
 // 
 //
 
-xmlNode* xmlNewChildEncrypted_DEPRECATED(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const xmlChar* value, const unsigned char passphrase_key[32]) {
+_DEPRECATED_ xmlNode* xmlNewChildEncrypted(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const xmlChar* value, const unsigned char passphrase_key[32]) {
 	unsigned char* ivec = malloc_random(16);
 	int len = (xmlStrlen(value) & ~63) + 64;
 	unsigned char* enlarged_value = mallocz(len+1);
@@ -332,7 +332,7 @@ xmlNode* xmlFindNode(xmlNode* root_node, const xmlChar* name, int depth) {
 // Extracte and duplicate data from a node
 //
 
-xmlChar* xmlGetContentsEncrypted_DEPRECATED(xmlNode* root_node, const xmlChar* name, const unsigned char passphrase_key[32]) {
+_DEPRECATED_ xmlChar* xmlGetContentsEncrypted(xmlNode* root_node, const xmlChar* name, const unsigned char passphrase_key[32]) {
 	xmlNode* node = xmlFindNode(root_node, name, 0);
 	if (!node) return NULL;
 

@@ -4,12 +4,12 @@
 #include "main.h"
 #include "structures.h"
 
-extern gchar* gtk_password_dialog (GtkWindow* parent, const gchar* title);
-extern void gtk_error_dialog(const gchar *message);
+extern gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title);
+extern void gtk_dialog_error(const gchar *message);
 
-extern gboolean dialog_request_config(GtkWidget* parent, tConfigDescription* config);
+extern gboolean gtk_dialog_request_config(GtkWidget* parent, tConfigDescription* config);
 
-extern gchar* dialog_open_file(GtkWindow* parent_window, int filter);
-extern gchar* dialog_save_file(GtkWindow* parent_window, int filter);
+extern gchar* gtk_dialog_open_file(GtkWindow* parent_window, int filter);
+extern gchar* gtk_dialog_save_file(GtkWindow* parent_window, int filter);
 
 #endif

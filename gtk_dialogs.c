@@ -8,7 +8,7 @@
 #include "configuration.h"
 #include "functions.h"
 
-gchar* gtk_password_dialog(GtkWindow* parent, const gchar* title) {
+gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title) {
 	/* Create the dialog */
 	GtkWidget* dialog = gtk_dialog_new_with_buttons ("Password",
 																	 parent,
@@ -51,7 +51,7 @@ gchar* gtk_password_dialog(GtkWindow* parent, const gchar* title) {
 	return retval;
 }
 
-gboolean dialog_request_config (GtkWidget* parent, tConfigDescription* config) {
+gboolean gtk_dialog_request_config (GtkWidget* parent, tConfigDescription* config) {
 	trace();
 	if (!config)
 		return FALSE;
@@ -103,7 +103,7 @@ gboolean dialog_request_config (GtkWidget* parent, tConfigDescription* config) {
 	GtkWidget* filename_entry = gtk_add_labeled_entry(vbox, "Filename",kvo->filename);
 
 	/* Protocol change */
-	void change_protocol(GtkWidget *widget, UNUSED gpointer data) {
+	void change_protocol(GtkWidget *widget, _UNUSED_ gpointer data) {
 		gchar* protocol=gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
 		if (!protocol || strcmp(protocol,"local") == 0) {
 			gtk_widget_hide(hostname_label);
@@ -187,7 +187,7 @@ void quick_message (GtkWidget *parent, gchar *message) {
 	gtk_widget_show_all (dialog);
 }
 
-gchar* dialog_open_file(GtkWindow* parent_window, int filter)
+gchar* gtk_dialog_open_file(GtkWindow* parent_window, int filter)
 {
 	gchar* filename=NULL;
 	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Open File", parent_window, GTK_FILE_CHOOSER_ACTION_OPEN, 
@@ -206,7 +206,7 @@ gchar* dialog_open_file(GtkWindow* parent_window, int filter)
 	return filename;
 }
 
-gchar* dialog_save_file(GtkWindow* parent_window, int filter)
+gchar* gtk_dialog_save_file(GtkWindow* parent_window, int filter)
 {
 	gchar* filename=NULL;
 	GtkWidget* dialog = gtk_file_chooser_dialog_new ("Save File", parent_window, GTK_FILE_CHOOSER_ACTION_SAVE,
@@ -226,7 +226,7 @@ gchar* dialog_save_file(GtkWindow* parent_window, int filter)
 	return filename;
 }
 
-void gtk_error_dialog(const gchar* message) {
+void gtk_dialog_error(const gchar* message) {
 	GtkWidget* dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message, NULL);
 	gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);

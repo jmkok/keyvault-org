@@ -39,7 +39,7 @@ GtkWidget* gtk_add_separator(GtkWidget* parent) {
 	return separator;
 }
 
-void gtk_remove_menu_item(UNUSED GtkWidget* menu_item, UNUSED GtkWidget* parent) {
+void gtk_remove_menu_item(_UNUSED_ GtkWidget* menu_item, _UNUSED_ GtkWidget* parent) {
 	todo();
 }
 
@@ -93,7 +93,7 @@ static void treeview_map_handler(GtkWidget *treeView, gpointer data)
 	gtk_widget_set_size_request(padBox, -1, y); 
 } 
 
-GtkWidget *add_scroll_bar_to_treeview(GtkWidget *treeView) {
+GtkWidget* gtk_add_scroll_bar_to_treeview(GtkWidget *treeView) {
 	GtkAdjustment *pAdj = gtk_tree_view_get_vadjustment(GTK_TREE_VIEW(treeView)); 
 	GtkWidget *vScroll = gtk_vscrollbar_new(pAdj); 
 	GtkWidget *padBox, *hBox, *vBox; 
