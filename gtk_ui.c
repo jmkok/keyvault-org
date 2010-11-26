@@ -906,7 +906,7 @@ int create_main_window(const char* default_filename) {
   gtk_window_set_title(GTK_WINDOW(main_window), "Keyvault.org");
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(main_window), "/usr/share/pixmaps/apple-red.png", NULL);
 	gtk_window_set_icon_name(GTK_WINDOW(main_window), GTK_STOCK_DIALOG_AUTHENTICATION);
-  gtk_widget_set_size_request (main_window, 500, 600);
+  gtk_widget_set_size_request (main_window, 700, 600);
 
 	// Create the treeview (do not place yet)
   struct tTreeData* td = create_view_and_model();
@@ -1046,15 +1046,22 @@ int create_main_window(const char* default_filename) {
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_box_pack_start(GTK_BOX(vbox_right), scroll , TRUE, TRUE, 1);
 
-	// Add the created time label
-	time_created_label = gtk_label_new("CREATED");
-	gtk_misc_set_alignment (GTK_MISC(time_created_label), 0, 0);
-  gtk_box_pack_start(GTK_BOX(vbox_right), time_created_label , FALSE, TRUE, 1);
-
-	// Add the modified time label
-	time_modified_label = gtk_label_new("MODIFIED");
-	gtk_misc_set_alignment (GTK_MISC(time_modified_label), 0, 0);
-  gtk_box_pack_start(GTK_BOX(vbox_right), time_modified_label , FALSE, TRUE, 1);
+	// Add the created and modified time label
+	box = gtk_hbox_new(TRUE,2);
+  gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
+		// Add the created time label
+		time_created_label = gtk_label_new("Created...");
+		gtk_misc_set_alignment (GTK_MISC(time_created_label), 0, 0);
+		gtk_box_pack_start(GTK_BOX(box), time_created_label , FALSE, TRUE, 1);
+		// Add the modified time label
+		time_modified_label = gtk_label_new("Modified...");
+		gtk_misc_set_alignment (GTK_MISC(time_modified_label), 0, 0);
+		gtk_box_pack_start(GTK_BOX(box), time_modified_label , FALSE, TRUE, 1);
+		// Set the texts to be grey
+		GdkColor grey_color;
+		gdk_color_parse ("grey", &grey_color);
+		gtk_widget_modify_fg (time_created_label, GTK_STATE_NORMAL, &grey_color);
+		gtk_widget_modify_fg (time_modified_label, GTK_STATE_NORMAL, &grey_color);
 
 	// The record save button
   GtkWidget* record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
