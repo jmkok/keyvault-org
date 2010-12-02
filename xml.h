@@ -22,4 +22,7 @@ xmlNode* xmlNodeDecrypt(xmlNode* node, const unsigned char passphrase_key[32]);
 xmlNode* xmlNodeDecryptAndReplace(xmlNode* node, const unsigned char passphrase_key[32]);
 int xmlIsNodeEncrypted(xmlNode* root);
 
+void xmlNodeShow(xmlNode* node);
+void xmlDocShow(xmlDoc* doc);
+
 #endif

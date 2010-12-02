@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <gtk/gtk.h>
 #include "gtk_shortcuts.h"
 #include "functions.h"
@@ -122,3 +123,11 @@ GtkWidget* gtk_add_scroll_bar_to_treeview(GtkWidget *treeView) {
 	return hBox; 
 } 
 
+extern void __gtk_assert_fail (__const char *__assertion, __const char *__file, unsigned int __line, __const char *__function) {
+	char msg[1024];
+	sprintf(msg,"%s: %s:%u: %s: Assertion '%s' failed.","APP", __file, __line, __function, __assertion);
+	GtkWidget* dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, msg, NULL);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+	exit(1);
+}

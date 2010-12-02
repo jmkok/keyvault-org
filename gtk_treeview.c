@@ -142,7 +142,7 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 	// Get the root
 	xmlNode* root = xmlDocGetRootElement(doc);
 	assert(root);
-	//~ xmlElemDump(stdout, NULL, root);exit(0);
+	//~ xmlNodeShow(root);exit(0);
 
 	// Read all <node> items and place them inthe tree store
 	xmlNode* node = root->children;
@@ -162,7 +162,7 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 		}
 		else {
 			printf("NODE: %s\n",node->name);
-			//~ xmlElemDump(stdout, NULL, node);
+			//~ xmlNodeShow(node);
 		}
 		node = node->next;
 	}

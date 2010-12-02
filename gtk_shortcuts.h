@@ -15,4 +15,17 @@ extern GtkFileFilter* gtk_add_filter(GtkFileChooser* widget, const char* title, 
 
 extern GtkWidget* gtk_add_scroll_bar_to_treeview(GtkWidget *treeView);
 
+/* This prints an "Assertion failed" message and aborts.  */
+extern void __gtk_assert_fail (__const char *__assertion, __const char *__file, unsigned int __line, __const char *__function)
+     __THROW __attribute__ ((__noreturn__));
+
+
+#define gtk_assert(expr)                                                   \
+  ((expr)                                                               \
+   ? __ASSERT_VOID_CAST (0)                                             \
+   : __gtk_assert_fail (__STRING(expr), __FILE__, __LINE__, __ASSERT_FUNCTION))
+
+#undef assert
+#define assert gtk_assert
+
 #endif

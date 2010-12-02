@@ -117,8 +117,8 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 		protocols = "aes_256_ofb";
 
 	// Create the "vault" node
-	xmlNode* enode = xmlNewNode(NULL, XML_NODE_NAME);
-	xmlNs* ns = xmlNewNs(enode, XML_NODE_NS, NULL);
+	xmlNode* node_encrypted = xmlNewNode(NULL, XML_NODE_NAME);
+	xmlNs* ns = xmlNewNs(node_encrypted, XML_NODE_NS, NULL);
 
 	// Copy the passphrase key into the encryption key
 	u_char encryption_key[32];
@@ -136,7 +136,7 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 	//~ hexdump(encryption_key, 32);
 
 	// Store the pbkdf2 setup
-	xmlNode* pbkdf2_node = xmlNewChild(enode, ns, CONST_BAD_CAST "pbkdf2", NULL);
+	xmlNode* pbkdf2_node = xmlNewChild(node_encrypted, ns, CONST_BAD_CAST "pbkdf2", NULL);
 	xmlNewBase64Prop(pbkdf2_node, CONST_BAD_CAST "salt", BAD_CAST pbkdf2_salt, 32);
 	xmlNewIntegerProp(pbkdf2_node, CONST_BAD_CAST "rounds", pbkdf2_rounds);
 
@@ -146,7 +146,7 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
 		unsigned char* ivec = malloc_random(16);
 		evp_cipher(cipher, xbuf->content, xbuf->use+1, encryption_key, ivec);
-		xmlNode* encryption_node = xmlNewChild(enode, ns, CONST_BAD_CAST "encryption", NULL);
+		xmlNode* encryption_node = xmlNewChild(node_encrypted, ns, CONST_BAD_CAST "encryption", NULL);
 		xmlNewProp(encryption_node, CONST_BAD_CAST "cipher", BAD_CAST protocol);
 		xmlNewBase64Prop(encryption_node, CONST_BAD_CAST "ivec", ivec, 16);
 	}
@@ -158,12 +158,12 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 
 	// Add the encrypted data
 	gchar* tmp=g_base64_encode((unsigned char*)xbuf->content, xbuf->use+1);
-	xmlNode* data_node = xmlNewTextChild(enode, ns, CONST_BAD_CAST "data", BAD_CAST tmp);
+	xmlNode* data_node = xmlNewTextChild(node_encrypted, ns, CONST_BAD_CAST "data", BAD_CAST tmp);
 	g_free(tmp);
 	xmlNewIntegerProp(data_node, CONST_BAD_CAST "size", xbuf->use+1);
 
 	// Return the encrypted node
-	return enode;
+	return node_encrypted;
 }
 
 // -------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase[32]) {
 	node = root->children;
 	while(node) {
 		if (xmlStrEqual(node->name, CONST_BAD_CAST "data")) {
-			//~ xmlElemDump(stdout, NULL, node);
+			//~ xmlNodeShow(node);
 			size = xmlGetPropInteger(node, CONST_BAD_CAST "size");
 			data = xmlGetBase64Contents(node, NULL);
 		}
@@ -215,7 +215,7 @@ xmlNode* xmlNodeDecrypt(xmlNode* root, const unsigned char passphrase[32]) {
 	node = root->children;
 	while(node) {
 		if (xmlStrEqual(node->name, CONST_BAD_CAST "encryption")) {
-			//~ xmlElemDump(stdout, NULL, node);
+			//~ xmlNodeShow(node);
 			char* protocol = (char*) xmlGetProp(node, CONST_BAD_CAST "cipher");
 			unsigned char* ivec = xmlGetPropBase64(node, CONST_BAD_CAST "ivec");
 			const EVP_CIPHER* cipher = evp_cipher_text(protocol);
@@ -420,7 +420,7 @@ void encryption_test(void) {
 		}
 	}
 	puts("--- AFTER ENCRYPTION ---");
-	xmlDocFormatDump(stdout, doc, 1);puts("");
+	xmlDocShow(doc);
 
 	// Decrypt
 	xmlNode* node = config->children;
@@ -433,5 +433,24 @@ void encryption_test(void) {
 		node = node->next;
 	}
 	puts("--- AFTER DECRYPTION ---");
-	xmlDocFormatDump(stdout, doc, 1);puts("");
+	xmlDocShow(doc);
+}
+
+// -------------------------------------------------------------------------------
+//
+// Dump the content of a node
+//
+
+void xmlNodeShow(xmlNode* node) {
+	printf("xmlNodeShow(%p)\n", node);
+	FILE* out = stdout;
+	xmlElemDump(out, NULL, node);
+	fprintf(out,"\n");
+}
+
+void xmlDocShow(xmlDoc* doc) {
+	printf("xmlDocShow(%p)\n", doc);
+	FILE* out = stdout;
+	xmlDocFormatDump(out, doc, 1);
+	fprintf(out,"\n");
 }

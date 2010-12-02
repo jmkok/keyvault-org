@@ -15,8 +15,9 @@ OBJS=$(SRCS:.c=.o)
 LIBRARIES=glib-2.0 gtk+-2.0 libxml-2.0 openssl libssh2
 #~ CROSS=-m32
 CFLAGS=$(CROSS) `pkg-config --cflags $(LIBRARIES)` -Wall
-CFLAGS+=-Wextra -Werror -Wshadow -Wcast-qual -Wwrite-strings
-#~ CFLAGS+=-pedantic
+CFLAGS += -Wextra -Werror -Wshadow -Wwrite-strings
+#~ CFLAGS += -Wcast-qual - this gives an error in "gthread.h" on an 64 bit platform
+#~ CFLAGS += -pedantic
 LIBS=$(CROSS) `pkg-config --libs $(LIBRARIES)`
 
 all: $(TARG)

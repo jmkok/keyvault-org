@@ -133,7 +133,7 @@ static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 			break;
 		xmlDoc* decrypted_doc = xml_doc_decrypt(encrypted_doc, passphrase_data);
 		if (decrypted_doc) {
-			//~ xmlDocFormatDump(stdout, decrypted_doc, 1);puts("");
+			//~ xmlDocShow(decrypted_doc);
 			return decrypted_doc;
 		}
 		passphrase_valid = 0;
@@ -185,9 +185,11 @@ static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 // MENU: file -> open_advanced
 //
 
-static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
-	debugf("menu_open_recent_file(%p,%p)\n", widget, config_pointer);
+static void menu_open_recent_file(_UNUSED_ GtkWidget *widget, gpointer config_pointer) {
+	debugf("\nmenu_open_recent_file(...,%p)\n", config_pointer);
+	assert(config_pointer);
 	tConfigDescription* config = config_pointer;
+	xmlNodeShow(config->node);
 	
 	// First we have to decrypt the node...
 	xmlNode* config_node = config->node;
@@ -202,7 +204,8 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 		if (gtk_request_passphrase() != 0)
 			return;
 	}
-	
+
+	// Convert the node into an config object
 	tFileDescription* kvo = node_to_kvo(config_node);
 	if (!kvo)
 		return;
@@ -210,7 +213,6 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 	//~ if (!dialog_request_kvo(main_window, kvo))
 		//~ return;
 
-	g_printf("open_kvo_file_real()\n");
 	g_printf("hostname: %s\n",kvo->hostname);
 	g_printf("username: %s\n",kvo->username);
 	g_printf("password: %s\n",kvo->password);
@@ -227,7 +229,7 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 		// Read the data into an xml structure
 		xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
 		if (!encrypted_doc) {
-			gtk_dialog_error("Invalid XML document");
+			gtk_error("Invalid XML document");
 			return;
 		}
 
@@ -239,12 +241,12 @@ static void menu_open_recent_file(GtkWidget *widget, gpointer config_pointer) {
 
 		// Valid passphrase, then store the configuration
 		if (passphrase_valid) {
-			xmlNode* new = kvo_to_node(kvo);
-			xmlNode* enc_new = xmlNodeEncrypt(new, passphrase_config, NULL);
-			if (enc_new) {
-				xmlNewProp(enc_new, XML_CHAR "title", BAD_CAST kvo->title);
-				xmlReplaceNode(config->node, enc_new);
-				xmlFreeNode(config->node);
+			xmlNode* new_node = kvo_to_node(kvo);
+			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passphrase_config, NULL);
+			if (node_encrypted) {
+				xmlNewProp(node_encrypted, XML_CHAR "title", BAD_CAST kvo->title);
+				xmlReplaceNode(config->node, node_encrypted);
+				//~ xmlFreeNode(config->node); Enabling this will ruin things (what exactly does "xmlReplaceNode" do, free and/or unlink ???)
 			}
 		}
 	}
@@ -267,24 +269,31 @@ static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer dat
 //
 // Save (and edit) a recently used KVO file
 //
+
 static void menu_save_recent_file(_UNUSED_ GtkWidget* widget, gpointer config_pointer) {
+	g_printf("\nmenu_save_recent_file(...,%p)\n", config_pointer);
+	assert(config_pointer);
 	tConfigDescription* config = config_pointer;
-	tFileDescription* kvo = NULL;
-	while (!kvo) {
+	xmlNodeShow(config->node);
+
+	// First we have to decrypt the node...
+	xmlNode* config_node = config->node;
+	while (xmlIsNodeEncrypted(config->node)) {
 		if (passphrase_valid) {
-			kvo = node_to_kvo(config->node);
-			if (kvo) break;
+			xmlNode* tmp = xmlNodeDecrypt(config->node, passphrase_config);
+			if (tmp) {
+				config_node = tmp;
+				break;
+			}
 		}
 		if (gtk_request_passphrase() != 0)
 			return;
 	}
 
-	//~ if (!dialog_request_kvo(main_window, kvo))
-		//~ return;
-
-	//~ tFileDescription* kvo = kvo_pointer;
-	//~ if (!dialog_request_kvo(main_window, kvo))
-		//~ return;
+	// Convert the node into an config object
+	tFileDescription* kvo = node_to_kvo(config_node);
+	if (!kvo)
+		return;
 
 	// Get a passphrase if not yet available
 	if (!passphrase_valid) {
@@ -295,27 +304,29 @@ static void menu_save_recent_file(_UNUSED_ GtkWidget* widget, gpointer config_po
 
 	// Create an encrypted xml document
 	xmlDoc* doc = export_treestore_to_xml(treedata->treestore);
-	xmlDoc* enc_doc = xml_doc_encrypt(doc, passphrase_data);
+	assert(doc);
+	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passphrase_data);
+	assert(doc_encrypted);
 
-	xmlChar* data;
-	int len;
-	xmlDocDumpFormatMemory(enc_doc, &data, &len, 1);
-
-	g_printf("menu_save_recent_file()\n");
-	g_printf("hostname: %s\n",kvo->hostname);
-	g_printf("username: %s\n",kvo->username);
-	g_printf("filename: %s\n",kvo->filename);
+	// Write the data to the file
 	if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
-		// encrypted-xml => disk
 		FILE* fp = fopen(kvo->filename, "w");
 		if (fp) {
-			xmlDocFormatDump(fp, enc_doc, 1);
+			xmlDocFormatDump(fp, doc_encrypted, 1);
 			fclose(fp);
 		}
 	}
+	// Write the data to an ssh account
 	else if (strcmp(kvo->protocol,"ssh") == 0) {
-		ssh_put_file(kvo,data,len);
+		xmlChar* data;
+		int len;
+		xmlDocDumpFormatMemory(doc_encrypted, &data, &len, 1);
+		ssh_put_file(kvo, data, len);
 	}
+
+	// Free the encrypted doc
+	xmlFree(doc_encrypted);
+	xmlFree(doc);
 
 	// Valid passphrase, then store the configuration
 	if (passphrase_valid) {
@@ -351,7 +362,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 	// treestore => xml
 	xmlDoc* doc = export_treestore_to_xml(treestore);
-	//~ xmlDocFormatDump(stdout, doc, 1);puts("");
+	//~ xmlDocShow(doc);
 
 	// Request the passphrase to encode the file
 	if (!passphrase_valid) {
@@ -362,7 +373,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 	// xml => encrypted-xml
 	xmlDoc* enc_doc = xml_doc_encrypt(doc, passphrase_data);
-	//~ xmlDocFormatDump(stdout, enc_doc, 1);puts("");
+	//~ xmlDocShow(enc_doc);
 
 	// encrypted-xml => disk
 	FILE* fp = fopen(filename, "w");
@@ -432,7 +443,7 @@ static void menu_file_import(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
-	gtk_dialog_error("You are about to save your information unencrypted");
+	gtk_warning("You are about to save your information unencrypted");
 	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(main_window), 1);
 	if (strstr(filename,".csv")) {
 		export_treestore_to_csv(treestore, filename);
@@ -660,8 +671,8 @@ static void update_recent_list(tList* config_list) {
 
 	// Then add all items in the config_list to the recent menu
 	void add_to_open_menu(_UNUSED_ tList* list, void* data) {
-		tConfigDescription* kvo = data;
-		gtk_add_menu_item_clickable(open_recent_menu, kvo->title, G_CALLBACK(menu_open_recent_file), kvo);
+		tConfigDescription* config = data;
+		gtk_add_menu_item_clickable(open_recent_menu, config->title, G_CALLBACK(menu_open_recent_file), config);
 	}
 	gtk_add_menu_item_clickable(open_recent_menu, "SSH...", G_CALLBACK(menu_file_open_ssh), NULL);
 	gtk_add_separator(open_recent_menu);
@@ -1120,7 +1131,7 @@ int create_main_window(const char* default_filename) {
 	// Warn once
 	FILE* once = fopen(".keyvault-warning.once","r");
 	if (!once) {
-		gtk_dialog_error("WARNING: This software is very much in development.\nKeep an plain text version around somehwere\nFor example in a truecrypt drive\nThis warning will not be shown again");
+		gtk_warning("This software is very much in development.\nKeep an plain text version around somehwere\nFor example in a truecrypt drive\nThis warning will not be shown again");
 		once = fopen(".keyvault-warning.once","w");
 		if (once)
 			fclose(once);

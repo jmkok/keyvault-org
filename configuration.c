@@ -35,7 +35,7 @@ static xmlDoc* new_configuration(void) {
 void read_configuration(tList* config_list) {
 	printf("read_configuration(%p)\n", config_list);
 	configDoc = xmlParseFile("config.xml");
-	//~ xmlDocFormatDump(stdout, configDoc, 1);
+	//~ xmlDocShow(configDoc);
 	if (!configDoc)
 		configDoc = new_configuration();
 	assert(configDoc);
@@ -43,12 +43,12 @@ void read_configuration(tList* config_list) {
 	// Get the root
 	xmlNode* root = xmlDocGetRootElement(configDoc);
 	assert(root);
-	//~ xmlElemDump(stdout, NULL, root);puts("");
+	//~ xmlNodeShow(root);
 
 	// Walk all children
 	xmlNode* node = root->children;
 	while(node) {
-		//~ xmlElemDump(stdout, NULL, node);puts("");
+		//~ xmlNodeShow(node);
 		if (node->type == XML_ELEMENT_NODE) {
 			xmlChar* title = NULL;
 			if (xmlIsNodeEncrypted(node))
@@ -81,6 +81,7 @@ void read_configuration(tList* config_list) {
 tFileDescription* node_to_kvo(xmlNode* node) {
 	printf("node_to_kvo(%p)\n",node);
 	assert(node);
+	xmlNodeShow(node);
 	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
 	kvo->title = (char*)xmlGetTextContents(node, CONST_BAD_CAST "title");
 	kvo->protocol = (char*)xmlGetTextContents(node, CONST_BAD_CAST "protocol");

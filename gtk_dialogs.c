@@ -226,8 +226,14 @@ gchar* gtk_dialog_save_file(GtkWindow* parent_window, int filter)
 	return filename;
 }
 
-void gtk_dialog_error(const gchar* message) {
-	GtkWidget* dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message, NULL);
-	gtk_dialog_run(GTK_DIALOG(dialog));
+// GTK_RESPONSE_YES / GTK_RESPONSE_NO
+gint gtk_dialog_ex(const gchar* message, GtkMessageType type) {
+	GtkWidget* dialog;
+	if (type == GTK_MESSAGE_QUESTION)
+		dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, type, GTK_BUTTONS_YES_NO, message, NULL);
+	else
+		dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, type, GTK_BUTTONS_CLOSE, message, NULL);
+	gint retval = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
+	return retval;
 }

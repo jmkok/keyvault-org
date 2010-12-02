@@ -50,7 +50,7 @@ static FILE* random_handle;
 void random_init(void) {
  	random_handle = fopen("/dev/urandom","r");
  	if (!random_handle) {
-		gtk_dialog_error("Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating passwords is insecure !!!");
+		gtk_error("Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating passwords is insecure !!!");
 		srand(time(NULL));
 	}
 }
@@ -129,7 +129,7 @@ xmlDoc* xml_doc_encrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	xmlNode* root = xmlDocGetRootElement(doc);
 	xmlNode* encrypted_node = xmlNodeEncrypt(root, passphrase_key, "rc4,aes_256_ofb");
 	if (!encrypted_node) {
-		gtk_dialog_error("Could not encrypt file");
+		gtk_error("Could not encrypt file");
 		return NULL;
 	}
 	// Create the doc
@@ -209,7 +209,7 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	xmlNode* root = xmlDocGetRootElement(doc);
 	xmlNode* decrypted_node = xmlNodeDecrypt(root, passphrase_key);
 	if (!decrypted_node) {
-		gtk_dialog_error("Could not decrypt file");
+		gtk_error("Could not decrypt file");
 		return NULL;
 	}
 	// Create the doc
@@ -226,7 +226,7 @@ xmlDoc* xml_doc_decrypt(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32]) {
 	// get the root
 	xmlNode* root = xmlDocGetRootElement(doc);
-	xmlElemDump(stdout, NULL, root);puts("");
+	xmlNodeShow(root);
 
 	// Test to see if it is encrypted anyway
 	xmlChar* encrypted = xmlGetProp(root, CONST_BAD_CAST "encrypted");
@@ -292,7 +292,7 @@ xmlDoc* xml_doc_decrypt_old(xmlDoc* doc, const unsigned char passphrase_key[32])
 
 	// Convert into xml
 	xmlDoc* doc_dec = xmlParseMemory((char*)data, data_len);
-	xmlDocFormatDump(stdout, doc_dec, 1);puts("");
+	xmlDocShow(doc_dec);
 
 	return doc_dec;
 }
