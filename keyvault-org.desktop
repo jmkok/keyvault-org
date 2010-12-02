@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Keyvault
+GenericName=Keyvault
+Comment=Manage your passwords using
+Exec=keyvault
+Icon=gdu-encrypted-lock
+Terminal=false
+Type=Application
+Encoding=UTF-8
+Categories=GNOME;GTK;Security;Utility;
+X-Ubuntu-Gettext-Domain=keyvault
