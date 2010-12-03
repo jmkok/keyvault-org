@@ -13,6 +13,8 @@
 #include "ssh.h"
 #include "gtk_dialogs.h"
 
+#define min(a,b) (a<b?a:b)
+
 // The SSH connection
 struct tSsh {
 	int sock;
@@ -200,7 +202,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	}
 
 	// Request a file via SFTP
-	printf("\tPerform: libssh2_sftp_open('%s')\n",filename);
+	printf("\tPerform: libssh2_sftp_open('temp.kvo')\n");
 	LIBSSH2_SFTP_HANDLE* sftp_handle = libssh2_sftp_open(
 			sftp_session,
 			"temp.kvo",
@@ -216,11 +218,11 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 		printf("\tSFTP handle openened\n");
 	}
 	
-	// Start writing
+	// Start writing (only 16kB blocks - 32kB and/or larger blocks fail...)
 	printf("\tSending %zu bytes\n", length);	
 	int total=0;
 	while(total < length) {
-		int tx = libssh2_sftp_write(sftp_handle, data+total, length-total);
+		int tx = libssh2_sftp_write(sftp_handle, data+total, (min((16*1024),length-total)));
 		printf("\ttx: %u (%u / %zu)\n", tx, total, length);	
 		if (tx == 0)
 			continue;
@@ -231,9 +233,26 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 		total += tx;
 	}
 
-	// TODO: libssh2_sftp_rename
-	if (total == length) {
-		libssh2_sftp_rename(sftp_session, "temp.kvo", filename);
+	// Close the file
+	int retval = libssh2_sftp_close(sftp_handle);
+	printf("retval: %i\n",retval);
+	
+	// libssh2_sftp_rename (it seems I am not able to overwrite files...)
+	if ((retval == 0) && (total == length)) {
+		// remove the current backup.kvo
+		libssh2_sftp_unlink(sftp_session, "backup.kvo");
+		// rename the current file to backup.kvo
+		retval = libssh2_sftp_rename(sftp_session, filename, "backup.kvo");
+		if (retval != 0) {
+			gtk_error("Failed to rename file");
+			return -1;
+		}
+		// rename the new file to the filename
+		retval = libssh2_sftp_rename(sftp_session, "temp.kvo", filename);
+		if (retval != 0) {
+			gtk_error("Failed to rename file");
+			return -1;
+		}
 		gtk_info("File successfully written");
 	}
 	else {
@@ -241,7 +260,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 		gtk_error("Removing temporary file");
 	}
 
-	libssh2_sftp_close(sftp_handle);
+	// Close the session
 	libssh2_sftp_shutdown(sftp_session);
 	return 0;
 }
