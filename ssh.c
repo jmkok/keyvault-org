@@ -25,6 +25,15 @@ struct tSsh {
  * http://www.libssh2.org
  */
 
+static void tcp_socket_timeout(int sock, int timeout) {
+	struct timeval tv;
+	tv.tv_sec = timeout;
+	tv.tv_usec = 0;
+	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+	setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+}
+
+
 int tcp_connect(const char* hostname, int port) {
 	// TODO: hostname must be numerical...
 	printf("tcp_connect('%s',%i)\n",hostname, port);
@@ -35,7 +44,13 @@ int tcp_connect(const char* hostname, int port) {
 		return 0;
 	printf("\thostaddr: %08lX\n",hostaddr);
 
+	// Create the TCP socket
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+	// Set the timeout to 5 seconds
+	tcp_socket_timeout(sock,5);
+
+	// Connect to the server
 	struct sockaddr_in sin;
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
