@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include "functions.h"
 #include "ssh.h"
@@ -35,14 +36,18 @@ static void tcp_socket_timeout(int sock, int timeout) {
 
 
 int tcp_connect(const char* hostname, int port) {
-	// TODO: hostname must be numerical...
 	printf("tcp_connect('%s',%i)\n",hostname, port);
 	if (!port)
 		port=22;
-	unsigned long hostaddr = inet_addr(hostname);
-	if (!hostaddr)
-		return 0;
-	printf("\thostaddr: %08lX\n",hostaddr);
+
+	// Resolve the hostname
+	struct hostent* host = gethostbyname(hostname);
+	printf("\thostaddr: %u.%u.%u.%u (%u)\n", 
+		host->h_addr_list[0][0], 
+		host->h_addr_list[0][1], 
+		host->h_addr_list[0][2], 
+		host->h_addr_list[0][3], 
+		host->h_length);
 
 	// Create the TCP socket
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -54,7 +59,7 @@ int tcp_connect(const char* hostname, int port) {
 	struct sockaddr_in sin;
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = hostaddr;
+	memcpy(&sin.sin_addr.s_addr, host->h_addr_list[0], 4);
 	if (connect(sock, (struct sockaddr*)(&sin),sizeof(struct sockaddr_in)) != 0)
 		return 0;
 	return sock;
