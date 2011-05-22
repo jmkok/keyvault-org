@@ -1,0 +1,11 @@
+# Use this by doing "svn propset svn:ignore -F .svnignore ."
+keyvault
+*.kvo
+*.xml
+
+data
+.keyvault-warning.once
+
+.old
+test.csv
+
