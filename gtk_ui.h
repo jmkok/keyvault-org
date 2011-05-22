@@ -13,7 +13,7 @@
 int create_main_window(const char* default_filename);
 
 struct tGlobal {
-	tList* config_list;
+	struct CONFIG* config;
 };
 
 extern struct tGlobal* global;

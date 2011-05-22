@@ -51,12 +51,8 @@ gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title) {
 	return retval;
 }
 
-gboolean gtk_dialog_request_config (GtkWidget* parent, tConfigDescription* config) {
-	trace();
-	if (!config)
-		return FALSE;
-	todo();
-	tFileDescription* kvo = node_to_kvo(config->node);
+gboolean gtk_dialog_request_config (GtkWidget* parent, tFileDescription* kvo) {
+	//~ assert(kvo);
 	gboolean retval=FALSE;
 	/* Create the dialog */
 	GtkWidget* dialog = gtk_dialog_new_with_buttons ("File configuration",

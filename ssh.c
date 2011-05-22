@@ -43,10 +43,10 @@ int tcp_connect(const char* hostname, int port) {
 	// Resolve the hostname
 	struct hostent* host = gethostbyname(hostname);
 	printf("\thostaddr: %u.%u.%u.%u (%u)\n", 
-		host->h_addr_list[0][0], 
-		host->h_addr_list[0][1], 
-		host->h_addr_list[0][2], 
-		host->h_addr_list[0][3], 
+		(uint8_t)host->h_addr_list[0][0], 
+		(uint8_t)host->h_addr_list[0][1], 
+		(uint8_t)host->h_addr_list[0][2], 
+		(uint8_t)host->h_addr_list[0][3], 
 		host->h_length);
 
 	// Create the TCP socket

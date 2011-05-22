@@ -140,9 +140,10 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 	xmlNewBase64Prop(pbkdf2_node, CONST_BAD_CAST "salt", BAD_CAST pbkdf2_salt, 32);
 	xmlNewIntegerProp(pbkdf2_node, CONST_BAD_CAST "rounds", pbkdf2_rounds);
 
-	// The cipher functions
-	void evp_cipher_protocol(_UNUSED_ tList* list, void* data) {
-		char* protocol = data;
+	// Call the cipher function for each requested cipher
+	tList* proto_list = listExplode(protocols,",");
+	char* protocol;
+	listForeach(proto_list, protocol) {
 		const EVP_CIPHER* cipher = evp_cipher_text(protocol);
 		unsigned char* ivec = malloc_random(16);
 		evp_cipher(cipher, xbuf->content, xbuf->use+1, encryption_key, ivec);
@@ -150,10 +151,6 @@ xmlNode* xmlNodeEncrypt(xmlNode* node, const unsigned char passphrase[32], const
 		xmlNewProp(encryption_node, CONST_BAD_CAST "cipher", BAD_CAST protocol);
 		xmlNewBase64Prop(encryption_node, CONST_BAD_CAST "ivec", ivec, 16);
 	}
-
-	// Call the cipher function for each requested cipher
-	tList* proto_list = listExplode(protocols,",");
-	listForeach(proto_list, evp_cipher_protocol);
 	listDestroy(proto_list);
 
 	// Add the encrypted data

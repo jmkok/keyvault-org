@@ -7,7 +7,7 @@
 extern gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title);
 extern gint gtk_dialog_ex(const gchar *message, GtkMessageType type);
 
-extern gboolean gtk_dialog_request_config(GtkWidget* parent, tConfigDescription* config);
+extern gboolean gtk_dialog_request_config(GtkWidget* parent, tFileDescription* kvo);
 
 extern gchar* gtk_dialog_open_file(GtkWindow* parent_window, int filter);
 extern gchar* gtk_dialog_save_file(GtkWindow* parent_window, int filter);

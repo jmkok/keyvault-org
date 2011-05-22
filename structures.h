@@ -11,7 +11,6 @@
 
 typedef struct {
 	char* title;						// title
-	xmlDoc* doc;						// The xml doc that contains this description
 	xmlNode* node;					// The node inside
 	void* passphrase_check;	// The passphrase check
 } tConfigDescription;

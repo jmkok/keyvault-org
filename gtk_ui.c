@@ -64,8 +64,9 @@ GtkWidget* popup_menu;
 GtkWidget* main_window;
 
 // The menus
-GtkWidget* open_recent_menu;
-GtkWidget* save_recent_menu;
+GtkWidget* open_profile_menu;
+GtkWidget* save_profile_menu;
+GtkWidget* edit_profile_menu;
 
 // The entries
 GtkWidget* title_entry;
@@ -91,7 +92,7 @@ struct tTreeData* treedata;
 // static functions (needed as they reference each other)
 //
 
-static void update_recent_list(tList* config_list);
+static void update_profile_menu(struct CONFIG* config);
 
 // -----------------------------------------------------------
 //
@@ -185,17 +186,17 @@ static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 // MENU: file -> open_advanced
 //
 
-static void menu_open_recent_file(_UNUSED_ GtkWidget *widget, gpointer config_pointer) {
-	debugf("\nmenu_open_recent_file(...,%p)\n", config_pointer);
-	assert(config_pointer);
-	tConfigDescription* config = config_pointer;
-	xmlNodeShow(config->node);
+static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
+	debugf("\nmenu_open_profile_file(...,%p)\n", node);
+	assert(node);
+	//~ tConfigDescription* config = node_to_kvo;
+	xmlNodeShow(node);
 	
 	// First we have to decrypt the node...
-	xmlNode* config_node = config->node;
-	while (xmlIsNodeEncrypted(config->node)) {
+	xmlNode* config_node = node;
+	while (xmlIsNodeEncrypted(node)) {
 		if (passphrase_valid) {
-			xmlNode* tmp = xmlNodeDecrypt(config->node, passphrase_config);
+			xmlNode* tmp = xmlNodeDecrypt(node, passphrase_config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -245,23 +246,10 @@ static void menu_open_recent_file(_UNUSED_ GtkWidget *widget, gpointer config_po
 			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passphrase_config, NULL);
 			if (node_encrypted) {
 				xmlNewProp(node_encrypted, XML_CHAR "title", BAD_CAST kvo->title);
-				xmlReplaceNode(config->node, node_encrypted);
+				xmlReplaceNode(node, node_encrypted);
 				//~ xmlFreeNode(config->node); Enabling this will ruin things (what exactly does "xmlReplaceNode" do, free and/or unlink ???)
 			}
 		}
-	}
-}
-
-static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	// Create a new kvo file
-	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
-	// Let the use fill in all required fields...
-	if (gtk_dialog_request_config(main_window, config)) {
-		// Store the kvo to the list
-		listAdd(global->config_list, config);
-		update_recent_list(global->config_list);
-		// Open the file...
-		menu_open_recent_file(NULL, config);
 	}
 }
 
@@ -270,17 +258,16 @@ static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer dat
 // Save (and edit) a recently used KVO file
 //
 
-static void menu_save_recent_file(_UNUSED_ GtkWidget* widget, gpointer config_pointer) {
-	g_printf("\nmenu_save_recent_file(...,%p)\n", config_pointer);
-	assert(config_pointer);
-	tConfigDescription* config = config_pointer;
-	xmlNodeShow(config->node);
+static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
+	g_printf("\nmenu_save_profile_file(...,%p)\n", node);
+	assert(node);
+	xmlNodeShow(node);
 
 	// First we have to decrypt the node...
-	xmlNode* config_node = config->node;
-	while (xmlIsNodeEncrypted(config->node)) {
+	xmlNode* config_node = node;
+	while (xmlIsNodeEncrypted(node)) {
 		if (passphrase_valid) {
-			xmlNode* tmp = xmlNodeDecrypt(config->node, passphrase_config);
+			xmlNode* tmp = xmlNodeDecrypt(node, passphrase_config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -334,22 +321,9 @@ static void menu_save_recent_file(_UNUSED_ GtkWidget* widget, gpointer config_po
 		xmlNode* enc_new = xmlNodeEncrypt(new, passphrase_config, NULL);
 		if (enc_new) {
 			xmlNewProp(enc_new, XML_CHAR "title", BAD_CAST kvo->title);
-			xmlReplaceNode(config->node, enc_new);
-			xmlFreeNode(config->node);
+			xmlReplaceNode(node, enc_new);
+			xmlFreeNode(node);
 		}
-	}
-}
-
-static void menu_file_save_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	// Create a new kvo file
-	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
-	// Let the use fill in all required fields...
-	if (gtk_dialog_request_config(main_window, config)) {
-		// Store the kvo to the list
-		listAdd(global->config_list, config);
-		update_recent_list(global->config_list);
-		// Open the file...
-		menu_save_recent_file(NULL, config);
 	}
 }
 
@@ -413,6 +387,69 @@ static void menu_file_save(GtkWidget *widget, gpointer ptr)
 		menu_file_save_as(widget, ptr);
 	}
 }
+
+// -----------------------------------------------------------
+//
+// MENU: file -> profile -> new
+// edit a profile
+//
+
+static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
+	// First we have to decrypt the node...
+	xmlNode* config_node = node;
+	while (xmlIsNodeEncrypted(node)) {
+		if (passphrase_valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passphrase_config);
+			if (tmp) {
+				config_node = tmp;
+				break;
+			}
+		}
+		if (gtk_request_passphrase() != 0)
+			return;
+	}
+
+	// Convert the node into an config object
+	tFileDescription* kvo = node_to_kvo(config_node);
+	if (!kvo)
+		return;
+
+	// Let the use fill in all required fields...
+	if (gtk_dialog_request_config(main_window, kvo)) {
+		// Store the kvo to the list
+		//~ listAdd(global->config_list, config);
+		update_profile_menu(global->config);
+		// Store the the profile list
+		save_configuration("config.xml", global->config);
+	}
+}
+
+// -----------------------------------------------------------
+//
+// MENU: file -> profile -> new
+// create a new profile, and start editing this profile
+//
+
+static void menu_new_profile(_UNUSED_ GtkWidget* widget, xmlDoc* doc) {
+	xmlNode* node = new_config_node(doc);
+	menu_edit_profile(NULL, node);
+	update_profile_menu(global->config);
+}
+
+/*
+static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
+	// Create a new kvo file
+	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
+	// Let the use fill in all required fields...
+	if (gtk_dialog_request_config(main_window, config)) {
+		// Store the kvo to the list
+		listAdd(global->config_list, config);
+		update_profile_menu(global->config_list);
+		// Open the file...
+		menu_open_profile_file(NULL, config);
+	}
+}
+*/
 
 // -----------------------------------------------------------
 //
@@ -658,36 +695,40 @@ void menu_edit_change_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer d
 
 // -----------------------------------------------------------
 //
-// Update the list of recent files
+// Update the list of profile files
 //
 
-static void update_recent_list(tList* config_list) {
-	// First remove all items in the recent menu
-	void cb_remove_menu_item(GtkWidget* menu_item, _UNUSED_ gpointer data) {
-		gtk_remove_menu_item(open_recent_menu, menu_item);
+static void update_profile_menu(struct CONFIG* config) {
+	// First remove all items in the profile menu
+	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
+		gtk_remove_menu_item(data, menu_item);
 	}
-	gtk_container_foreach(GTK_CONTAINER(open_recent_menu), cb_remove_menu_item, 0);
-	gtk_container_foreach(GTK_CONTAINER(save_recent_menu), cb_remove_menu_item, 0);
+	gtk_container_foreach(GTK_CONTAINER(open_profile_menu), cb_remove_menu_item, open_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(save_profile_menu), cb_remove_menu_item, save_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(edit_profile_menu), cb_remove_menu_item, edit_profile_menu);
 
-	// Then add all items in the config_list to the recent menu
-	void add_to_open_menu(_UNUSED_ tList* list, void* data) {
-		tConfigDescription* config = data;
-		gtk_add_menu_item_clickable(open_recent_menu, config->title, G_CALLBACK(menu_open_recent_file), config);
-	}
-	gtk_add_menu_item_clickable(open_recent_menu, "SSH...", G_CALLBACK(menu_file_open_ssh), NULL);
-	gtk_add_separator(open_recent_menu);
-	listForeach(config_list, add_to_open_menu);
-	gtk_widget_show_all(open_recent_menu);
+	// Edit profile...
+	gtk_add_menu_item_clickable(edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config->doc);
+	gtk_add_separator(edit_profile_menu);
 
-	// Then add all items in the config_list to the recent menu
-	void add_to_save_menu(_UNUSED_ tList* list, void* data) {
-		tConfigDescription* config = data;
-		gtk_add_menu_item_clickable(save_recent_menu, config->title, G_CALLBACK(menu_save_recent_file), config);
+	// Add all items in the config_list to the profile menu
+	int idx = 0;
+trace();
+	while(1) {
+		xmlNode* node = get_config_node(config->doc, idx++);
+		if (!node)
+			break;
+		char* title = get_config_title(node);
+		gtk_add_menu_item_clickable(open_profile_menu, title, G_CALLBACK(menu_open_profile_file), node);
+		gtk_add_menu_item_clickable(save_profile_menu, title, G_CALLBACK(menu_save_profile_file), node);
+		gtk_add_menu_item_clickable(edit_profile_menu, title, G_CALLBACK(menu_edit_profile), node);
 	}
-	gtk_add_menu_item_clickable(save_recent_menu, "SSH...", G_CALLBACK(menu_file_save_ssh), NULL);
-	gtk_add_separator(save_recent_menu);
-	listForeach(config_list, add_to_save_menu);
-	gtk_widget_show_all(save_recent_menu);
+trace();
+
+	// Update the menu
+	gtk_widget_show_all(open_profile_menu);
+	gtk_widget_show_all(save_profile_menu);
+	gtk_widget_show_all(edit_profile_menu);
 }
 
 // -----------------------------------------------------------
@@ -904,7 +945,6 @@ int create_main_window(const char* default_filename) {
 
 	// Initialize the generic global component
 	global = mallocz(sizeof(struct tGlobal));
-	global->config_list=listCreate();
 
 	GtkWidget* label;
 
@@ -935,13 +975,17 @@ int create_main_window(const char* default_filename) {
 	//~ GtkWidget* view_menu = gtk_add_menu(menu_bar,"View");
 	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
 
-	// File menu
+	// File menu - local files
 	GtkWidget* open_menu_item = gtk_add_menu_item_clickable(file_menu, "Open file", G_CALLBACK(menu_file_open), td->treestore);
-	open_recent_menu = gtk_add_menu(file_menu, "Open recent");
 	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), td->treestore);
-	save_recent_menu = gtk_add_menu(file_menu, "Save recent");
 	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), td->treestore);
 	gtk_add_separator(file_menu);
+	// File menu - remote files
+	open_profile_menu = gtk_add_menu(file_menu, "Open profile");
+	save_profile_menu = gtk_add_menu(file_menu, "Save profile");
+	edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
+	gtk_add_separator(file_menu);
+	// File menu - import/export
 	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), td->treestore);
 	gtk_add_menu_item_clickable(file_menu, "Export...", G_CALLBACK(menu_file_export), td->treestore);
 	gtk_add_separator(file_menu);
@@ -1118,8 +1162,8 @@ int create_main_window(const char* default_filename) {
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
 	// Read the configuration...
-	read_configuration(global->config_list);
-	update_recent_list(global->config_list);
+	global->config = read_configuration("config.xml");
+	update_profile_menu(global->config);
 
 	// Show the application
   gtk_widget_show_all(main_window);
@@ -1144,7 +1188,7 @@ int create_main_window(const char* default_filename) {
   gtk_main();
 
 	// Save the configuration...
-	save_configuration(global->config_list);
+	save_configuration("config.xml", global->config);
 
   return 0;
 }

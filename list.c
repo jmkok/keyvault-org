@@ -57,12 +57,6 @@ void listRemove(tList* list,void* data) {
 	}
 }
 
-void listForeach(tList* list, void (*function)(tList*,void*)) {
-	int i;
-	for (i=0;i<list->count;i++)
-		(*function)(list,list->data[i]);
-}
-
 void listSwap(tList* list,uint16_t n1,uint16_t n2) {
 	void* tmp=list->data[n1];
 	list->data[n1] = list->data[n2];
