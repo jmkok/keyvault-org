@@ -699,6 +699,7 @@ void menu_edit_change_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer d
 //
 
 static void update_profile_menu(struct CONFIG* config) {
+	printf("update_profile_menu(%p)\n", config);
 	// First remove all items in the profile menu
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
 		gtk_remove_menu_item(data, menu_item);
