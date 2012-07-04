@@ -1176,7 +1176,7 @@ int create_main_window(const char* default_filename) {
 	// Warn once
 	FILE* once = fopen(".keyvault-warning.once","r");
 	if (!once) {
-		gtk_warning("This software is very much in development.\nKeep an plain text version around somehwere\nFor example in a truecrypt drive\nThis warning will not be shown again");
+		gtk_warning("This software is still in development\nKeep a plain text version of your passwords in a safe place\nThis warning will not be shown again");
 		once = fopen(".keyvault-warning.once","w");
 		if (once)
 			fclose(once);
