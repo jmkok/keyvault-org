@@ -31,7 +31,7 @@ clean:
 	rm -rf $(DPKG_PATH)
 
 $(TARG): $(OBJS)
-	$(CC) $(LIBS) $(OBJS) -o $(TARG)
+	$(CC) $(OBJS) $(LIBS) -o $(TARG)
 
 install: $(TARG)
 	install -s $(TARG) /usr/local/bin/

@@ -1,5 +1,6 @@
 # Use this by doing "svn propset svn:ignore -F .svnignore ."
 keyvault
+*.o
 *.kvo
 *.xml
 
