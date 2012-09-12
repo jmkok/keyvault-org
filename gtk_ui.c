@@ -60,8 +60,7 @@ GtkWidget* popup_menu;
 // Global widgets
 //
 
-// The main window
-GtkWidget* main_window;
+struct UI ui;
 
 // The menus
 GtkWidget* open_profile_menu;
@@ -168,7 +167,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 
 static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
-	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(main_window), 0);
+	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(ui.main_window), 0);
 	if (filename) {
 		GtkTreeStore* treestore = treestore_ptr;
 		if (load_from_file(filename, treestore)) {
@@ -364,7 +363,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 static void menu_file_save_as(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
-	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(main_window), 0);
+	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui.main_window), 0);
 	if (filename) {
 		GtkTreeStore* treestore = treestore_ptr;
 		save_to_file(filename, treestore);
@@ -415,7 +414,7 @@ static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 		return;
 
 	// Let the use fill in all required fields...
-	if (gtk_dialog_request_config(main_window, kvo)) {
+	if (gtk_dialog_request_config(ui.main_window, kvo)) {
 		// Store the kvo to the list
 		//~ listAdd(global->config_list, config);
 		update_profile_menu(global->config);
@@ -459,7 +458,7 @@ static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer dat
 static void menu_file_import(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
-	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(main_window), 2);
+	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(ui.main_window), 2);
 	if (strstr(filename,".csv")) {
 		import_treestore_from_csv(treestore, filename);
 	}
@@ -481,7 +480,7 @@ static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
 	gtk_warning("You are about to save your information unencrypted");
-	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(main_window), 1);
+	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui.main_window), 1);
 	if (strstr(filename,".csv")) {
 		export_treestore_to_csv(treestore, filename);
 	}
@@ -953,19 +952,19 @@ int create_main_window(const char* default_filename) {
   gtk_window_set_default_icon_name(GTK_STOCK_DIALOG_AUTHENTICATION);
 
 	// Create the primary window
-  main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_position(GTK_WINDOW(main_window), GTK_WIN_POS_CENTER);
-  gtk_window_set_title(GTK_WINDOW(main_window), "Keyvault.org");
+  ui.main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_position(GTK_WINDOW(ui.main_window), GTK_WIN_POS_CENTER);
+  gtk_window_set_title(GTK_WINDOW(ui.main_window), "Keyvault.org");
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(main_window), "/usr/share/pixmaps/apple-red.png", NULL);
-	gtk_window_set_icon_name(GTK_WINDOW(main_window), GTK_STOCK_DIALOG_AUTHENTICATION);
-  gtk_widget_set_size_request (main_window, 700, 600);
+	gtk_window_set_icon_name(GTK_WINDOW(ui.main_window), GTK_STOCK_DIALOG_AUTHENTICATION);
+  gtk_widget_set_size_request (ui.main_window, 700, 600);
 
 	// Create the treeview (do not place yet)
   struct tTreeData* td = create_view_and_model();
 
 	// Make the vbox and put it in the main window
   GtkWidget* vbox = gtk_vbox_new(FALSE, 3);
-  gtk_container_add(GTK_CONTAINER(main_window), vbox);
+  gtk_container_add(GTK_CONTAINER(ui.main_window), vbox);
 
 	// Menu bar
 	GtkWidget* menu_bar = gtk_menu_bar_new();
@@ -1004,12 +1003,12 @@ int create_main_window(const char* default_filename) {
 
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
-	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), main_window);
+	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), ui.main_window);
 	gtk_add_menu_item_clickable(test_menu, "quick load", G_CALLBACK(menu_test_quick_load), td->treestore);
 	gtk_add_menu_item_clickable(test_menu, "quick save", G_CALLBACK(menu_test_quick_save), td->treestore);
 
 	// Help menu
-	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), main_window);
+	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), ui.main_window);
 
 	// This is the container for the treeview AND the record info
 	// Make the hbox and put it inside the vbox
@@ -1129,7 +1128,7 @@ int create_main_window(const char* default_filename) {
 
   /* Create a GtkAccelGroup and add it to the window. */
   GtkAccelGroup* accel_group = gtk_accel_group_new ();
-  gtk_window_add_accel_group (GTK_WINDOW (main_window), accel_group);
+  gtk_window_add_accel_group (GTK_WINDOW (ui.main_window), accel_group);
   gtk_widget_add_accelerator (open_menu_item, "activate", accel_group, GDK_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (save_menu_item, "activate", accel_group, GDK_s, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (exit_menu_item, "activate", accel_group, GDK_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
@@ -1138,9 +1137,9 @@ int create_main_window(const char* default_filename) {
   gtk_widget_add_accelerator (copy_password_menu_item, "activate", accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
 	// Connects...
-  g_signal_connect(G_OBJECT (main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT (ui.main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), td->treeview);
-  g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), main_window);
+  g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), ui.main_window);
 
 	// Password entry
 	g_signal_connect(G_OBJECT (password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
@@ -1167,7 +1166,7 @@ int create_main_window(const char* default_filename) {
 	update_profile_menu(global->config);
 
 	// Show the application
-  gtk_widget_show_all(main_window);
+  gtk_widget_show_all(ui.main_window);
 
 	// Is a default filename given, then read that file
 	if (default_filename)

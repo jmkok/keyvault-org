@@ -18,5 +18,9 @@ struct tGlobal {
 
 extern struct tGlobal* global;
 
+struct UI {
+	// The main window
+	GtkWidget* main_window;
+};
 
 #endif
