@@ -62,16 +62,6 @@ GtkWidget* popup_menu;
 
 struct UI ui;
 
-// The entries
-GtkWidget* title_entry;
-GtkWidget* username_entry;
-GtkWidget* password_entry;
-GtkWidget* url_entry;
-GtkWidget* group_entry;
-GtkWidget* info_text;
-GtkWidget* time_created_label;
-GtkWidget* time_modified_label;
-
 // The data tree
 struct tTreeData {
 	GtkWidget* treeview;
@@ -498,7 +488,7 @@ static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 //
 
 void click_launch_button(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	const gchar* url=gtk_entry_get_text(GTK_ENTRY(url_entry));
+	const gchar* url=gtk_entry_get_text(GTK_ENTRY(ui.url_entry));
 	printf("Launch: %s\n",url);
 	char* cmd = malloc(strlen(url) + 64);
 	sprintf(cmd,"/usr/bin/xdg-open %s",url);
@@ -534,7 +524,7 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 	GtkTreeIter child_iter;
 	GtkTreeModel* child_model;
 	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &filter_model, &filter_iter)) {
-		GtkTextBuffer* text_buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(info_text));
+		GtkTextBuffer* text_buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui.info_text));
 		GtkTextIter start,end;
 		gtk_text_buffer_get_bounds(text_buffer,&start,&end);
 		const gchar* info = gtk_text_buffer_get_text(text_buffer, &start, &end, 0);
@@ -545,11 +535,11 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 
 		// Now update the tree store
 		gtk_tree_store_set(GTK_TREE_STORE(child_model), &child_iter, 
-			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(title_entry)), 
-			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(username_entry)), 
-			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(password_entry)),
-			COL_URL, gtk_entry_get_text(GTK_ENTRY(url_entry)),
-			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(group_entry)),
+			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(ui.title_entry)), 
+			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(ui.username_entry)), 
+			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(ui.password_entry)),
+			COL_URL, gtk_entry_get_text(GTK_ENTRY(ui.url_entry)),
+			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(ui.group_entry)),
 			COL_INFO, info,
 			COL_TIME_MODIFIED, time(0),
 			-1);
@@ -583,7 +573,7 @@ static void menu_test_quick_save(_UNUSED_ GtkWidget* widget, gpointer treestore_
 
 static void click_random_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	gchar* password = create_random_password(12);
-	gtk_entry_set_text(GTK_ENTRY(password_entry),password);
+	gtk_entry_set_text(GTK_ENTRY(ui.password_entry),password);
 	g_free(password);
 }
 
@@ -620,12 +610,12 @@ static void click_copy_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer da
 
 static void focus_in_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	//~ GtkWidget*
-	gtk_entry_set_visibility(GTK_ENTRY(password_entry), TRUE);
+	gtk_entry_set_visibility(GTK_ENTRY(ui.password_entry), TRUE);
 }
 
 static void focus_out_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	//~ GtkWidget*
-	gtk_entry_set_visibility(GTK_ENTRY(password_entry), FALSE);
+	gtk_entry_set_visibility(GTK_ENTRY(ui.password_entry), FALSE);
 }
 
 // -----------------------------------------------------------
@@ -771,18 +761,18 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
     gtk_statusbar_push(GTK_STATUSBAR(statusbar),gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar),title), title);
 
 		// Update the input fields
-		gtk_entry_set_text(GTK_ENTRY(title_entry),(title?title:""));
-		gtk_entry_set_text(GTK_ENTRY(username_entry),(username?username:""));
-		gtk_entry_set_text(GTK_ENTRY(password_entry),(password?password:""));
-		gtk_entry_set_text(GTK_ENTRY(url_entry),(url?url:""));
-		gtk_entry_set_text(GTK_ENTRY(group_entry),(group?group:""));
-		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(info_text));
+		gtk_entry_set_text(GTK_ENTRY(ui.title_entry),(title?title:""));
+		gtk_entry_set_text(GTK_ENTRY(ui.username_entry),(username?username:""));
+		gtk_entry_set_text(GTK_ENTRY(ui.password_entry),(password?password:""));
+		gtk_entry_set_text(GTK_ENTRY(ui.url_entry),(url?url:""));
+		gtk_entry_set_text(GTK_ENTRY(ui.group_entry),(group?group:""));
+		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui.info_text));
 		if (info)
 			gtk_text_buffer_set_text(buffer,info,-1);
 		else
 			gtk_text_buffer_set_text(buffer,"",-1);
-		gtk_label_set_markup(GTK_LABEL(time_created_label), time_created_text);
-		gtk_label_set_markup(GTK_LABEL(time_modified_label), time_modified_text);
+		gtk_label_set_markup(GTK_LABEL(ui.time_created_label), time_created_text);
+		gtk_label_set_markup(GTK_LABEL(ui.time_modified_label), time_modified_text);
 
     free(time_modified_text);
     free(time_created_text);
@@ -1052,8 +1042,8 @@ int create_main_window(const char* default_filename) {
 	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
 	gtk_paned_add2(GTK_PANED(hbox), vbox_right);
 
-	title_entry = gtk_add_labeled_entry(vbox_right, "Title", NULL);
-	username_entry = gtk_add_labeled_entry(vbox_right, "Username", NULL);
+	ui.title_entry = gtk_add_labeled_entry(vbox_right, "Title", NULL);
+	ui.username_entry = gtk_add_labeled_entry(vbox_right, "Username", NULL);
 
 	// Add the password entry and button
 	label = gtk_label_new("Password");
@@ -1061,9 +1051,9 @@ int create_main_window(const char* default_filename) {
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
 	GtkWidget* box = gtk_hbox_new(FALSE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
-		password_entry = gtk_entry_new();
-		gtk_entry_set_visibility(GTK_ENTRY(password_entry), FALSE);
-		gtk_box_pack_start(GTK_BOX(box), password_entry , TRUE, TRUE, 0);
+		ui.password_entry = gtk_entry_new();
+		gtk_entry_set_visibility(GTK_ENTRY(ui.password_entry), FALSE);
+		gtk_box_pack_start(GTK_BOX(box), ui.password_entry , TRUE, TRUE, 0);
 		GtkWidget* random_password_button = gtk_button_new_with_label("Random");
 		gtk_box_pack_start(GTK_BOX(box), random_password_button , FALSE, TRUE, 0);
 
@@ -1073,13 +1063,13 @@ int create_main_window(const char* default_filename) {
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
 	box = gtk_hbox_new(FALSE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
-		url_entry = gtk_entry_new();
-		gtk_box_pack_start(GTK_BOX(box), url_entry , TRUE, TRUE, 0);
+		ui.url_entry = gtk_entry_new();
+		gtk_box_pack_start(GTK_BOX(box), ui.url_entry , TRUE, TRUE, 0);
 		GtkWidget* launch_button = gtk_button_new_with_label("Launch");
 		gtk_box_pack_start(GTK_BOX(box), launch_button , FALSE, TRUE, 0);
 
 	// Add the group entry
-	group_entry = gtk_add_labeled_entry(vbox_right, "Group", NULL);
+	ui.group_entry = gtk_add_labeled_entry(vbox_right, "Group", NULL);
 
 	// Add the information text area
 	label = gtk_label_new("Information");
@@ -1089,10 +1079,10 @@ int create_main_window(const char* default_filename) {
   //~ gtk_box_pack_start(GTK_BOX(vbox_right), text , FALSE, TRUE, 1);
 
 	// The info text
-	info_text = gtk_text_view_new();
-	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(info_text),GTK_WRAP_WORD);
+	ui.info_text = gtk_text_view_new();
+	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(ui.info_text),GTK_WRAP_WORD);
 	GtkWidget* scroll = gtk_scrolled_window_new(NULL,NULL);
-	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll),info_text);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll),ui.info_text);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_box_pack_start(GTK_BOX(vbox_right), scroll , TRUE, TRUE, 1);
 
@@ -1100,18 +1090,18 @@ int create_main_window(const char* default_filename) {
 	box = gtk_hbox_new(TRUE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
 		// Add the created time label
-		time_created_label = gtk_label_new("Created...");
-		gtk_misc_set_alignment (GTK_MISC(time_created_label), 0, 0);
-		gtk_box_pack_start(GTK_BOX(box), time_created_label , FALSE, TRUE, 1);
+		ui.time_created_label = gtk_label_new("Created...");
+		gtk_misc_set_alignment (GTK_MISC(ui.time_created_label), 0, 0);
+		gtk_box_pack_start(GTK_BOX(box), ui.time_created_label , FALSE, TRUE, 1);
 		// Add the modified time label
-		time_modified_label = gtk_label_new("Modified...");
-		gtk_misc_set_alignment (GTK_MISC(time_modified_label), 0, 0);
-		gtk_box_pack_start(GTK_BOX(box), time_modified_label , FALSE, TRUE, 1);
+		ui.time_modified_label = gtk_label_new("Modified...");
+		gtk_misc_set_alignment (GTK_MISC(ui.time_modified_label), 0, 0);
+		gtk_box_pack_start(GTK_BOX(box), ui.time_modified_label , FALSE, TRUE, 1);
 		// Set the texts to be grey
 		GdkColor grey_color;
 		gdk_color_parse ("grey", &grey_color);
-		gtk_widget_modify_fg (time_created_label, GTK_STATE_NORMAL, &grey_color);
-		gtk_widget_modify_fg (time_modified_label, GTK_STATE_NORMAL, &grey_color);
+		gtk_widget_modify_fg (ui.time_created_label, GTK_STATE_NORMAL, &grey_color);
+		gtk_widget_modify_fg (ui.time_modified_label, GTK_STATE_NORMAL, &grey_color);
 
 	// The record save button
   GtkWidget* record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
@@ -1137,8 +1127,8 @@ int create_main_window(const char* default_filename) {
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), ui.main_window);
 
 	// Password entry
-	g_signal_connect(G_OBJECT (password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
-	g_signal_connect(G_OBJECT (password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
+	g_signal_connect(G_OBJECT (ui.password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
+	g_signal_connect(G_OBJECT (ui.password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
 
 	// Any changes made to the treeview
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(td->treeview));

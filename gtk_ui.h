@@ -26,6 +26,16 @@ struct UI {
 	GtkWidget* open_profile_menu;
 	GtkWidget* save_profile_menu;
 	GtkWidget* edit_profile_menu;
+
+	// The entries
+	GtkWidget* title_entry;
+	GtkWidget* username_entry;
+	GtkWidget* password_entry;
+	GtkWidget* url_entry;
+	GtkWidget* group_entry;
+	GtkWidget* info_text;
+	GtkWidget* time_created_label;
+	GtkWidget* time_modified_label;
 };
 
 #endif
