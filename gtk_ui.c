@@ -26,20 +26,6 @@
 
 // -----------------------------------------------------------
 //
-// The encryption variables
-// The keys are built from the same passphrase, but with different salts and rounds
-//
-
-// The salts and rounds for the keys (not secret, they just need to be different)
-#define KEYVAULT_DATA   "5NewDdGpLQ0W-keyvault-data"
-#define KEYVAULT_CONFIG "n41JFWQAdmcf-keyvault-config"
-#define KEYVAULT_LOGIN  "S3ftaw7kgXlc-keyvault-login"
-#define KEYVAULT_DATA_ROUNDS   (4*1024)
-#define KEYVAULT_CONFIG_ROUNDS (5*1024)
-#define KEYVAULT_LOGIN_ROUNDS  (6*1024)
-
-// -----------------------------------------------------------
-//
 // Global variables
 //
 
