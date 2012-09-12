@@ -39,10 +39,10 @@ struct UI {
 
 	/* The treeview and its proporties */
 	struct {
-		GtkWidget* treeview;
-		GtkTreeStore* treestore;
-		GtkTreeModel* treefilter;
-		char* filter_title;
+		GtkWidget* view;
+		GtkTreeStore* store;
+		GtkTreeModel* model;
+		char* filter_text;
 	} tree;
 
 	/* The treeview popup menu */
