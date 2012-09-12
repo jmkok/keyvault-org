@@ -44,7 +44,7 @@
 // Global variables
 //
 
-struct tGlobal* global;
+struct GLOBAL* global;
 struct PASSKEY* passkey;
 struct UI* ui;
 
@@ -923,7 +923,7 @@ int create_main_window(const char* default_filename) {
 	srand(tv.tv_sec ^ tv.tv_usec);
 
 	// Initialize the generic global component
-	global = mallocz(sizeof(struct tGlobal));
+	global = mallocz(sizeof(struct GLOBAL));
 	passkey = mallocz(sizeof(struct PASSKEY));
 	ui = mallocz(sizeof(struct UI));
 

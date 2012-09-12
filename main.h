@@ -14,6 +14,6 @@
 	//~ tList* kvo_list;
 //~ };
 
-extern struct tGlobal* global;
+extern struct GLOBAL* global;
 
 #endif

@@ -12,11 +12,11 @@
 
 int create_main_window(const char* default_filename);
 
-struct tGlobal {
+struct GLOBAL {
 	struct CONFIG* config;
 };
 
-extern struct tGlobal* global;
+extern struct GLOBAL* global;
 
 struct UI {
 	// The main window
