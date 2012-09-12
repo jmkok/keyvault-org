@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <sys/time.h>
 #include <openssl/evp.h>
 #include <libxml/parser.h>
 
@@ -51,8 +52,12 @@ void random_init(void) {
  	random_handle = fopen("/dev/urandom","r");
  	if (!random_handle) {
 		gtk_error("Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating passwords is insecure !!!");
-		srand(time(NULL));
 	}
+
+	// Initialize random generator
+	struct timeval tv;
+	gettimeofday(&tv,0);
+	srand(tv.tv_sec ^ tv.tv_usec);
 }
 
 static void read_random(void* ptr, int len) {

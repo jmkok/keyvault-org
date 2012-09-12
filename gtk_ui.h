@@ -10,10 +10,11 @@
 // variables
 //
 
-int create_main_window(const char* default_filename);
+int create_main_window(void);
 
 struct GLOBAL {
 	struct CONFIG* config;
+	const char* default_filename;
 };
 
 extern struct GLOBAL* global;

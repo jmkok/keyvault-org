@@ -11,7 +11,6 @@
 #include <gdk/gdkkeysyms.h>
 #include <glib/gprintf.h>
 #include <libxml/parser.h>
-#include <sys/time.h>
 #include <assert.h>
 
 #include "gtk_ui.h"
@@ -922,14 +921,8 @@ static void click_about(_UNUSED_ GtkWidget* widget, gpointer parent_window)
 	// GTK_STOCK_CLEAR
 	// GTK_STOCK_DIALOG_AUTHENTICATION
 
-int create_main_window(const char* default_filename) {
-	// Initialize random generator
-	struct timeval tv;
-	gettimeofday(&tv,0);
-	srand(tv.tv_sec ^ tv.tv_usec);
-
+int create_main_window(void) {
 	// Initialize the generic global component
-	global = mallocz(sizeof(struct GLOBAL));
 	passkey = mallocz(sizeof(struct PASSKEY));
 	ui = mallocz(sizeof(struct UI));
 
@@ -1135,8 +1128,8 @@ int create_main_window(const char* default_filename) {
   gtk_widget_show_all(ui->main_window);
 
 	/* Is a default filename given, then read that file */
-	if (default_filename)
-		load_from_file(default_filename, ui->tree->store);
+	if (global->default_filename)
+		load_from_file(global->default_filename, ui->tree->store);
 
 	/* Warn once about the beta status */
 	FILE* once = fopen(".keyvault-warning.once","r");
