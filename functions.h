@@ -9,5 +9,6 @@ extern char* concat(char* s1,char* s2);
 extern void lowercase(char string[]);
 extern void* mallocz(int size);
 extern void trim(char* src);
+extern int file_exists(const char* filename);
 
 #endif

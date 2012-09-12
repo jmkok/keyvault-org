@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #include <glib/gprintf.h>
 
@@ -122,4 +123,15 @@ void rtrim(char* src) {
 void trim(char* src) {
 	ltrim(src);
 	rtrim(src);
+}
+
+// ---------------------------------------------------------------------
+//
+// Test if a file exists
+//
+
+int file_exists(const char* filename) {
+	struct stat buf;
+	int i = stat (filename, &buf);
+	return (i == 0);
 }

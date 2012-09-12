@@ -13,8 +13,6 @@
 
 int create_main_window(struct SETUP* setup);
 
-extern struct SETUP* global;
-
 struct TREEVIEW {
 	GtkWidget* view;				/* The view */
 	GtkTreeStore* store;		/* The store */

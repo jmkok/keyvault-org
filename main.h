@@ -15,6 +15,4 @@ struct SETUP {
 	const char* default_filename;
 };
 
-extern struct SETUP* global;
-
 #endif

@@ -923,6 +923,7 @@ static void click_about(_UNUSED_ GtkWidget* widget, gpointer parent_window)
 
 int create_main_window(struct SETUP* setup) {
 	// Initialize the generic global component
+	global = setup;
 	passkey = mallocz(sizeof(struct PASSKEY));
 	ui = mallocz(sizeof(struct UI));
 
@@ -1130,18 +1131,6 @@ int create_main_window(struct SETUP* setup) {
 	/* Is a default filename given, then read that file */
 	if (setup->default_filename)
 		load_from_file(setup->default_filename, ui->tree->store);
-
-	/* Warn once about the beta status */
-	FILE* once = fopen(".keyvault-warning.once","r");
-	if (!once) {
-		gtk_warning("This software is still in development\nKeep a plain text version of your passwords in a safe place\nThis warning will not be shown again");
-		once = fopen(".keyvault-warning.once","w");
-		if (once)
-			fclose(once);
-	}
-	else {
-		fclose(once);
-	}
 
 	/* Run the app */
   gtk_main();
