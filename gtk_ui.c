@@ -43,7 +43,7 @@
 // Global variables
 //
 
-struct GLOBAL* global;
+struct SETUP* global;
 struct PASSKEY* passkey;
 struct UI* ui;
 
@@ -921,7 +921,7 @@ static void click_about(_UNUSED_ GtkWidget* widget, gpointer parent_window)
 	// GTK_STOCK_CLEAR
 	// GTK_STOCK_DIALOG_AUTHENTICATION
 
-int create_main_window(void) {
+int create_main_window(struct SETUP* setup) {
 	// Initialize the generic global component
 	passkey = mallocz(sizeof(struct PASSKEY));
 	ui = mallocz(sizeof(struct UI));
@@ -1121,15 +1121,15 @@ int create_main_window(void) {
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
 	/* Read the configuration... */
-	global->config = read_configuration("config.xml");
-	update_profile_menu(global->config);
+	setup->config = read_configuration("config.xml");
+	update_profile_menu(setup->config);
 
 	/* Show the application */
   gtk_widget_show_all(ui->main_window);
 
 	/* Is a default filename given, then read that file */
-	if (global->default_filename)
-		load_from_file(global->default_filename, ui->tree->store);
+	if (setup->default_filename)
+		load_from_file(setup->default_filename, ui->tree->store);
 
 	/* Warn once about the beta status */
 	FILE* once = fopen(".keyvault-warning.once","r");
@@ -1147,7 +1147,7 @@ int create_main_window(void) {
   gtk_main();
 
 	/* Save the configuration... */
-	save_configuration("config.xml", global->config);
+	save_configuration("config.xml", setup->config);
 
   return 0;
 }

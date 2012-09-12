@@ -1,3 +1,4 @@
+#include "main.h"
 #include "gtk_ui.h"
 #include "encryption.h"
 #include "functions.h"
@@ -7,11 +8,12 @@ int main(int argc, char** argv)
 	// Initialize the gtk
   gtk_init(&argc, &argv);
 
-	/* Initialize the global handle */
-	global = mallocz(sizeof(struct GLOBAL));
+	/* Initialize the global setup */
+	struct SETUP* setup = mallocz(sizeof(struct SETUP));
+	global = setup;
 
   // Open the essential random handle (do it here so we can warn the user with a dialog before doing anything else
-  random_init();
+  random_init(setup);
 
 	// Initialize libxml2
 	xmlThrDefIndentTreeOutput(1);
@@ -25,7 +27,7 @@ int main(int argc, char** argv)
 	}
 
 	// Create the main window
-	create_main_window();
+	create_main_window(setup);
 
   return 0;
 }

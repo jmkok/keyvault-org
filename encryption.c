@@ -6,7 +6,6 @@
 #include <openssl/evp.h>
 #include <libxml/parser.h>
 
-#include "main.h"
 #include "encryption.h"
 #include "functions.h"
 #include "xml.h"
@@ -46,11 +45,11 @@ void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer,size_t length, con
 // Random functions
 //
 
-static FILE* random_handle;
+static FILE* __random_handle__;
 
 void random_init(void) {
- 	random_handle = fopen("/dev/urandom","r");
- 	if (!random_handle) {
+	__random_handle__ = fopen("/dev/urandom","r");
+	if (!__random_handle__) {
 		gtk_error("Could not open the handle to the random file.\nYou are still capable of opening the file.\nSaving the file and creating passwords is insecure !!!");
 	}
 
@@ -61,8 +60,8 @@ void random_init(void) {
 }
 
 static void read_random(void* ptr, int len) {
-	if (random_handle) {
-		fread(ptr, 1, len, random_handle);
+	if (__random_handle__) {
+		fread(ptr, 1, len, __random_handle__);
 	}
 	else {
 		int i;

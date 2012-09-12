@@ -10,10 +10,11 @@
 // variables
 //
 
-//~ struct tGlobal {
-	//~ tList* kvo_list;
-//~ };
+struct SETUP {
+	struct CONFIG* config;
+	const char* default_filename;
+};
 
-extern struct GLOBAL* global;
+extern struct SETUP* global;
 
 #endif

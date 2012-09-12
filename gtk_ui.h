@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <gtk/gtk.h>
+#include "main.h"
 #include "list.h"
 
 // -----------------------------------------------------------
@@ -10,14 +11,9 @@
 // variables
 //
 
-int create_main_window(void);
+int create_main_window(struct SETUP* setup);
 
-struct GLOBAL {
-	struct CONFIG* config;
-	const char* default_filename;
-};
-
-extern struct GLOBAL* global;
+extern struct SETUP* global;
 
 struct TREEVIEW {
 	GtkWidget* view;				/* The view */

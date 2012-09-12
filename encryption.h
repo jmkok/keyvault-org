@@ -5,6 +5,8 @@
 #include <openssl/evp.h>
 #include <libxml/parser.h>
 
+#include "main.h"
+
 extern void evp_cipher(const EVP_CIPHER *type, unsigned char* buffer, size_t len, const unsigned char key[32], const unsigned char iv[16]);
 
 extern void random_init(void);
