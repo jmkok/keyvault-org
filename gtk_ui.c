@@ -31,8 +31,6 @@
 // The keys are built from the same passphrase, but with different salts and rounds
 //
 
-struct PASSKEY passkey;
-
 // The salts and rounds for the keys (not secret, they just need to be different)
 #define KEYVAULT_DATA   "5NewDdGpLQ0W-keyvault-data"
 #define KEYVAULT_CONFIG "n41JFWQAdmcf-keyvault-config"
@@ -47,6 +45,8 @@ struct PASSKEY passkey;
 //
 
 struct tGlobal* global;
+struct PASSKEY* passkey;
+struct UI* ui;
 
 static char* active_filename = NULL;
 //~ static tFileDescription* active_file;
@@ -55,8 +55,6 @@ static char* active_filename = NULL;
 //
 // Global widgets
 //
-
-struct UI ui;
 
 // The data tree
 struct tTreeData {
@@ -84,18 +82,18 @@ static int gtk_request_passphrase(void) {
 	// Request the passphrase from the user
 	gchar* passphrase = gtk_dialog_password(NULL, "Enter passphrase");
 	if (!passphrase) {
-		passkey.valid = 0;
-		memset(passkey.data, 0, 32);
-		memset(passkey.config, 0, 32);
-		memset(passkey.login, 0, 32);
+		passkey->valid = 0;
+		memset(passkey->data, 0, 32);
+		memset(passkey->config, 0, 32);
+		memset(passkey->login, 0, 32);
 		return -1;
 	}
 
 	// Create the keyvault-data keys
-	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_DATA,   KEYVAULT_DATA_ROUNDS,   passkey.data);
-	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_CONFIG, KEYVAULT_CONFIG_ROUNDS, passkey.config);
-	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_LOGIN,  KEYVAULT_LOGIN_ROUNDS,  passkey.login);
-	passkey.valid = 1;
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_DATA,   KEYVAULT_DATA_ROUNDS,   passkey->data);
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_CONFIG, KEYVAULT_CONFIG_ROUNDS, passkey->config);
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_LOGIN,  KEYVAULT_LOGIN_ROUNDS,  passkey->login);
+	passkey->valid = 1;
 
 	// Cleanup
 	memset(passphrase, 0 ,strlen(passphrase));
@@ -110,14 +108,14 @@ static int gtk_request_passphrase(void) {
 
 static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 	while(1) {
-		if (!passkey.valid && (gtk_request_passphrase() != 0))
+		if (!passkey->valid && (gtk_request_passphrase() != 0))
 			break;
-		xmlDoc* decrypted_doc = xml_doc_decrypt(encrypted_doc, passkey.data);
+		xmlDoc* decrypted_doc = xml_doc_decrypt(encrypted_doc, passkey->data);
 		if (decrypted_doc) {
 			//~ xmlDocShow(decrypted_doc);
 			return decrypted_doc;
 		}
-		passkey.valid = 0;
+		passkey->valid = 0;
 	}
 	return NULL;
 }
@@ -148,7 +146,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 
 static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
-	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(ui.main_window), 0);
+	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 0);
 	if (filename) {
 		GtkTreeStore* treestore = treestore_ptr;
 		if (load_from_file(filename, treestore)) {
@@ -175,8 +173,8 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
-		if (passkey.valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passkey.config);
+		if (passkey->valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passkey->config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -221,9 +219,9 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 		import_treestore_from_xml(treedata->treestore, doc);
 
 		// Valid passphrase, then store the configuration
-		if (passkey.valid) {
+		if (passkey->valid) {
 			xmlNode* new_node = kvo_to_node(kvo);
-			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passkey.config, NULL);
+			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passkey->config, NULL);
 			if (node_encrypted) {
 				xmlNewProp(node_encrypted, XML_CHAR "title", BAD_CAST kvo->title);
 				xmlReplaceNode(node, node_encrypted);
@@ -246,8 +244,8 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
-		if (passkey.valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passkey.config);
+		if (passkey->valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passkey->config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -263,16 +261,16 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 		return;
 
 	// Get a passphrase if not yet available
-	if (!passkey.valid) {
+	if (!passkey->valid) {
 		if (gtk_request_passphrase() != 0)
 			return;
-		passkey.valid = 1;
+		passkey->valid = 1;
 	}
 
 	// Create an encrypted xml document
 	xmlDoc* doc = export_treestore_to_xml(treedata->treestore);
 	assert(doc);
-	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passkey.data);
+	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passkey->data);
 	assert(doc_encrypted);
 
 	// Write the data to the file
@@ -296,9 +294,9 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	xmlFree(doc);
 
 	// Valid passphrase, then store the configuration
-	if (passkey.valid) {
+	if (passkey->valid) {
 		xmlNode* new = kvo_to_node(kvo);
-		xmlNode* enc_new = xmlNodeEncrypt(new, passkey.config, NULL);
+		xmlNode* enc_new = xmlNodeEncrypt(new, passkey->config, NULL);
 		if (enc_new) {
 			xmlNewProp(enc_new, XML_CHAR "title", BAD_CAST kvo->title);
 			xmlReplaceNode(node, enc_new);
@@ -319,14 +317,14 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 	//~ xmlDocShow(doc);
 
 	// Request the passphrase to encode the file
-	if (!passkey.valid) {
+	if (!passkey->valid) {
 		if (gtk_request_passphrase() != 0)
 			return;
-		passkey.valid = 1;
+		passkey->valid = 1;
 	}
 
 	// xml => encrypted-xml
-	xmlDoc* enc_doc = xml_doc_encrypt(doc, passkey.data);
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, passkey->data);
 	//~ xmlDocShow(enc_doc);
 
 	// encrypted-xml => disk
@@ -344,7 +342,7 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 
 static void menu_file_save_as(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
-	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui.main_window), 0);
+	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui->main_window), 0);
 	if (filename) {
 		GtkTreeStore* treestore = treestore_ptr;
 		save_to_file(filename, treestore);
@@ -378,8 +376,8 @@ static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
-		if (passkey.valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passkey.config);
+		if (passkey->valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passkey->config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -395,7 +393,7 @@ static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 		return;
 
 	// Let the use fill in all required fields...
-	if (gtk_dialog_request_config(ui.main_window, kvo)) {
+	if (gtk_dialog_request_config(ui->main_window, kvo)) {
 		// Store the kvo to the list
 		//~ listAdd(global->config_list, config);
 		update_profile_menu(global->config);
@@ -439,7 +437,7 @@ static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer dat
 static void menu_file_import(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
-	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(ui.main_window), 2);
+	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 2);
 	if (strstr(filename,".csv")) {
 		import_treestore_from_csv(treestore, filename);
 	}
@@ -461,7 +459,7 @@ static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 {
 	GtkTreeStore* treestore = treestore_ptr;
 	gtk_warning("You are about to save your information unencrypted");
-	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui.main_window), 1);
+	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui->main_window), 1);
 	if (strstr(filename,".csv")) {
 		export_treestore_to_csv(treestore, filename);
 	}
@@ -484,7 +482,7 @@ static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 //
 
 void click_launch_button(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	const gchar* url=gtk_entry_get_text(GTK_ENTRY(ui.url_entry));
+	const gchar* url=gtk_entry_get_text(GTK_ENTRY(ui->url_entry));
 	printf("Launch: %s\n",url);
 	char* cmd = malloc(strlen(url) + 64);
 	sprintf(cmd,"/usr/bin/xdg-open %s",url);
@@ -520,7 +518,7 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 	GtkTreeIter child_iter;
 	GtkTreeModel* child_model;
 	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &filter_model, &filter_iter)) {
-		GtkTextBuffer* text_buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui.info_text));
+		GtkTextBuffer* text_buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui->info_text));
 		GtkTextIter start,end;
 		gtk_text_buffer_get_bounds(text_buffer,&start,&end);
 		const gchar* info = gtk_text_buffer_get_text(text_buffer, &start, &end, 0);
@@ -531,11 +529,11 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 
 		// Now update the tree store
 		gtk_tree_store_set(GTK_TREE_STORE(child_model), &child_iter, 
-			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(ui.title_entry)), 
-			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(ui.username_entry)), 
-			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(ui.password_entry)),
-			COL_URL, gtk_entry_get_text(GTK_ENTRY(ui.url_entry)),
-			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(ui.group_entry)),
+			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(ui->title_entry)), 
+			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(ui->username_entry)), 
+			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(ui->password_entry)),
+			COL_URL, gtk_entry_get_text(GTK_ENTRY(ui->url_entry)),
+			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(ui->group_entry)),
 			COL_INFO, info,
 			COL_TIME_MODIFIED, time(0),
 			-1);
@@ -569,7 +567,7 @@ static void menu_test_quick_save(_UNUSED_ GtkWidget* widget, gpointer treestore_
 
 static void click_random_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	gchar* password = create_random_password(12);
-	gtk_entry_set_text(GTK_ENTRY(ui.password_entry),password);
+	gtk_entry_set_text(GTK_ENTRY(ui->password_entry),password);
 	g_free(password);
 }
 
@@ -606,12 +604,12 @@ static void click_copy_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer da
 
 static void focus_in_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	//~ GtkWidget*
-	gtk_entry_set_visibility(GTK_ENTRY(ui.password_entry), TRUE);
+	gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), TRUE);
 }
 
 static void focus_out_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	//~ GtkWidget*
-	gtk_entry_set_visibility(GTK_ENTRY(ui.password_entry), FALSE);
+	gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), FALSE);
 }
 
 // -----------------------------------------------------------
@@ -632,7 +630,7 @@ static void do_popup_menu (_UNUSED_ GtkWidget* widget, GdkEventButton *event) {
 		event_time = gtk_get_current_event_time ();
 	}
 
-	gtk_menu_popup (GTK_MENU (ui.popup_menu), NULL, NULL, NULL, NULL, button, event_time);
+	gtk_menu_popup (GTK_MENU (ui->popup_menu), NULL, NULL, NULL, NULL, button, event_time);
 }
 
 static gboolean my_widget_button_press_event_handler (GtkWidget *widget, GdkEventButton *event) {
@@ -668,9 +666,9 @@ void menu_test_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 void menu_edit_change_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	int err = gtk_request_passphrase();
 	if (err)
-		passkey.valid = 0;
+		passkey->valid = 0;
 	else
-		passkey.valid = 1;
+		passkey->valid = 1;
 }
 
 // -----------------------------------------------------------
@@ -684,13 +682,13 @@ static void update_profile_menu(struct CONFIG* config) {
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
 		gtk_remove_menu_item(data, menu_item);
 	}
-	gtk_container_foreach(GTK_CONTAINER(ui.open_profile_menu), cb_remove_menu_item, ui.open_profile_menu);
-	gtk_container_foreach(GTK_CONTAINER(ui.save_profile_menu), cb_remove_menu_item, ui.save_profile_menu);
-	gtk_container_foreach(GTK_CONTAINER(ui.edit_profile_menu), cb_remove_menu_item, ui.edit_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui->open_profile_menu), cb_remove_menu_item, ui->open_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui->save_profile_menu), cb_remove_menu_item, ui->save_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui->edit_profile_menu), cb_remove_menu_item, ui->edit_profile_menu);
 
 	// Edit profile...
-	gtk_add_menu_item_clickable(ui.edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config->doc);
-	gtk_add_separator(ui.edit_profile_menu);
+	gtk_add_menu_item_clickable(ui->edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config->doc);
+	gtk_add_separator(ui->edit_profile_menu);
 
 	// Add all items in the config_list to the profile menu
 	int idx = 0;
@@ -700,16 +698,16 @@ trace();
 		if (!node)
 			break;
 		char* title = get_config_title(node);
-		gtk_add_menu_item_clickable(ui.open_profile_menu, title, G_CALLBACK(menu_open_profile_file), node);
-		gtk_add_menu_item_clickable(ui.save_profile_menu, title, G_CALLBACK(menu_save_profile_file), node);
-		gtk_add_menu_item_clickable(ui.edit_profile_menu, title, G_CALLBACK(menu_edit_profile), node);
+		gtk_add_menu_item_clickable(ui->open_profile_menu, title, G_CALLBACK(menu_open_profile_file), node);
+		gtk_add_menu_item_clickable(ui->save_profile_menu, title, G_CALLBACK(menu_save_profile_file), node);
+		gtk_add_menu_item_clickable(ui->edit_profile_menu, title, G_CALLBACK(menu_edit_profile), node);
 	}
 trace();
 
 	// Update the menu
-	gtk_widget_show_all(ui.open_profile_menu);
-	gtk_widget_show_all(ui.save_profile_menu);
-	gtk_widget_show_all(ui.edit_profile_menu);
+	gtk_widget_show_all(ui->open_profile_menu);
+	gtk_widget_show_all(ui->save_profile_menu);
+	gtk_widget_show_all(ui->edit_profile_menu);
 }
 
 // -----------------------------------------------------------
@@ -757,18 +755,18 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
     gtk_statusbar_push(GTK_STATUSBAR(statusbar),gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar),title), title);
 
 		// Update the input fields
-		gtk_entry_set_text(GTK_ENTRY(ui.title_entry),(title?title:""));
-		gtk_entry_set_text(GTK_ENTRY(ui.username_entry),(username?username:""));
-		gtk_entry_set_text(GTK_ENTRY(ui.password_entry),(password?password:""));
-		gtk_entry_set_text(GTK_ENTRY(ui.url_entry),(url?url:""));
-		gtk_entry_set_text(GTK_ENTRY(ui.group_entry),(group?group:""));
-		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui.info_text));
+		gtk_entry_set_text(GTK_ENTRY(ui->title_entry),(title?title:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->username_entry),(username?username:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->password_entry),(password?password:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->url_entry),(url?url:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->group_entry),(group?group:""));
+		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui->info_text));
 		if (info)
 			gtk_text_buffer_set_text(buffer,info,-1);
 		else
 			gtk_text_buffer_set_text(buffer,"",-1);
-		gtk_label_set_markup(GTK_LABEL(ui.time_created_label), time_created_text);
-		gtk_label_set_markup(GTK_LABEL(ui.time_modified_label), time_modified_text);
+		gtk_label_set_markup(GTK_LABEL(ui->time_created_label), time_created_text);
+		gtk_label_set_markup(GTK_LABEL(ui->time_modified_label), time_modified_text);
 
     free(time_modified_text);
     free(time_created_text);
@@ -926,6 +924,8 @@ int create_main_window(const char* default_filename) {
 
 	// Initialize the generic global component
 	global = mallocz(sizeof(struct tGlobal));
+	passkey = mallocz(sizeof(struct PASSKEY));
+	ui = mallocz(sizeof(struct UI));
 
 	GtkWidget* label;
 
@@ -933,19 +933,19 @@ int create_main_window(const char* default_filename) {
   gtk_window_set_default_icon_name(GTK_STOCK_DIALOG_AUTHENTICATION);
 
 	// Create the primary window
-  ui.main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_position(GTK_WINDOW(ui.main_window), GTK_WIN_POS_CENTER);
-  gtk_window_set_title(GTK_WINDOW(ui.main_window), "Keyvault.org");
+  ui->main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_position(GTK_WINDOW(ui->main_window), GTK_WIN_POS_CENTER);
+  gtk_window_set_title(GTK_WINDOW(ui->main_window), "Keyvault.org");
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(main_window), "/usr/share/pixmaps/apple-red.png", NULL);
-	gtk_window_set_icon_name(GTK_WINDOW(ui.main_window), GTK_STOCK_DIALOG_AUTHENTICATION);
-  gtk_widget_set_size_request (ui.main_window, 700, 600);
+	gtk_window_set_icon_name(GTK_WINDOW(ui->main_window), GTK_STOCK_DIALOG_AUTHENTICATION);
+  gtk_widget_set_size_request (ui->main_window, 700, 600);
 
 	// Create the treeview (do not place yet)
   struct tTreeData* td = create_view_and_model();
 
 	// Make the vbox and put it in the main window
   GtkWidget* vbox = gtk_vbox_new(FALSE, 3);
-  gtk_container_add(GTK_CONTAINER(ui.main_window), vbox);
+  gtk_container_add(GTK_CONTAINER(ui->main_window), vbox);
 
 	// Menu bar
 	GtkWidget* menu_bar = gtk_menu_bar_new();
@@ -962,9 +962,9 @@ int create_main_window(const char* default_filename) {
 	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), td->treestore);
 	gtk_add_separator(file_menu);
 	// File menu - remote files
-	ui.open_profile_menu = gtk_add_menu(file_menu, "Open profile");
-	ui.save_profile_menu = gtk_add_menu(file_menu, "Save profile");
-	ui.edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
+	ui->open_profile_menu = gtk_add_menu(file_menu, "Open profile");
+	ui->save_profile_menu = gtk_add_menu(file_menu, "Save profile");
+	ui->edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
 	gtk_add_separator(file_menu);
 	// File menu - import/export
 	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), td->treestore);
@@ -984,12 +984,12 @@ int create_main_window(const char* default_filename) {
 
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
-	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), ui.main_window);
+	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), ui->main_window);
 	gtk_add_menu_item_clickable(test_menu, "quick load", G_CALLBACK(menu_test_quick_load), td->treestore);
 	gtk_add_menu_item_clickable(test_menu, "quick save", G_CALLBACK(menu_test_quick_save), td->treestore);
 
 	// Help menu
-	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), ui.main_window);
+	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), ui->main_window);
 
 	// This is the container for the treeview AND the record info
 	// Make the hbox and put it inside the vbox
@@ -1020,26 +1020,26 @@ int create_main_window(const char* default_filename) {
   g_signal_connect(G_OBJECT(td->treeview), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
   g_signal_connect(G_OBJECT(td->treeview), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
 
-	ui.popup_menu = gtk_menu_new ();
+	ui->popup_menu = gtk_menu_new ();
 	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);
 
 	// Add the accelerator
   GtkAccelGroup* popup_accel_group = gtk_accel_group_new ();
-  gtk_menu_set_accel_group(GTK_MENU (ui.popup_menu), popup_accel_group);
+  gtk_menu_set_accel_group(GTK_MENU (ui->popup_menu), popup_accel_group);
 
 	/* ... add menu items ... */
-	gtk_add_menu_item_clickable(ui.popup_menu, "add", G_CALLBACK(click_add_item), NULL);
+	gtk_add_menu_item_clickable(ui->popup_menu, "add", G_CALLBACK(click_add_item), NULL);
 	//~ gtk_widget_add_accelerator (add_menu_item, "activate", popup_accel_group, GDK_x, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-	gtk_add_menu_item_clickable(ui.popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
-	gtk_menu_attach_to_widget (GTK_MENU (ui.popup_menu), td->treeview, NULL);
-	gtk_widget_show_all(ui.popup_menu);
+	gtk_add_menu_item_clickable(ui->popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
+	gtk_menu_attach_to_widget (GTK_MENU (ui->popup_menu), td->treeview, NULL);
+	gtk_widget_show_all(ui->popup_menu);
 
 	// The right side (record info)
 	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
 	gtk_paned_add2(GTK_PANED(hbox), vbox_right);
 
-	ui.title_entry = gtk_add_labeled_entry(vbox_right, "Title", NULL);
-	ui.username_entry = gtk_add_labeled_entry(vbox_right, "Username", NULL);
+	ui->title_entry = gtk_add_labeled_entry(vbox_right, "Title", NULL);
+	ui->username_entry = gtk_add_labeled_entry(vbox_right, "Username", NULL);
 
 	// Add the password entry and button
 	label = gtk_label_new("Password");
@@ -1047,9 +1047,9 @@ int create_main_window(const char* default_filename) {
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
 	GtkWidget* box = gtk_hbox_new(FALSE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
-		ui.password_entry = gtk_entry_new();
-		gtk_entry_set_visibility(GTK_ENTRY(ui.password_entry), FALSE);
-		gtk_box_pack_start(GTK_BOX(box), ui.password_entry , TRUE, TRUE, 0);
+		ui->password_entry = gtk_entry_new();
+		gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), FALSE);
+		gtk_box_pack_start(GTK_BOX(box), ui->password_entry , TRUE, TRUE, 0);
 		GtkWidget* random_password_button = gtk_button_new_with_label("Random");
 		gtk_box_pack_start(GTK_BOX(box), random_password_button , FALSE, TRUE, 0);
 
@@ -1059,13 +1059,13 @@ int create_main_window(const char* default_filename) {
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
 	box = gtk_hbox_new(FALSE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
-		ui.url_entry = gtk_entry_new();
-		gtk_box_pack_start(GTK_BOX(box), ui.url_entry , TRUE, TRUE, 0);
+		ui->url_entry = gtk_entry_new();
+		gtk_box_pack_start(GTK_BOX(box), ui->url_entry , TRUE, TRUE, 0);
 		GtkWidget* launch_button = gtk_button_new_with_label("Launch");
 		gtk_box_pack_start(GTK_BOX(box), launch_button , FALSE, TRUE, 0);
 
 	// Add the group entry
-	ui.group_entry = gtk_add_labeled_entry(vbox_right, "Group", NULL);
+	ui->group_entry = gtk_add_labeled_entry(vbox_right, "Group", NULL);
 
 	// Add the information text area
 	label = gtk_label_new("Information");
@@ -1075,10 +1075,10 @@ int create_main_window(const char* default_filename) {
   //~ gtk_box_pack_start(GTK_BOX(vbox_right), text , FALSE, TRUE, 1);
 
 	// The info text
-	ui.info_text = gtk_text_view_new();
-	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(ui.info_text),GTK_WRAP_WORD);
+	ui->info_text = gtk_text_view_new();
+	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(ui->info_text),GTK_WRAP_WORD);
 	GtkWidget* scroll = gtk_scrolled_window_new(NULL,NULL);
-	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll),ui.info_text);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll),ui->info_text);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_box_pack_start(GTK_BOX(vbox_right), scroll , TRUE, TRUE, 1);
 
@@ -1086,18 +1086,18 @@ int create_main_window(const char* default_filename) {
 	box = gtk_hbox_new(TRUE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
 		// Add the created time label
-		ui.time_created_label = gtk_label_new("Created...");
-		gtk_misc_set_alignment (GTK_MISC(ui.time_created_label), 0, 0);
-		gtk_box_pack_start(GTK_BOX(box), ui.time_created_label , FALSE, TRUE, 1);
+		ui->time_created_label = gtk_label_new("Created...");
+		gtk_misc_set_alignment (GTK_MISC(ui->time_created_label), 0, 0);
+		gtk_box_pack_start(GTK_BOX(box), ui->time_created_label , FALSE, TRUE, 1);
 		// Add the modified time label
-		ui.time_modified_label = gtk_label_new("Modified...");
-		gtk_misc_set_alignment (GTK_MISC(ui.time_modified_label), 0, 0);
-		gtk_box_pack_start(GTK_BOX(box), ui.time_modified_label , FALSE, TRUE, 1);
+		ui->time_modified_label = gtk_label_new("Modified...");
+		gtk_misc_set_alignment (GTK_MISC(ui->time_modified_label), 0, 0);
+		gtk_box_pack_start(GTK_BOX(box), ui->time_modified_label , FALSE, TRUE, 1);
 		// Set the texts to be grey
 		GdkColor grey_color;
 		gdk_color_parse ("grey", &grey_color);
-		gtk_widget_modify_fg (ui.time_created_label, GTK_STATE_NORMAL, &grey_color);
-		gtk_widget_modify_fg (ui.time_modified_label, GTK_STATE_NORMAL, &grey_color);
+		gtk_widget_modify_fg (ui->time_created_label, GTK_STATE_NORMAL, &grey_color);
+		gtk_widget_modify_fg (ui->time_modified_label, GTK_STATE_NORMAL, &grey_color);
 
 	// The record save button
   GtkWidget* record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
@@ -1109,7 +1109,7 @@ int create_main_window(const char* default_filename) {
 
   /* Create a GtkAccelGroup and add it to the window. */
   GtkAccelGroup* accel_group = gtk_accel_group_new ();
-  gtk_window_add_accel_group (GTK_WINDOW (ui.main_window), accel_group);
+  gtk_window_add_accel_group (GTK_WINDOW (ui->main_window), accel_group);
   gtk_widget_add_accelerator (open_menu_item, "activate", accel_group, GDK_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (save_menu_item, "activate", accel_group, GDK_s, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (exit_menu_item, "activate", accel_group, GDK_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
@@ -1118,13 +1118,13 @@ int create_main_window(const char* default_filename) {
   gtk_widget_add_accelerator (copy_password_menu_item, "activate", accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
 	// Connects...
-  g_signal_connect(G_OBJECT (ui.main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT (ui->main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), td->treeview);
-  g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), ui.main_window);
+  g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), ui->main_window);
 
 	// Password entry
-	g_signal_connect(G_OBJECT (ui.password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
-	g_signal_connect(G_OBJECT (ui.password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
+	g_signal_connect(G_OBJECT (ui->password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
+	g_signal_connect(G_OBJECT (ui->password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
 
 	// Any changes made to the treeview
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(td->treeview));
@@ -1147,7 +1147,7 @@ int create_main_window(const char* default_filename) {
 	update_profile_menu(global->config);
 
 	// Show the application
-  gtk_widget_show_all(ui.main_window);
+  gtk_widget_show_all(ui->main_window);
 
 	// Is a default filename given, then read that file
 	if (default_filename)
