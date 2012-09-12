@@ -18,6 +18,14 @@ struct GLOBAL {
 
 extern struct GLOBAL* global;
 
+struct TREEVIEW {
+	GtkWidget* view;				/* The view */
+	GtkTreeStore* store;		/* The store */
+	GtkTreeModel* model;		/* The model */
+	GtkWidget* popup_menu;	/* The popup menu */
+	char* filter_text;			/* The filter text */
+};
+
 struct UI {
 	// The main window
 	GtkWidget* main_window;
@@ -38,15 +46,7 @@ struct UI {
 	GtkWidget* time_modified_label;
 
 	/* The treeview and its proporties */
-	struct {
-		GtkWidget* view;
-		GtkTreeStore* store;
-		GtkTreeModel* model;
-		char* filter_text;
-	} tree;
-
-	/* The treeview popup menu */
-	GtkWidget* popup_menu;
+	struct TREEVIEW* tree;
 };
 
 struct PASSKEY {

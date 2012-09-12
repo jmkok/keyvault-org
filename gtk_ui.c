@@ -121,7 +121,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 
 	// Move the encrypted xml into the treestore
 	import_treestore_from_xml(treestore, doc);
-	
+
 	return 1;
 }
 
@@ -155,7 +155,7 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 	assert(node);
 	//~ tConfigDescription* config = node_to_kvo;
 	xmlNodeShow(node);
-	
+
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
@@ -190,7 +190,7 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 		ssize_t len;
 		if (ssh_get_file(kvo,&data,&len) != 0)
 			return;
-		
+
 		// Read the data into an xml structure
 		xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
 		if (!encrypted_doc) {
@@ -202,7 +202,7 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 		xmlDoc* doc = user_decrypt_xml(encrypted_doc);
 
 		// Move the encrypted xml into the treestore
-		import_treestore_from_xml(ui->tree.store, doc);
+		import_treestore_from_xml(ui->tree->store, doc);
 
 		// Valid passphrase, then store the configuration
 		if (passkey->valid) {
@@ -254,7 +254,7 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	}
 
 	// Create an encrypted xml document
-	xmlDoc* doc = export_treestore_to_xml(ui->tree.store);
+	xmlDoc* doc = export_treestore_to_xml(ui->tree->store);
 	assert(doc);
 	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passkey->data);
 	assert(doc_encrypted);
@@ -485,7 +485,7 @@ void click_launch_button(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 static void treemodel_filter_change(GtkWidget *widget, gpointer ptr) {
 	GtkTreeModelFilter* treefilter = ptr;
 	const char* text=gtk_entry_get_text(GTK_ENTRY(widget));
-	strcpy(ui->tree.filter_text, text);
+	strcpy(ui->tree->filter_text, text);
 	gtk_tree_model_filter_refilter(treefilter);
 }
 
@@ -514,9 +514,9 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 		child_model = gtk_tree_model_filter_get_model (GTK_TREE_MODEL_FILTER (filter_model));
 
 		// Now update the tree store
-		gtk_tree_store_set(GTK_TREE_STORE(child_model), &child_iter, 
-			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(ui->title_entry)), 
-			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(ui->username_entry)), 
+		gtk_tree_store_set(GTK_TREE_STORE(child_model), &child_iter,
+			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(ui->title_entry)),
+			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(ui->username_entry)),
 			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(ui->password_entry)),
 			COL_URL, gtk_entry_get_text(GTK_ENTRY(ui->url_entry)),
 			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(ui->group_entry)),
@@ -567,11 +567,11 @@ static void click_add_item(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	// Insert a new record with a random password
 	gchar* password = create_random_password(12);
 	gchar* id = create_random_password(16);
-	treestore_add_record(ui->tree.store, &iter, NULL, id, "NEW", "", password, "http://", "", "", time(0), time(0));
+	treestore_add_record(ui->tree->store, &iter, NULL, id, "NEW", "", password, "http://", "", "", time(0), time(0));
 	g_free(id);
 	g_free(password);
 	// Set focus...
-  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree.view));
+  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
 	gtk_tree_selection_select_iter(selection, &iter);
 }
 
@@ -616,7 +616,7 @@ static void do_popup_menu (_UNUSED_ GtkWidget* widget, GdkEventButton *event) {
 		event_time = gtk_get_current_event_time ();
 	}
 
-	gtk_menu_popup (GTK_MENU (ui->popup_menu), NULL, NULL, NULL, NULL, button, event_time);
+	gtk_menu_popup (GTK_MENU (ui->tree->popup_menu), NULL, NULL, NULL, NULL, button, event_time);
 }
 
 static gboolean my_widget_button_press_event_handler (GtkWidget *widget, GdkEventButton *event) {
@@ -724,12 +724,12 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 
   if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(widget), &model, &iter)) {
 		// Read the item
-    gtk_tree_model_get(model, &iter, 
+    gtk_tree_model_get(model, &iter,
 			COL_ID, &id,
-			COL_TITLE, &title, 
+			COL_TITLE, &title,
 			COL_USERNAME, &username,
-			COL_PASSWORD, &password, 
-			COL_URL, &url, 
+			COL_PASSWORD, &password,
+			COL_URL, &url,
 			COL_GROUP, &group,
 			COL_INFO, &info,
 			COL_TIME_CREATED, &time_created,
@@ -782,7 +782,7 @@ static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter,
 	gtk_tree_model_get (model, iter, COL_TITLE, &str, -1);
 	if (str) {
 		lowercase(str);
-		if (strstr(str, ui->tree.filter_text))
+		if (strstr(str, ui->tree->filter_text))
 			visible = TRUE;
 		g_free (str);
 	}
@@ -829,29 +829,27 @@ static void treestore_reverse_sort_order(GtkWidget *widget, gpointer ptr) {
 // create_view_and_model()
 //
 
-static void create_view_and_model(void) {
-	//~ struct tTreeData* td = mallocz(sizeof(struct tTreeData));
-	//~ treedata = td;
+static struct TREEVIEW* create_view_and_model(void) {
+	struct TREEVIEW* tree = mallocz(sizeof(struct TREEVIEW));
 
 	// Malloc the filter
-	ui->tree.filter_text=malloc(1024);
-	*ui->tree.filter_text=0;
+	tree->filter_text = mallocz(1024);
 
 	// Create the treestore (6 strings fields + 2 time fields)
-	ui->tree.store = gtk_tree_store_new(NUM_COLS,
+	tree->store = gtk_tree_store_new(NUM_COLS,
 		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, 
+		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
 		G_TYPE_UINT, G_TYPE_UINT
 	);
 
 	// Sort on title
-	gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(ui->tree.store), COL_TITLE, treestore_sort_func, NULL, NULL);
-	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(ui->tree.store), COL_TITLE, sort_order);
+	gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(tree->store), COL_TITLE, treestore_sort_func, NULL, NULL);
+	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(tree->store), COL_TITLE, sort_order);
 
 	// Create the filtered model ("filter_title")
-	ui->tree.model = gtk_tree_model_filter_new(GTK_TREE_MODEL(ui->tree.store), NULL);
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(ui->tree.model), treemodel_visible_func, NULL, NULL);
-	ui->tree.view = gtk_tree_view_new_with_model(ui->tree.model);
+	tree->model = gtk_tree_model_filter_new(GTK_TREE_MODEL(tree->store), NULL);
+	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(tree->model), treemodel_visible_func, NULL, NULL);
+	tree->view = gtk_tree_view_new_with_model(tree->model);
 
 	// Create column 1 and set the title
   GtkTreeViewColumn* col1 = gtk_tree_view_column_new();
@@ -859,16 +857,41 @@ static void create_view_and_model(void) {
   gtk_tree_view_column_set_clickable(col1, TRUE);
   gtk_tree_view_column_set_sort_indicator(col1, TRUE);
   //~ gtk_tree_view_column_set_sort_column_id(col1, COL_TITLE);	// Is this easier ? It currently only gives me trouble...
-  g_signal_connect(G_OBJECT (col1), "clicked", G_CALLBACK(treestore_reverse_sort_order), ui->tree.store);
-  gtk_tree_view_append_column(GTK_TREE_VIEW(ui->tree.view), col1);
-  
+  g_signal_connect(G_OBJECT (col1), "clicked", G_CALLBACK(treestore_reverse_sort_order), tree->store);
+  gtk_tree_view_append_column(GTK_TREE_VIEW(tree->view), col1);
+
   // Define how column 1 looks like
   GtkCellRenderer* renderer = gtk_cell_renderer_text_new();
   gtk_tree_view_column_pack_start(col1, renderer, TRUE);
   gtk_tree_view_column_add_attribute(col1, renderer, "text", COL_TITLE);
 
 	// Make the title searchable
-	gtk_tree_view_set_search_column(GTK_TREE_VIEW(ui->tree.view), COL_TITLE);
+	gtk_tree_view_set_search_column(GTK_TREE_VIEW(tree->view), COL_TITLE);
+
+	// Add scrolling capabilities (noi mouse support...)
+	//~ GtkWidget* sw = addScrollBarToTreeView(tree->view);
+	//~ gtk_box_pack_start(GTK_BOX(vbox_left), sw , TRUE, TRUE, 1);
+
+	// POPUP MENU
+  g_signal_connect(G_OBJECT(tree->view), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
+  g_signal_connect(G_OBJECT(tree->view), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
+
+	tree->popup_menu = gtk_menu_new ();
+	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);
+
+	// Add the accelerator
+  GtkAccelGroup* popup_accel_group = gtk_accel_group_new ();
+  gtk_menu_set_accel_group(GTK_MENU (tree->popup_menu), popup_accel_group);
+
+	/* ... add menu items ... */
+	gtk_add_menu_item_clickable(tree->popup_menu, "add", G_CALLBACK(click_add_item), NULL);
+	//~ gtk_widget_add_accelerator (add_menu_item, "activate", popup_accel_group, GDK_x, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+	gtk_add_menu_item_clickable(tree->popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
+	gtk_menu_attach_to_widget (GTK_MENU (tree->popup_menu), tree->view, NULL);
+	gtk_widget_show_all(tree->popup_menu);
+
+	/* Return the create tree */
+	return tree;
 }
 
 // -----------------------------------------------------------
@@ -883,7 +906,7 @@ static void click_about(_UNUSED_ GtkWidget* widget, gpointer parent_window)
 		"program-name", "KeyVault.org",
 		"title", "About KeyVault.org",
 		"logo-icon-name", GTK_STOCK_DIALOG_AUTHENTICATION,
-		"authors", authors, 
+		"authors", authors,
 		"website", "http://www.keyvault.org",
 		//~ "website-label", "http://www.keyvault.org",
 		NULL);
@@ -924,7 +947,7 @@ int create_main_window(const char* default_filename) {
   gtk_widget_set_size_request (ui->main_window, 700, 600);
 
 	// Create the treeview (do not place yet)
-  create_view_and_model();
+  ui->tree = create_view_and_model();
 
 	// Make the vbox and put it in the main window
   GtkWidget* vbox = gtk_vbox_new(FALSE, 3);
@@ -940,9 +963,9 @@ int create_main_window(const char* default_filename) {
 	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
 
 	// File menu - local files
-	GtkWidget* open_menu_item = gtk_add_menu_item_clickable(file_menu, "Open file", G_CALLBACK(menu_file_open), ui->tree.store);
-	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), ui->tree.store);
-	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), ui->tree.store);
+	GtkWidget* open_menu_item = gtk_add_menu_item_clickable(file_menu, "Open file", G_CALLBACK(menu_file_open), ui->tree->store);
+	GtkWidget* save_menu_item = gtk_add_menu_item_clickable(file_menu, "Save", G_CALLBACK(menu_file_save), ui->tree->store);
+	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), ui->tree->store);
 	gtk_add_separator(file_menu);
 	// File menu - remote files
 	ui->open_profile_menu = gtk_add_menu(file_menu, "Open profile");
@@ -950,8 +973,8 @@ int create_main_window(const char* default_filename) {
 	ui->edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
 	gtk_add_separator(file_menu);
 	// File menu - import/export
-	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), ui->tree.store);
-	gtk_add_menu_item_clickable(file_menu, "Export...", G_CALLBACK(menu_file_export), ui->tree.store);
+	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), ui->tree->store);
+	gtk_add_menu_item_clickable(file_menu, "Export...", G_CALLBACK(menu_file_export), ui->tree->store);
 	gtk_add_separator(file_menu);
 	//~ gtk_add_menu_item_clickable(file_menu, "Read configuration", G_CALLBACK(save_configuration), NULL);
 	//~ gtk_add_menu_item_clickable(file_menu, "Save configuration", G_CALLBACK(read_configuration), NULL);
@@ -968,8 +991,8 @@ int create_main_window(const char* default_filename) {
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
 	gtk_add_menu_item_clickable(test_menu, "passphrase", G_CALLBACK(menu_test_passphrase), ui->main_window);
-	gtk_add_menu_item_clickable(test_menu, "quick load", G_CALLBACK(menu_test_quick_load), ui->tree.store);
-	gtk_add_menu_item_clickable(test_menu, "quick save", G_CALLBACK(menu_test_quick_save), ui->tree.store);
+	gtk_add_menu_item_clickable(test_menu, "quick load", G_CALLBACK(menu_test_quick_load), ui->tree->store);
+	gtk_add_menu_item_clickable(test_menu, "quick save", G_CALLBACK(menu_test_quick_save), ui->tree->store);
 
 	// Help menu
 	gtk_add_menu_item_clickable(help_menu, "About", G_CALLBACK(click_about), ui->main_window);
@@ -981,43 +1004,21 @@ int create_main_window(const char* default_filename) {
 	gtk_paned_set_position(GTK_PANED(hbox),200);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 1);
 
-	// The left side (treeview)
+	/* The left side (treeview) */
 	GtkWidget* vbox_left = gtk_vbox_new(FALSE, 2);
 	gtk_paned_add1(GTK_PANED(hbox), vbox_left);
 
-	// Treeview filter entry
+	/* Treeview filter entry */
 	GtkWidget* filter_entry = gtk_entry_new();
 	gtk_entry_set_icon_from_stock(GTK_ENTRY(filter_entry), GTK_ENTRY_ICON_SECONDARY, GTK_STOCK_CLEAR);
 	gtk_box_pack_start(GTK_BOX(vbox_left), filter_entry, FALSE, TRUE, 1);
 
-	// Add scrolling capabilities (noi mouse support...)
-	//~ GtkWidget* sw = addScrollBarToTreeView(ui->tree.view);
-	//~ gtk_box_pack_start(GTK_BOX(vbox_left), sw , TRUE, TRUE, 1);
-	
-	// Add scrolling capabilities
+	/* Place the tree view in a scrollable widget */
 	GtkWidget* treeview_scroll = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(treeview_scroll), ui->tree->view);
 	gtk_box_pack_start(GTK_BOX(vbox_left), treeview_scroll , TRUE, TRUE, 1);
-	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(treeview_scroll), ui->tree.view);
-	
-	// POPUP MENU
-  g_signal_connect(G_OBJECT(ui->tree.view), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
-  g_signal_connect(G_OBJECT(ui->tree.view), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
 
-	ui->popup_menu = gtk_menu_new ();
-	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);
-
-	// Add the accelerator
-  GtkAccelGroup* popup_accel_group = gtk_accel_group_new ();
-  gtk_menu_set_accel_group(GTK_MENU (ui->popup_menu), popup_accel_group);
-
-	/* ... add menu items ... */
-	gtk_add_menu_item_clickable(ui->popup_menu, "add", G_CALLBACK(click_add_item), NULL);
-	//~ gtk_widget_add_accelerator (add_menu_item, "activate", popup_accel_group, GDK_x, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-	gtk_add_menu_item_clickable(ui->popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
-	gtk_menu_attach_to_widget (GTK_MENU (ui->popup_menu), ui->tree.view, NULL);
-	gtk_widget_show_all(ui->popup_menu);
-
-	// The right side (record info)
+	/* The right side (record info) */
 	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
 	gtk_paned_add2(GTK_PANED(hbox), vbox_right);
 
@@ -1102,7 +1103,7 @@ int create_main_window(const char* default_filename) {
 
 	// Connects...
   g_signal_connect(G_OBJECT (ui->main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), ui->tree.view);
+  g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), ui->tree->view);
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), ui->main_window);
 
 	// Password entry
@@ -1110,19 +1111,19 @@ int create_main_window(const char* default_filename) {
 	g_signal_connect(G_OBJECT (ui->password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
 
 	// Any changes made to the treeview
-  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree.view));
+  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
   gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
   g_signal_connect(selection, "changed", G_CALLBACK(treeview_selection_changed), statusbar);
 
 	// Any changes made to the input field are written into the tree store
-	//~ g_signal_connect(G_OBJECT (title_entry), "changed", G_CALLBACK(write_changes_to_ui->tree.store), selection);
-	//~ g_signal_connect(G_OBJECT (username_entry), "changed", G_CALLBACK(write_changes_to_ui->tree.store), selection);
-	//~ g_signal_connect(G_OBJECT (password_entry), "changed", G_CALLBACK(write_changes_to_ui->tree.store), selection);
-	//~ g_signal_connect(G_OBJECT (url_entry), "changed", G_CALLBACK(write_changes_to_ui->tree.store), selection);
+	//~ g_signal_connect(G_OBJECT (title_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
+	//~ g_signal_connect(G_OBJECT (username_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
+	//~ g_signal_connect(G_OBJECT (password_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
+	//~ g_signal_connect(G_OBJECT (url_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
 	//~ g_signal_connect(G_OBJECT (info_text), "focus-out-event", G_CALLBACK(write_changes_to_treestore), selection);
 	g_signal_connect(G_OBJECT (record_save_button), "clicked", G_CALLBACK(write_changes_to_treestore), selection);
 
-	g_signal_connect(G_OBJECT (filter_entry), "changed", G_CALLBACK(treemodel_filter_change), ui->tree.model);
+	g_signal_connect(G_OBJECT (filter_entry), "changed", G_CALLBACK(treemodel_filter_change), ui->tree->model);
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
 	// Read the configuration...
@@ -1134,7 +1135,7 @@ int create_main_window(const char* default_filename) {
 
 	// Is a default filename given, then read that file
 	if (default_filename)
-		load_from_file(default_filename, ui->tree.store);
+		load_from_file(default_filename, ui->tree->store);
 
 	// Warn once
 	FILE* once = fopen(".keyvault-warning.once","r");
