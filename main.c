@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 	global = setup;
 
   // Open the essential random handle (do it here so we can warn the user with a dialog before doing anything else
-  random_init(setup);
+  random_init();
 
 	// Initialize libxml2
 	xmlThrDefIndentTreeOutput(1);
