@@ -1022,10 +1022,11 @@ int create_main_window(const char* default_filename) {
 	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
 	gtk_paned_add2(GTK_PANED(hbox), vbox_right);
 
+	/* Add the title and username input entry */
 	ui->title_entry = gtk_add_labeled_entry(vbox_right, "Title", NULL);
 	ui->username_entry = gtk_add_labeled_entry(vbox_right, "Username", NULL);
 
-	// Add the password entry and button
+	/* Add the password entry and "random" button */
 	label = gtk_label_new("Password");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
@@ -1037,7 +1038,7 @@ int create_main_window(const char* default_filename) {
 		GtkWidget* random_password_button = gtk_button_new_with_label("Random");
 		gtk_box_pack_start(GTK_BOX(box), random_password_button , FALSE, TRUE, 0);
 
-	// Add the url entry and button
+	/* Add the url entry and and "launch" button */
 	label = gtk_label_new("Url");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
@@ -1048,17 +1049,15 @@ int create_main_window(const char* default_filename) {
 		GtkWidget* launch_button = gtk_button_new_with_label("Launch");
 		gtk_box_pack_start(GTK_BOX(box), launch_button , FALSE, TRUE, 0);
 
-	// Add the group entry
+	/* Add the group entry */
 	ui->group_entry = gtk_add_labeled_entry(vbox_right, "Group", NULL);
 
-	// Add the information text area
+	/* Add the information label */
 	label = gtk_label_new("Information");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
-	//~ text = gtk_text_view_new();
-  //~ gtk_box_pack_start(GTK_BOX(vbox_right), text , FALSE, TRUE, 1);
 
-	// The info text
+	/* Add the information entry */
 	ui->info_text = gtk_text_view_new();
 	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(ui->info_text),GTK_WRAP_WORD);
 	GtkWidget* scroll = gtk_scrolled_window_new(NULL,NULL);
@@ -1066,7 +1065,7 @@ int create_main_window(const char* default_filename) {
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_box_pack_start(GTK_BOX(vbox_right), scroll , TRUE, TRUE, 1);
 
-	// Add the created and modified time label
+	/* Add the created and modified time label */
 	box = gtk_hbox_new(TRUE,2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
 		// Add the created time label
@@ -1083,11 +1082,11 @@ int create_main_window(const char* default_filename) {
 		gtk_widget_modify_fg (ui->time_created_label, GTK_STATE_NORMAL, &grey_color);
 		gtk_widget_modify_fg (ui->time_modified_label, GTK_STATE_NORMAL, &grey_color);
 
-	// The record save button
+	/* The record save button */
   GtkWidget* record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
   gtk_box_pack_start(GTK_BOX(vbox_right), record_save_button , FALSE, TRUE, 1);
 
-	// Status bar...
+	/* Status bar... */
   GtkWidget* statusbar = gtk_statusbar_new();
   gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, TRUE, 1);
 
@@ -1101,43 +1100,45 @@ int create_main_window(const char* default_filename) {
   gtk_widget_add_accelerator (copy_username_menu_item, "activate", accel_group, GDK_u, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator (copy_password_menu_item, "activate", accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
-	// Connects...
+	/* Connects... */
   g_signal_connect(G_OBJECT (ui->main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT (launch_button), "clicked", G_CALLBACK(click_launch_button), ui->tree->view);
   g_signal_connect(G_OBJECT (random_password_button), "clicked", G_CALLBACK(click_random_password), ui->main_window);
 
-	// Password entry
+	/* Connect the password entry */
 	g_signal_connect(G_OBJECT (ui->password_entry), "focus-in-event", G_CALLBACK(focus_in_password), NULL);
 	g_signal_connect(G_OBJECT (ui->password_entry), "focus-out-event", G_CALLBACK(focus_out_password), NULL);
 
-	// Any changes made to the treeview
+	/* Connect to any changes made to the treeview */
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
   gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
   g_signal_connect(selection, "changed", G_CALLBACK(treeview_selection_changed), statusbar);
 
-	// Any changes made to the input field are written into the tree store
+	/* Connect to any changes made to the input fields */
 	//~ g_signal_connect(G_OBJECT (title_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
 	//~ g_signal_connect(G_OBJECT (username_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
 	//~ g_signal_connect(G_OBJECT (password_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
 	//~ g_signal_connect(G_OBJECT (url_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);
 	//~ g_signal_connect(G_OBJECT (info_text), "focus-out-event", G_CALLBACK(write_changes_to_treestore), selection);
+
+	/* Connect to the "save" button */
 	g_signal_connect(G_OBJECT (record_save_button), "clicked", G_CALLBACK(write_changes_to_treestore), selection);
 
 	g_signal_connect(G_OBJECT (filter_entry), "changed", G_CALLBACK(treemodel_filter_change), ui->tree->model);
 	g_signal_connect(G_OBJECT (filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
-	// Read the configuration...
+	/* Read the configuration... */
 	global->config = read_configuration("config.xml");
 	update_profile_menu(global->config);
 
-	// Show the application
+	/* Show the application */
   gtk_widget_show_all(ui->main_window);
 
-	// Is a default filename given, then read that file
+	/* Is a default filename given, then read that file */
 	if (default_filename)
 		load_from_file(default_filename, ui->tree->store);
 
-	// Warn once
+	/* Warn once about the beta status */
 	FILE* once = fopen(".keyvault-warning.once","r");
 	if (!once) {
 		gtk_warning("This software is still in development\nKeep a plain text version of your passwords in a safe place\nThis warning will not be shown again");
@@ -1149,10 +1150,10 @@ int create_main_window(const char* default_filename) {
 		fclose(once);
 	}
 
-	// Run the app
+	/* Run the app */
   gtk_main();
 
-	// Save the configuration...
+	/* Save the configuration... */
 	save_configuration("config.xml", global->config);
 
   return 0;
