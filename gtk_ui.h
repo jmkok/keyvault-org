@@ -37,6 +37,14 @@ struct UI {
 	GtkWidget* time_created_label;
 	GtkWidget* time_modified_label;
 
+	/* The treeview and its proporties */
+	struct {
+		GtkWidget* treeview;
+		GtkTreeStore* treestore;
+		GtkTreeModel* treefilter;
+		char* filter_title;
+	} tree;
+
 	/* The treeview popup menu */
 	GtkWidget* popup_menu;
 };
