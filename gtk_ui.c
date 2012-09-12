@@ -62,11 +62,6 @@ GtkWidget* popup_menu;
 
 struct UI ui;
 
-// The menus
-GtkWidget* open_profile_menu;
-GtkWidget* save_profile_menu;
-GtkWidget* edit_profile_menu;
-
 // The entries
 GtkWidget* title_entry;
 GtkWidget* username_entry;
@@ -703,13 +698,13 @@ static void update_profile_menu(struct CONFIG* config) {
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
 		gtk_remove_menu_item(data, menu_item);
 	}
-	gtk_container_foreach(GTK_CONTAINER(open_profile_menu), cb_remove_menu_item, open_profile_menu);
-	gtk_container_foreach(GTK_CONTAINER(save_profile_menu), cb_remove_menu_item, save_profile_menu);
-	gtk_container_foreach(GTK_CONTAINER(edit_profile_menu), cb_remove_menu_item, edit_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui.open_profile_menu), cb_remove_menu_item, ui.open_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui.save_profile_menu), cb_remove_menu_item, ui.save_profile_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui.edit_profile_menu), cb_remove_menu_item, ui.edit_profile_menu);
 
 	// Edit profile...
-	gtk_add_menu_item_clickable(edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config->doc);
-	gtk_add_separator(edit_profile_menu);
+	gtk_add_menu_item_clickable(ui.edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config->doc);
+	gtk_add_separator(ui.edit_profile_menu);
 
 	// Add all items in the config_list to the profile menu
 	int idx = 0;
@@ -719,16 +714,16 @@ trace();
 		if (!node)
 			break;
 		char* title = get_config_title(node);
-		gtk_add_menu_item_clickable(open_profile_menu, title, G_CALLBACK(menu_open_profile_file), node);
-		gtk_add_menu_item_clickable(save_profile_menu, title, G_CALLBACK(menu_save_profile_file), node);
-		gtk_add_menu_item_clickable(edit_profile_menu, title, G_CALLBACK(menu_edit_profile), node);
+		gtk_add_menu_item_clickable(ui.open_profile_menu, title, G_CALLBACK(menu_open_profile_file), node);
+		gtk_add_menu_item_clickable(ui.save_profile_menu, title, G_CALLBACK(menu_save_profile_file), node);
+		gtk_add_menu_item_clickable(ui.edit_profile_menu, title, G_CALLBACK(menu_edit_profile), node);
 	}
 trace();
 
 	// Update the menu
-	gtk_widget_show_all(open_profile_menu);
-	gtk_widget_show_all(save_profile_menu);
-	gtk_widget_show_all(edit_profile_menu);
+	gtk_widget_show_all(ui.open_profile_menu);
+	gtk_widget_show_all(ui.save_profile_menu);
+	gtk_widget_show_all(ui.edit_profile_menu);
 }
 
 // -----------------------------------------------------------
@@ -981,9 +976,9 @@ int create_main_window(const char* default_filename) {
 	gtk_add_menu_item_clickable(file_menu, "Save as...", G_CALLBACK(menu_file_save_as), td->treestore);
 	gtk_add_separator(file_menu);
 	// File menu - remote files
-	open_profile_menu = gtk_add_menu(file_menu, "Open profile");
-	save_profile_menu = gtk_add_menu(file_menu, "Save profile");
-	edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
+	ui.open_profile_menu = gtk_add_menu(file_menu, "Open profile");
+	ui.save_profile_menu = gtk_add_menu(file_menu, "Save profile");
+	ui.edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
 	gtk_add_separator(file_menu);
 	// File menu - import/export
 	gtk_add_menu_item_clickable(file_menu, "Import...", G_CALLBACK(menu_file_import), td->treestore);
