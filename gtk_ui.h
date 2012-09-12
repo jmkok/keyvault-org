@@ -36,6 +36,16 @@ struct UI {
 	GtkWidget* info_text;
 	GtkWidget* time_created_label;
 	GtkWidget* time_modified_label;
+
+	/* The treeview popup menu */
+	GtkWidget* popup_menu;
+};
+
+struct PASSKEY {
+	int valid;
+	u_char data[32];		// This key is used to encrypt/decrypt the container
+	u_char config[32];	// This key is used to encrypt/decrypt some of the configuration fields
+	u_char login[32];	// This key is used to login to keyvault.org (todo)
 };
 
 #endif

@@ -31,10 +31,7 @@
 // The keys are built from the same passphrase, but with different salts and rounds
 //
 
-static int passphrase_valid = 0;
-static u_char passphrase_data[32];		// This key is used to encrypt/decrypt the container
-static u_char passphrase_config[32];	// This key is used to encrypt/decrypt some of the configuration fields
-static u_char passphrase_login[32];		// This key is used to login to keyvault.org (todo)
+struct PASSKEY passkey;
 
 // The salts and rounds for the keys (not secret, they just need to be different)
 #define KEYVAULT_DATA   "5NewDdGpLQ0W-keyvault-data"
@@ -53,7 +50,6 @@ struct tGlobal* global;
 
 static char* active_filename = NULL;
 //~ static tFileDescription* active_file;
-GtkWidget* popup_menu;
 
 // -----------------------------------------------------------
 //
@@ -88,18 +84,18 @@ static int gtk_request_passphrase(void) {
 	// Request the passphrase from the user
 	gchar* passphrase = gtk_dialog_password(NULL, "Enter passphrase");
 	if (!passphrase) {
-		passphrase_valid = 0;
-		memset(passphrase_data, 0, 32);
-		memset(passphrase_config, 0, 32);
-		memset(passphrase_login, 0, 32);
+		passkey.valid = 0;
+		memset(passkey.data, 0, 32);
+		memset(passkey.config, 0, 32);
+		memset(passkey.login, 0, 32);
 		return -1;
 	}
 
 	// Create the keyvault-data keys
-	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_DATA,   KEYVAULT_DATA_ROUNDS,   passphrase_data);
-	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_CONFIG, KEYVAULT_CONFIG_ROUNDS, passphrase_config);
-	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_LOGIN,  KEYVAULT_LOGIN_ROUNDS,  passphrase_login);
-	passphrase_valid = 1;
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_DATA,   KEYVAULT_DATA_ROUNDS,   passkey.data);
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_CONFIG, KEYVAULT_CONFIG_ROUNDS, passkey.config);
+	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_LOGIN,  KEYVAULT_LOGIN_ROUNDS,  passkey.login);
+	passkey.valid = 1;
 
 	// Cleanup
 	memset(passphrase, 0 ,strlen(passphrase));
@@ -114,14 +110,14 @@ static int gtk_request_passphrase(void) {
 
 static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 	while(1) {
-		if (!passphrase_valid && (gtk_request_passphrase() != 0))
+		if (!passkey.valid && (gtk_request_passphrase() != 0))
 			break;
-		xmlDoc* decrypted_doc = xml_doc_decrypt(encrypted_doc, passphrase_data);
+		xmlDoc* decrypted_doc = xml_doc_decrypt(encrypted_doc, passkey.data);
 		if (decrypted_doc) {
 			//~ xmlDocShow(decrypted_doc);
 			return decrypted_doc;
 		}
-		passphrase_valid = 0;
+		passkey.valid = 0;
 	}
 	return NULL;
 }
@@ -179,8 +175,8 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
-		if (passphrase_valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passphrase_config);
+		if (passkey.valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passkey.config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -225,9 +221,9 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 		import_treestore_from_xml(treedata->treestore, doc);
 
 		// Valid passphrase, then store the configuration
-		if (passphrase_valid) {
+		if (passkey.valid) {
 			xmlNode* new_node = kvo_to_node(kvo);
-			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passphrase_config, NULL);
+			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passkey.config, NULL);
 			if (node_encrypted) {
 				xmlNewProp(node_encrypted, XML_CHAR "title", BAD_CAST kvo->title);
 				xmlReplaceNode(node, node_encrypted);
@@ -250,8 +246,8 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
-		if (passphrase_valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passphrase_config);
+		if (passkey.valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passkey.config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -267,16 +263,16 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 		return;
 
 	// Get a passphrase if not yet available
-	if (!passphrase_valid) {
+	if (!passkey.valid) {
 		if (gtk_request_passphrase() != 0)
 			return;
-		passphrase_valid = 1;
+		passkey.valid = 1;
 	}
 
 	// Create an encrypted xml document
 	xmlDoc* doc = export_treestore_to_xml(treedata->treestore);
 	assert(doc);
-	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passphrase_data);
+	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passkey.data);
 	assert(doc_encrypted);
 
 	// Write the data to the file
@@ -300,9 +296,9 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	xmlFree(doc);
 
 	// Valid passphrase, then store the configuration
-	if (passphrase_valid) {
+	if (passkey.valid) {
 		xmlNode* new = kvo_to_node(kvo);
-		xmlNode* enc_new = xmlNodeEncrypt(new, passphrase_config, NULL);
+		xmlNode* enc_new = xmlNodeEncrypt(new, passkey.config, NULL);
 		if (enc_new) {
 			xmlNewProp(enc_new, XML_CHAR "title", BAD_CAST kvo->title);
 			xmlReplaceNode(node, enc_new);
@@ -323,14 +319,14 @@ static void save_to_file(const gchar* filename, GtkTreeStore* treestore) {
 	//~ xmlDocShow(doc);
 
 	// Request the passphrase to encode the file
-	if (!passphrase_valid) {
+	if (!passkey.valid) {
 		if (gtk_request_passphrase() != 0)
 			return;
-		passphrase_valid = 1;
+		passkey.valid = 1;
 	}
 
 	// xml => encrypted-xml
-	xmlDoc* enc_doc = xml_doc_encrypt(doc, passphrase_data);
+	xmlDoc* enc_doc = xml_doc_encrypt(doc, passkey.data);
 	//~ xmlDocShow(enc_doc);
 
 	// encrypted-xml => disk
@@ -382,8 +378,8 @@ static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	// First we have to decrypt the node...
 	xmlNode* config_node = node;
 	while (xmlIsNodeEncrypted(node)) {
-		if (passphrase_valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passphrase_config);
+		if (passkey.valid) {
+			xmlNode* tmp = xmlNodeDecrypt(node, passkey.config);
 			if (tmp) {
 				config_node = tmp;
 				break;
@@ -636,7 +632,7 @@ static void do_popup_menu (_UNUSED_ GtkWidget* widget, GdkEventButton *event) {
 		event_time = gtk_get_current_event_time ();
 	}
 
-	gtk_menu_popup (GTK_MENU (popup_menu), NULL, NULL, NULL, NULL, button, event_time);
+	gtk_menu_popup (GTK_MENU (ui.popup_menu), NULL, NULL, NULL, NULL, button, event_time);
 }
 
 static gboolean my_widget_button_press_event_handler (GtkWidget *widget, GdkEventButton *event) {
@@ -672,9 +668,9 @@ void menu_test_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 void menu_edit_change_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	int err = gtk_request_passphrase();
 	if (err)
-		passphrase_valid = 0;
+		passkey.valid = 0;
 	else
-		passphrase_valid = 1;
+		passkey.valid = 1;
 }
 
 // -----------------------------------------------------------
@@ -1024,19 +1020,19 @@ int create_main_window(const char* default_filename) {
   g_signal_connect(G_OBJECT(td->treeview), "button-press-event", G_CALLBACK(my_widget_button_press_event_handler), NULL);
   g_signal_connect(G_OBJECT(td->treeview), "popup-menu", G_CALLBACK(my_widget_popup_menu_handler), NULL);
 
-	popup_menu = gtk_menu_new ();
+	ui.popup_menu = gtk_menu_new ();
 	//~ g_signal_connect (menu, "deactivate",G_CALLBACK(gtk_widget_destroy), NULL);
 
 	// Add the accelerator
   GtkAccelGroup* popup_accel_group = gtk_accel_group_new ();
-  gtk_menu_set_accel_group(GTK_MENU (popup_menu), popup_accel_group);
+  gtk_menu_set_accel_group(GTK_MENU (ui.popup_menu), popup_accel_group);
 
 	/* ... add menu items ... */
-	gtk_add_menu_item_clickable(popup_menu, "add", G_CALLBACK(click_add_item), NULL);
+	gtk_add_menu_item_clickable(ui.popup_menu, "add", G_CALLBACK(click_add_item), NULL);
 	//~ gtk_widget_add_accelerator (add_menu_item, "activate", popup_accel_group, GDK_x, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-	gtk_add_menu_item_clickable(popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
-	gtk_menu_attach_to_widget (GTK_MENU (popup_menu), td->treeview, NULL);
-	gtk_widget_show_all(popup_menu);
+	gtk_add_menu_item_clickable(ui.popup_menu, "quit", G_CALLBACK(gtk_main_quit), NULL);
+	gtk_menu_attach_to_widget (GTK_MENU (ui.popup_menu), td->treeview, NULL);
+	gtk_widget_show_all(ui.popup_menu);
 
 	// The right side (record info)
 	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
