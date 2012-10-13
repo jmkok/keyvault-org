@@ -287,6 +287,52 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 
 // ------------------------------------------------------------------
 //
+// ssh_agent_login()
+// http://www.libssh2.org/examples/ssh2_agent.html
+//
+
+int ssh_agent_login(struct tSsh* ssh, const char* username) {
+	/* Connect to the ssh-agent */ 
+	LIBSSH2_AGENT* agent = libssh2_agent_init(ssh->session);
+	if (!agent) {
+		fprintf(stderr, "Failure initializing ssh-agent support\n");
+		return -1;
+	}
+
+	if (libssh2_agent_connect(agent)) {
+		fprintf(stderr, "Failure connecting to ssh-agent\n");
+		return -1;
+	}
+
+	if (libssh2_agent_list_identities(agent)) {
+		fprintf(stderr, "Failure requesting identities to ssh-agent\n");
+		return -1;
+	}
+
+	struct libssh2_agent_publickey *identity, *prev_identity = NULL;
+	while (1) {
+		int rc = libssh2_agent_get_identity(agent, &identity, prev_identity);
+		if (rc == 1) {
+			fprintf(stderr, "Couldn't continue authentication\n");
+			return -1;
+		}
+		if (rc < 0) {
+			fprintf(stderr, "Failure obtaining identity from ssh-agent support\n");
+			return -1;
+		}
+		if (libssh2_agent_userauth(agent, username, identity)) {
+			printf("\tAuthentication with username %s and public key %s failed!\n", username, identity->comment);
+		}
+		else {
+			printf("\tAuthentication with username %s and public key %s succeeded!\n", username, identity->comment);
+			return 0;
+		}
+		prev_identity = identity;
+	}
+} 
+
+// ------------------------------------------------------------------
+//
 // ssh_get_file() - Read a file from a SSH server
 //
 
@@ -300,9 +346,13 @@ int ssh_get_file(tFileDescription* kvo, void** data, ssize_t* length) {
 	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
 	if (err) goto shutdown;
 
-	// check what authentication methods are available
-	err = ssh_login(ssh, kvo, kvo->username, kvo->password);
-	if (err) goto shutdown;
+	// Use the SSH agent to connect
+	err = ssh_agent_login(ssh, kvo->username);
+	if (err) {
+		// check what authentication methods are available
+		err = ssh_login(ssh, kvo, kvo->username, kvo->password);
+		if (err) goto shutdown;
+	}
 
 	// Read the file...
 	err = ssh_read(ssh, kvo->filename, data, length);
