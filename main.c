@@ -6,6 +6,9 @@
 
 int main(int argc, char** argv)
 {
+	/* "Patch" unitiy with messing with "correct" position of the menu bar */
+	setenv("UBUNTU_MENUPROXY",argv[0],1);
+
 	/* Initialize the gtk */
   gtk_init(&argc, &argv);
 
