@@ -4,9 +4,11 @@ keyvault
 *.kvo
 *.xml
 
-data
 .keyvault-warning.once
-
-.old
+data/
+.old/
 test.csv
 
+# Package building
+dpkg/
+keyvault*.deb

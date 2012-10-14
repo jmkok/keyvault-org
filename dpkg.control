@@ -1,7 +1,7 @@
 Package: keyvault-org
-Version: 0.0-0
+Version: _VERSION_
 Section: gnome
-Architecture: all
+Architecture: _ARCH_
 Maintainer: Jelle Martijn Kok [jmkok@solutionsradio.com]
 Homepage: http://www.keyvault.org/
 Description: Manage passwords

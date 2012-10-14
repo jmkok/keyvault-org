@@ -19,7 +19,11 @@ CFLAGS += -Wextra -Werror -Wshadow -Wwrite-strings
 #~ CFLAGS += -Wcast-qual - this gives an error in "gthread.h" on an 64 bit platform
 #~ CFLAGS += -pedantic
 LIBS=$(CROSS) `pkg-config --libs $(LIBRARIES)`
+
+# Package setup
 DPKG_PATH = dpkg
+VERSION = $(shell date +'%Y-%m-%d')
+ARCH = $(shell uname -i)
 
 all: $(TARG)
 
@@ -27,7 +31,7 @@ run: $(TARG)
 	LANG=C ./$(TARG)
 
 clean:
-	rm -f $(TARG) $(OBJS) $(TARG).deb
+	rm -f $(TARG) $(OBJS) $(TARG)*.deb
 	rm -rf $(DPKG_PATH)
 
 $(TARG): $(OBJS)
@@ -44,4 +48,6 @@ $(TARG).deb: $(TARG)
 	cp dpkg.control $(DPKG_PATH)/DEBIAN/control
 	install -s $(TARG) $(DPKG_PATH)/usr/local/bin/
 	cp keyvault-org.desktop $(DPKG_PATH)/usr/share/applications/
-	fakeroot dpkg-deb -b $(DPKG_PATH) $(TARG).deb
+	@sed -i 's/_VERSION_/$(VERSION)/' $(DPKG_PATH)/DEBIAN/control
+	@sed -i 's/_ARCH_/$(ARCH)/' $(DPKG_PATH)/DEBIAN/control
+	@fakeroot -- dpkg-deb --build $(DPKG_PATH) $(TARG)_$(VERSION)_$(ARCH).deb
