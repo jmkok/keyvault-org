@@ -137,6 +137,57 @@ tFileDescription* node_to_kvo(xmlNode* node) {
 
 // -----------------------------------------------------------
 //
+// Split an url into its components
+//
+
+tFileDescription* url_to_kvo(const char* url) {
+	printf("%s('%s')\n", __FUNCTION__, url);
+	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
+	char* tmp = strdup(url);
+	kvo->title = strdup(url);
+
+	/* Extract the protocol */
+	char* next = strstr(tmp,"://");
+	assert(next);
+	*next = 0; next += 3;
+	kvo->protocol = strdup(tmp);
+
+	/* next points to the potential username
+	 * extract the "username:password@hostname" */
+	char* cur = next;
+	next = strchr(next, '/');
+	if (next) {
+		*next = 0;
+		next++;
+	}
+
+	/* Extract the username */
+	char* ptr = strchr(cur,'@');
+	if (ptr) {
+		*ptr = 0;
+		kvo->username = strdup(cur);
+		/* TODO: kvo->password */
+		cur = ptr+1;
+	}
+
+	/* Split the hostname:port */
+	ptr = strchr(cur,':');
+	if (ptr) {
+		*ptr = 0;
+		kvo->port = atoi(ptr+1);
+	}
+	kvo->hostname = strdup(cur);
+
+	/* The filename is the remaining text */
+	kvo->filename = strdup(next);
+
+	/* cleanup */
+	free(tmp);
+	return kvo;
+}
+
+// -----------------------------------------------------------
+//
 // put_configuration
 //
 

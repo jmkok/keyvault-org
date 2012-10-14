@@ -11,6 +11,7 @@
 #include <gdk/gdkkeysyms.h>
 #include <glib/gprintf.h>
 #include <libxml/parser.h>
+#include <errno.h>
 #include <assert.h>
 
 #include "gtk_ui.h"
@@ -98,8 +99,31 @@ static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 
 static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 	debugf("load_from_file('%s',%p)\n", filename, treestore);
-	// Read the file
-	xmlDoc* encrypted_doc = xmlParseFile(filename);
+
+	/* Read the file */
+	xmlDoc* encrypted_doc = NULL;
+	if (strstr(filename,"ssh://")) {
+		/* Convertthe url into a file dexcription */
+		tFileDescription* kvo = url_to_kvo(filename);
+		if (!kvo->username)
+			kvo->username = strdup(getenv("USER"));
+
+		/* Read the file */
+		void* data;
+		ssize_t len;
+		if (ssh_get_file(kvo,&data,&len) != 0)
+			return -ENOENT;
+
+		// Read the data into an xml structure
+		encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
+	}
+	else {
+		encrypted_doc = xmlParseFile(filename);
+	}
+	if (!encrypted_doc) {
+		gtk_warning("Could not load the file");
+		return -ENOENT;
+	}
 
 	// Decrypt the doc
 	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
@@ -107,7 +131,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 	// Move the encrypted xml into the treestore
 	import_treestore_from_xml(treestore, doc);
 
-	return 1;
+	return 0;
 }
 
 // -----------------------------------------------------------
@@ -120,7 +144,7 @@ static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 0);
 	if (filename) {
 		GtkTreeStore* treestore = treestore_ptr;
-		if (load_from_file(filename, treestore)) {
+		if (load_from_file(filename, treestore) == 0) {
 			if (active_filename)
 				free(active_filename);
 			active_filename = strdup(filename);
