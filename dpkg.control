@@ -2,6 +2,7 @@ Package: keyvault-org
 Version: _VERSION_
 Section: gnome
 Architecture: _ARCH_
+Depends: libssh2-1
 Maintainer: Jelle Martijn Kok [jmkok@solutionsradio.com]
 Homepage: http://www.keyvault.org/
 Description: Manage passwords
