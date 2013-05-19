@@ -23,11 +23,4 @@ struct CONFIG {
 extern void save_configuration(const char* filename, struct CONFIG* config);
 extern struct CONFIG* read_configuration(const char* filename) __attribute__ ((warn_unused_result));
 
-xmlNode* new_config_node(xmlDoc* doc);
-xmlNode* get_config_node(xmlDoc* doc, int idx);
-char* get_config_title(xmlNode*);
-
-struct FILE_LOCATION* node_to_kvo(xmlNode* node);
-xmlNode* kvo_to_node(struct FILE_LOCATION* kvo);
-
 #endif

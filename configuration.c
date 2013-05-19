@@ -26,31 +26,6 @@ static xmlDoc* new_configuration(void) {
 	return doc;
 }
 
-xmlNode* new_config_node(xmlDoc* doc) {
-	return xmlNewDocNode(doc, NULL, CONST_BAD_CAST "kvo_file", NULL);
-}
-
-xmlNode* get_config_node(xmlDoc* doc, int idx) {
-	printf("node_to_kvo(%p,%i)\n", doc, idx);
-	assert(doc);
-
-	// Get the root
-	xmlNode* root = xmlDocGetRootElement(doc);
-	assert(root);
-
-	// Walk all children
-	xmlNode* node = root->children;
-	while(node) {
-		trace();
-		if (node->type == XML_ELEMENT_NODE) {
-			if (idx-- == 0)
-				return node;
-		}
-		node = node->next;
-	}
-	return NULL;
-}
-
 char* get_config_title(xmlNode* node) {
 	assert(node);
 	if (xmlIsNodeEncrypted(node))
@@ -113,60 +88,6 @@ struct CONFIG* read_configuration(const char* filename) {
 	}
 */
 	return config;
-}
-
-// -----------------------------------------------------------
-//
-// get_configuration
-//
-
-struct FILE_LOCATION* node_to_kvo(xmlNode* node) {
-	printf("node_to_kvo(%p)\n",node);
-	assert(node);
-	xmlNodeShow(node);
-	struct FILE_LOCATION* kvo = calloc(1,sizeof(struct FILE_LOCATION));
-	kvo->title = (char*)xmlGetTextContents(node, CONST_BAD_CAST "title");
-	char* p = (char*)xmlGetTextContents(node, CONST_BAD_CAST "protocol");
-	if (p) {
-		kvo->protocol = text_to_proto(p);
-		free(p);
-	}
-	kvo->hostname = (char*)xmlGetTextContents(node, CONST_BAD_CAST "hostname");
-	kvo->port = xmlGetIntegerContents(node, CONST_BAD_CAST "port");
-	kvo->username = (char*)xmlGetTextContents(node, CONST_BAD_CAST "username");
-	kvo->password = (char*)xmlGetTextContents(node, CONST_BAD_CAST "password");
-	kvo->filename = (char*)xmlGetTextContents(node, CONST_BAD_CAST "filename");
-	kvo->fingerprint = (char*)xmlGetBase64Contents(node, CONST_BAD_CAST "fingerprint");
-	return kvo;
-}
-
-// -----------------------------------------------------------
-//
-// put_configuration
-//
-
-xmlNode* kvo_to_node(struct FILE_LOCATION* kvo) {
-	printf("kvo_to_node(%p)\n", kvo);
-	assert(kvo);
-	assert(kvo->title);
-	xmlNode* root = xmlNewNode(NULL, CONST_BAD_CAST "kvo_file");
-	assert(root);
-	xmlNewTextChild(root, NULL, CONST_BAD_CAST "title", BAD_CAST kvo->title);
-	if (kvo->protocol)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "protocol", BAD_CAST proto_to_text(kvo->protocol));
-	if (kvo->hostname)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "hostname", BAD_CAST kvo->hostname);
-	if (kvo->port)
-		xmlNewIntegerChild(root, NULL, CONST_BAD_CAST "port", kvo->port);
-	if (kvo->username)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "username", BAD_CAST kvo->username);
-	if (kvo->password)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "password", BAD_CAST kvo->password);
-	if (kvo->filename)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "filename", BAD_CAST kvo->filename);
-	if (kvo->fingerprint)
-		xmlNewBase64Child(root, NULL, CONST_BAD_CAST "fingerprint", BAD_CAST kvo->fingerprint, 16);
-	return root;
 }
 
 // -----------------------------------------------------------

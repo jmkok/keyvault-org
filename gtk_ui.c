@@ -158,70 +158,41 @@ static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 // MENU: file -> open_advanced
 //
 
-static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
-	debugf("\nmenu_open_profile_file(...,%p)\n", node);
-	assert(node);
-	//~ tConfigDescription* config = node_to_kvo;
-	xmlNodeShow(node);
+static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, struct FILE_LOCATION* loc) {
+	debugf("\n%s(...,%p)\n", __FUNCTION__, loc);
 
-	// First we have to decrypt the node...
-	xmlNode* config_node = node;
-	while (xmlIsNodeEncrypted(node)) {
-		if (passkey->valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passkey->config);
-			if (tmp) {
-				config_node = tmp;
-				break;
-			}
-		}
-		if (gtk_request_passphrase() != 0)
-			return;
-	}
+	fl_todo(loc);
 
-	// Convert the node into an config object
-	struct FILE_LOCATION* kvo = node_to_kvo(config_node);
-	if (!kvo)
+	void* data;
+	ssize_t len;
+	if (read_data(loc,&data,&len) != 0)
 		return;
 
-	//~ if (!dialog_request_kvo(main_window, kvo))
-		//~ return;
-
-	g_printf("hostname: %s\n",kvo->hostname);
-	g_printf("username: %s\n",kvo->username);
-	g_printf("password: %s\n",kvo->password);
-	g_printf("filename: %s\n",kvo->filename);
-	if (kvo->protocol == PROTO_FILE) {
-		trace();
+	// Read the data into an xml structure
+	xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
+	if (!encrypted_doc) {
+		gtk_error("Invalid XML document");
+		return;
 	}
-	else if (kvo->protocol == PROTO_SSH) {
-		void* data;
-		ssize_t len;
-		if (read_data(kvo,&data,&len) != 0)
-			return;
 
-		// Read the data into an xml structure
-		xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
-		if (!encrypted_doc) {
-			gtk_error("Invalid XML document");
-			return;
+	// Decrypt the doc
+	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
+
+	// Move the encrypted xml into the treestore
+	import_treestore_from_xml(ui->tree->store, doc);
+
+	// Valid passphrase, then store the configuration
+	if (passkey->valid) {
+		todo();
+#if 0
+		xmlNode* new_node = kvo_to_node(loc);
+		xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passkey->config, NULL);
+		if (node_encrypted) {
+			xmlNewProp(node_encrypted, XML_CHAR "title", BAD_CAST loc->title);
+			xmlReplaceNode(node, node_encrypted);
+			//~ xmlFreeNode(config->node); Enabling this will ruin things (what exactly does "xmlReplaceNode" do, free and/or unlink ???)
 		}
-
-		// Decrypt the doc
-		xmlDoc* doc = user_decrypt_xml(encrypted_doc);
-
-		// Move the encrypted xml into the treestore
-		import_treestore_from_xml(ui->tree->store, doc);
-
-		// Valid passphrase, then store the configuration
-		if (passkey->valid) {
-			xmlNode* new_node = kvo_to_node(kvo);
-			xmlNode* node_encrypted = xmlNodeEncrypt(new_node, passkey->config, NULL);
-			if (node_encrypted) {
-				xmlNewProp(node_encrypted, XML_CHAR "title", BAD_CAST kvo->title);
-				xmlReplaceNode(node, node_encrypted);
-				//~ xmlFreeNode(config->node); Enabling this will ruin things (what exactly does "xmlReplaceNode" do, free and/or unlink ???)
-			}
-		}
+#endif
 	}
 }
 
@@ -230,29 +201,9 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 // Save (and edit) a recently used KVO file
 //
 
-static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
-	g_printf("\nmenu_save_profile_file(...,%p)\n", node);
-	assert(node);
-	xmlNodeShow(node);
-
-	// First we have to decrypt the node...
-	xmlNode* config_node = node;
-	while (xmlIsNodeEncrypted(node)) {
-		if (passkey->valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passkey->config);
-			if (tmp) {
-				config_node = tmp;
-				break;
-			}
-		}
-		if (gtk_request_passphrase() != 0)
-			return;
-	}
-
-	// Convert the node into an config object
-	struct FILE_LOCATION* kvo = node_to_kvo(config_node);
-	if (!kvo)
-		return;
+static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, struct FILE_LOCATION* loc) {
+	g_printf("\n%s(...,%p)\n", __FUNCTION__, loc);
+	fl_todo(loc);
 
 	// Get a passphrase if not yet available
 	if (!passkey->valid) {
@@ -267,21 +218,12 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passkey->data);
 	assert(doc_encrypted);
 
-	// Write the data to the file
-	if (kvo->protocol == PROTO_FILE) {
-		FILE* fp = fopen(kvo->filename, "w");
-		if (fp) {
-			xmlDocFormatDump(fp, doc_encrypted, 1);
-			fclose(fp);
-		}
-	}
-	// Write the data to an ssh account
-	else if (kvo->protocol == PROTO_SSH) {
-		xmlChar* data;
-		int len;
-		xmlDocDumpFormatMemory(doc_encrypted, &data, &len, 1);
-		write_data(kvo, data, len);
-	}
+	/* Write the data to the file */
+	xmlChar* data;
+	int len;
+	xmlDocDumpFormatMemory(doc_encrypted, &data, &len, 1);
+	write_data(loc, data, len);
+	xmlFree(data);
 
 	// Free the encrypted doc
 	xmlFree(doc_encrypted);
@@ -289,13 +231,16 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 
 	// Valid passphrase, then store the configuration
 	if (passkey->valid) {
-		xmlNode* new = kvo_to_node(kvo);
+		todo();
+#if 0
+		xmlNode* new = kvo_to_node(loc);
 		xmlNode* enc_new = xmlNodeEncrypt(new, passkey->config, NULL);
 		if (enc_new) {
-			xmlNewProp(enc_new, XML_CHAR "title", BAD_CAST kvo->title);
+			xmlNewProp(enc_new, XML_CHAR "title", BAD_CAST loc->title);
 			xmlReplaceNode(node, enc_new);
 			xmlFreeNode(node);
 		}
+#endif
 	}
 }
 
@@ -366,28 +311,11 @@ static void menu_file_save(GtkWidget *widget, gpointer ptr)
 // edit a profile
 //
 
-static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
-	// First we have to decrypt the node...
-	xmlNode* config_node = node;
-	while (xmlIsNodeEncrypted(node)) {
-		if (passkey->valid) {
-			xmlNode* tmp = xmlNodeDecrypt(node, passkey->config);
-			if (tmp) {
-				config_node = tmp;
-				break;
-			}
-		}
-		if (gtk_request_passphrase() != 0)
-			return;
-	}
-
-	// Convert the node into an config object
-	struct FILE_LOCATION* kvo = node_to_kvo(config_node);
-	if (!kvo)
-		return;
+static void menu_edit_profile(_UNUSED_ GtkWidget* widget, struct FILE_LOCATION* loc) {
+	g_printf("\n%s(...,%p)\n", __FUNCTION__, loc);
 
 	// Let the use fill in all required fields...
-	if (gtk_dialog_request_config(ui->main_window, kvo)) {
+	if (gtk_dialog_request_config(ui->main_window, loc)) {
 		// Store the kvo to the list
 		//~ listAdd(global->config_list, config);
 		update_profile_menu(global->config);
@@ -402,10 +330,12 @@ static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 // create a new profile, and start editing this profile
 //
 
-static void menu_new_profile(_UNUSED_ GtkWidget* widget, xmlDoc* doc) {
-	xmlNode* node = new_config_node(doc);
-	menu_edit_profile(NULL, node);
-	update_profile_menu(global->config);
+static void menu_new_profile(_UNUSED_ GtkWidget* widget, struct CONFIG* config) {
+	//~ xmlNode* node = new_config_node(doc);
+	struct FILE_LOCATION* loc = create_file_location();
+	menu_edit_profile(NULL, loc);
+	store_file_location(config, loc);
+	update_profile_menu(config);
 }
 
 /*
@@ -681,20 +611,20 @@ static void update_profile_menu(struct CONFIG* config) {
 	gtk_container_foreach(GTK_CONTAINER(ui->edit_profile_menu), cb_remove_menu_item, ui->edit_profile_menu);
 
 	// Edit profile...
-	gtk_add_menu_item_clickable(ui->edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config->doc);
+	gtk_add_menu_item_clickable(ui->edit_profile_menu, "New...", G_CALLBACK(menu_new_profile), config);
 	gtk_add_separator(ui->edit_profile_menu);
 
 	// Add all items in the config_list to the profile menu
 	int idx = 0;
 trace();
 	while(1) {
-		xmlNode* node = get_config_node(config->doc, idx++);
-		if (!node)
+		struct FILE_LOCATION* loc = get_file_location_by_index(config, idx++);
+		if (!loc)
 			break;
-		char* title = get_config_title(node);
-		gtk_add_menu_item_clickable(ui->open_profile_menu, title, G_CALLBACK(menu_open_profile_file), node);
-		gtk_add_menu_item_clickable(ui->save_profile_menu, title, G_CALLBACK(menu_save_profile_file), node);
-		gtk_add_menu_item_clickable(ui->edit_profile_menu, title, G_CALLBACK(menu_edit_profile), node);
+		const char* title = loc->title;
+		gtk_add_menu_item_clickable(ui->open_profile_menu, title, G_CALLBACK(menu_open_profile_file), loc);
+		gtk_add_menu_item_clickable(ui->save_profile_menu, title, G_CALLBACK(menu_save_profile_file), loc);
+		gtk_add_menu_item_clickable(ui->edit_profile_menu, title, G_CALLBACK(menu_edit_profile), loc);
 	}
 trace();
 
