@@ -100,37 +100,36 @@ static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 	debugf("load_from_file('%s',%p)\n", filename, treestore);
 
+	/* Convert the url into a file dexcription */
+	struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
+	if (!loc)
+		return -ENOENT;
+
 	/* Read the file */
-	xmlDoc* encrypted_doc = NULL;
-	if (strstr(filename,"ssh://")) {
-		/* Convertthe url into a file dexcription */
-		struct FILE_LOCATION* kvo = url_to_kvo(filename);
-		if (!kvo->username)
-			kvo->username = strdup(getenv("USER"));
-
-		/* Read the file */
-		void* data;
-		ssize_t len;
-		if (read_data(kvo,&data,&len) != 0)
-			return -ENOENT;
-
-		// Read the data into an xml structure
-		encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
-	}
-	else {
-		encrypted_doc = xmlParseFile(filename);
-	}
-	if (!encrypted_doc) {
-		gtk_warning("Could not load the file");
+	void* data;
+	ssize_t len;
+	if (read_data(loc,&data,&len) != 0) {
+		destroy_file_location(loc);
 		return -ENOENT;
 	}
 
-	// Decrypt the doc
-	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
+	/* Parse the XML from memory */
+	xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
+	free(data);
+	if (!encrypted_doc) {
+		gtk_warning("Could not load the file");
+		destroy_file_location(loc);
+		return -ENOENT;
+	}
 
-	// Move the encrypted xml into the treestore
+	/* Decrypt the doc */
+	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
+	xmlFree(encrypted_doc);
+
+	/* Move the encrypted xml into the treestore */
 	import_treestore_from_xml(treestore, doc);
 
+	destroy_file_location(loc);
 	return 0;
 }
 

@@ -27,6 +27,9 @@ struct FILE_LOCATION {
 enum FL_PROTO text_to_proto(const char* text);
 const char* proto_to_text(enum FL_PROTO);
 
+void destroy_file_location(struct FILE_LOCATION* loc);
+extern struct FILE_LOCATION* create_file_location_from_uri(const char* url);
+
 extern int read_data(struct FILE_LOCATION*, void** data, ssize_t* length);
 extern int write_data(struct FILE_LOCATION*, void* data, ssize_t length);
 
