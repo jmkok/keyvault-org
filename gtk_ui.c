@@ -46,6 +46,22 @@ static void update_profile_menu(struct CONFIG* config);
 
 // -----------------------------------------------------------
 //
+// Set theactive filename as title
+//
+
+static void gtk_window_set_filename(const char* filename, int modified) {
+	if (!filename) {
+		gtk_window_set_title(GTK_WINDOW(ui->main_window), "Keyvault.org");
+		return;
+	}
+	char* title = malloc(strlen(filename + 64));
+	sprintf(title, "%s - %s%s", "Keyvault.org", filename, (modified ? "*" : ""));
+	gtk_window_set_title(GTK_WINDOW(ui->main_window), title);
+	//~ free(title);
+}
+
+// -----------------------------------------------------------
+//
 // Ask the user for the passphrase, and calculate the derived keys from it
 //
 
@@ -94,73 +110,11 @@ static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 
 // -----------------------------------------------------------
 //
-// user_decrypt_xml - decrypt an encrypted doc (if needed request passphrase from user)
+// Load the data from a file location
 //
 
-static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
-	debugf("load_from_file('%s',%p)\n", filename, treestore);
-
-	/* Convert the url into a file dexcription */
-	struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
-	if (!loc)
-		return -ENOENT;
-
-	/* Read the file */
-	void* data;
-	ssize_t len;
-	if (read_data(loc,&data,&len) != 0) {
-		destroy_file_location(loc);
-		return -ENOENT;
-	}
-
-	/* Parse the XML from memory */
-	xmlDoc* encrypted_doc = xmlReadMemory(data, len, NULL, NULL, XML_PARSE_RECOVER);
-	free(data);
-	if (!encrypted_doc) {
-		gtk_warning("Could not load the file");
-		destroy_file_location(loc);
-		return -ENOENT;
-	}
-
-	/* Decrypt the doc */
-	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
-	xmlFree(encrypted_doc);
-
-	/* Move the encrypted xml into the treestore */
-	import_treestore_from_xml(treestore, doc);
-
-	destroy_file_location(loc);
-	return 0;
-}
-
-// -----------------------------------------------------------
-//
-// MENU: file -> open
-//
-
-static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
-{
-	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 0);
-	if (filename) {
-		GtkTreeStore* treestore = treestore_ptr;
-		if (load_from_file(filename, treestore) == 0) {
-			if (active_filename)
-				free(active_filename);
-			active_filename = strdup(filename);
-		}
-		g_free (filename);
-	}
-}
-
-
-// -----------------------------------------------------------
-//
-// MENU: file -> open_advanced
-//
-
-static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, struct FILE_LOCATION* loc) {
-	debugf("\n%s(...,%p)\n", __FUNCTION__, loc);
-
+static void load_from_file_location(struct FILE_LOCATION* loc) {
+	debugf("\n%s(%p)\n", __FUNCTION__, loc);
 	fl_todo(loc);
 
 	void* data;
@@ -183,6 +137,7 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, struct FILE_LOCAT
 
 	// Move the encrypted xml into the treestore
 	import_treestore_from_xml(ui->tree->store, doc);
+	gtk_window_set_filename(loc->filename, 0);
 
 	// Valid passphrase, then store the configuration
 	if (passkey->valid) {
@@ -197,6 +152,48 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, struct FILE_LOCAT
 		}
 #endif
 	}
+}
+
+// -----------------------------------------------------------
+//
+// load from an uri
+//
+
+static int load_from_uri(const gchar* filename, GtkTreeStore* treestore) {
+	debugf("%s('%s',%p)\n", __FUNCTION__, filename, treestore);
+	struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
+	if (!loc)
+		return -ENOENT;
+	load_from_file_location(loc);
+	destroy_file_location(loc);
+	return 0;
+}
+
+// -----------------------------------------------------------
+//
+// MENU: file -> open
+//
+
+static void menu_file_open(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr) {
+	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 0);
+	if (filename) {
+		GtkTreeStore* treestore = treestore_ptr;
+		if (load_from_uri(filename, treestore) == 0) {
+			if (active_filename)
+				free(active_filename);
+			active_filename = strdup(filename);
+		}
+		g_free (filename);
+	}
+}
+
+// -----------------------------------------------------------
+//
+// MENU: file -> open_profile
+//
+
+static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, struct FILE_LOCATION* loc) {
+	load_from_file_location(loc);
 }
 
 // -----------------------------------------------------------
@@ -474,7 +471,7 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 
 static void menu_test_quick_load(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr) {
 	GtkTreeStore* treestore = treestore_ptr;
-	load_from_file("test.kvo", treestore);
+	load_from_uri("test.kvo", treestore);
 }
 
 // -----------------------------------------------------------
@@ -1070,7 +1067,7 @@ int create_main_window(struct SETUP* setup) {
 
 	/* Is a default filename given, then read that file */
 	if (setup->default_filename)
-		load_from_file(setup->default_filename, ui->tree->store);
+		load_from_uri(setup->default_filename, ui->tree->store);
 
 	/* Run the app */
   gtk_main();
