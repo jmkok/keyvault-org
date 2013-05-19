@@ -13,6 +13,7 @@ struct FILE_LOCATION {
 	char* title;
 	enum FL_PROTO {PROTO_UNKNOWN, PROTO_FILE, PROTO_SSH} protocol;
 	char* filename;
+	void* xml_node;
 	/* network settings */
 	char* hostname;
 	uint16_t port;

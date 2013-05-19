@@ -20,7 +20,7 @@ struct CONFIG {
 // functions
 //
 
-extern void save_configuration(const char* filename, struct CONFIG* config);
+extern int save_configuration(const char* filename, struct CONFIG* config);
 extern struct CONFIG* read_configuration(const char* filename) __attribute__ ((warn_unused_result));
 
 #endif

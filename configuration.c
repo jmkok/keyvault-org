@@ -15,78 +15,28 @@
 
 // -----------------------------------------------------------
 //
-// Create a new and empty configuration
-//
-
-static xmlDoc* new_configuration(void) {
-	// Create an xml node that conatins all configuration
-	xmlDoc* doc = xmlNewDoc(CONST_BAD_CAST "1.0");
-	xmlNode* config = xmlNewNode(NULL, CONST_BAD_CAST "config");
-	xmlDocSetRootElement(doc, config);
-	return doc;
-}
-
-char* get_config_title(xmlNode* node) {
-	assert(node);
-	if (xmlIsNodeEncrypted(node))
-		return (char*)xmlGetProp(node, CONST_BAD_CAST "title");
-	else if (xmlStrEqual(node->name, CONST_BAD_CAST "kvo_file"))
-		return (char*)xmlGetTextContents(node, CONST_BAD_CAST "title");
-	return NULL;
-}
-
-// -----------------------------------------------------------
-//
 // Read the configuration
 //
 
 struct CONFIG* read_configuration(const char* filename) {
 	printf("read_configuration('%s')\n", filename);
 
-	// Create a config list
+	/* Create a config structure */
 	struct CONFIG* config = calloc(1,sizeof(struct CONFIG));
-	//~ config->config_list = listCreate();
 
-	// Read the xml config
+	/* Read the xml config */
 	config->doc = xmlParseFile(filename);
-	//~ xmlDocShow(configDoc);
-	if (!config->doc)
-		config->doc = new_configuration();
+
+	/* No config found, create an empty config */
+	if (!config->doc) {
+		config->doc = xmlNewDoc(CONST_BAD_CAST "1.0");
+		xmlNode* root = xmlNewNode(NULL, CONST_BAD_CAST "config");
+		xmlDocSetRootElement(config->doc, root);
+	}
+
+	//~ xmlDocShow(config->doc);
 	assert(config->doc);
 
-/*
-	// Get the root
-	xmlNode* root = xmlDocGetRootElement(config->doc);
-	assert(root);
-	//~ xmlNodeShow(root);
-
-	// Walk all children
-	xmlNode* node = root->children;
-	while(node) {
-		//~ xmlNodeShow(node);
-		if (node->type == XML_ELEMENT_NODE) {
-			xmlChar* title = NULL;
-			if (xmlIsNodeEncrypted(node))
-				title = xmlGetProp(node, CONST_BAD_CAST "title");
-			else if (xmlStrEqual(node->name, CONST_BAD_CAST "kvo_file"))
-				title = xmlGetTextContents(node, CONST_BAD_CAST "title");
-			if (title) {
-				// Create a new kvo_file
-				tConfigDescription* item = calloc(1,sizeof(tConfigDescription));
-				listAdd(config->config_list, item);
-				item->title = (char*)title;
-				//~ item->doc = config->doc;
-				item->node = node;
-				char* tmp = (char*)xmlGetProp(node, CONST_BAD_CAST "check");
-				if (tmp) {
-					gsize data_len;
-					item->passphrase_check = g_base64_decode(tmp, &data_len);
-				}
-			}
-		}
-		node = node->next;
-	}
-*/
 	return config;
 }
 
@@ -96,13 +46,15 @@ struct CONFIG* read_configuration(const char* filename) {
 // All the nodes are/should be encrypted already
 //
 
-void save_configuration(const char* filename, struct CONFIG* config) {
+int save_configuration(const char* filename, struct CONFIG* config) {
 	printf("save_configuration('%s',%p)\n", filename, config);
-
-	// Write the configuration to the disk
 	FILE* fp = fopen(filename, "w");
-	if (fp) {
-		xmlDocFormatDump(fp, config->doc, 1);
-		fclose(fp);
+	if (!fp) {
+		fprintf(stderr, "ERROR: Failed to open %s for writing\n", filename);
+		xmlDocShow(config->doc);
+		return -1;
 	}
+	xmlDocFormatDump(fp, config->doc, 1);
+	fclose(fp);
+	return 0;
 }

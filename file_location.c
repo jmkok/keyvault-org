@@ -38,6 +38,23 @@ const char* proto_to_text(enum FL_PROTO protocol) {
 
 // ---------------------------------------------------------------------
 //
+// Show the file locations
+//
+
+static void show_file_location(struct FILE_LOCATION* loc) {
+	printf("%s(%p)\n", __FUNCTION__, loc);
+	printf("- title: %s\n", BAD_CAST loc->title);
+	printf("- protocol: %s\n", BAD_CAST proto_to_text(loc->protocol));
+	printf("- hostname: %s\n", BAD_CAST loc->hostname);
+	printf("- port: %i\n", loc->port);
+	printf("- username: %s\n", BAD_CAST loc->username);
+	printf("- password: %s\n", BAD_CAST loc->password);
+	printf("- filename: %s\n", BAD_CAST loc->filename);
+	//~ printf("- fingerprint: %02X\n", BAD_CAST loc->fingerprint);
+}
+
+// ---------------------------------------------------------------------
+//
 // Local file handlers
 //
 
@@ -78,7 +95,8 @@ static int write_local_file(struct FILE_LOCATION* loc, void* data, ssize_t lengt
 // Read the data from the FILE LOCATION
 //
 
-extern int read_data(struct FILE_LOCATION* loc, void** data, ssize_t* length) {
+int read_data(struct FILE_LOCATION* loc, void** data, ssize_t* length) {
+	show_file_location(loc);
 	switch(loc->protocol) {
 		case PROTO_UNKNOWN:
 			assert(0);
@@ -96,7 +114,7 @@ extern int read_data(struct FILE_LOCATION* loc, void** data, ssize_t* length) {
 // Write the data to the FILE LOCATION
 //
 
-extern int write_data(struct FILE_LOCATION* loc, void* data, ssize_t length) {
+int write_data(struct FILE_LOCATION* loc, void* data, ssize_t length) {
 	switch(loc->protocol) {
 		case PROTO_UNKNOWN:
 			assert(0);
@@ -287,12 +305,11 @@ void fl_todo(struct FILE_LOCATION* loc) {
 // get_configuration
 //
 
-static xmlNode* get_config_node(xmlDoc* doc, int idx) {
-	printf("%s(%p,%i)\n", __FUNCTION__, doc, idx);
-	assert(doc);
+struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, int idx) {
+	printf("%s(%p,%i)\n", __FUNCTION__, config, idx);
 
 	// Get the root
-	xmlNode* root = xmlDocGetRootElement(doc);
+	xmlNode* root = xmlDocGetRootElement(config->doc);
 	assert(root);
 
 	// Walk all children
@@ -301,16 +318,10 @@ static xmlNode* get_config_node(xmlDoc* doc, int idx) {
 		trace();
 		if (node->type == XML_ELEMENT_NODE) {
 			if (idx-- == 0)
-				return node;
+				break;
 		}
 		node = node->next;
 	}
-	return NULL;
-}
-
-extern struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, int idx) {
-	printf("%s(%p,%i)\n", __FUNCTION__, config, idx);
-	xmlNode* node = get_config_node(config->doc, idx);
 	if (!node)
 		return NULL;
 	xmlNodeShow(node);
@@ -318,6 +329,7 @@ extern struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, i
 	/* Convert the xmlNode into a struct FILE_LOCATION */
 	struct FILE_LOCATION* loc = calloc(1,sizeof(struct FILE_LOCATION));
 	loc->title = (char*)xmlGetTextContents(node, CONST_BAD_CAST "title");
+	loc->xml_node = node;
 	char* p = (char*)xmlGetTextContents(node, CONST_BAD_CAST "protocol");
 	if (p) {
 		loc->protocol = text_to_proto(p);
@@ -364,6 +376,13 @@ static xmlNode* file_location_to_xml_node(struct FILE_LOCATION* kvo) {
 void store_file_location(struct CONFIG* config, struct FILE_LOCATION* loc) {
 	//~ xmlNode* node = xmlNewDocNode(doc, NULL, CONST_BAD_CAST "kvo_file", NULL);
 	xmlNode* node = file_location_to_xml_node(loc);
-	xmlNode* root = xmlDocGetRootElement(config->doc);
-	xmlAddChild(root, node);
+	if (loc->xml_node) {
+		xmlReplaceNode(loc->xml_node, node);
+		xmlFreeNode(loc->xml_node);
+		loc->xml_node = node;
+	}
+	else {
+		xmlNode* root = xmlDocGetRootElement(config->doc);
+		xmlAddChild(root, node);
+	}
 }

@@ -177,6 +177,9 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, struct FILE_LOCAT
 
 	// Decrypt the doc
 	xmlDoc* doc = user_decrypt_xml(encrypted_doc);
+	if (doc) {
+		store_file_location(global->config, loc);
+	}
 
 	// Move the encrypted xml into the treestore
 	import_treestore_from_xml(ui->tree->store, doc);
@@ -616,7 +619,6 @@ static void update_profile_menu(struct CONFIG* config) {
 
 	// Add all items in the config_list to the profile menu
 	int idx = 0;
-trace();
 	while(1) {
 		struct FILE_LOCATION* loc = get_file_location_by_index(config, idx++);
 		if (!loc)
@@ -626,7 +628,6 @@ trace();
 		gtk_add_menu_item_clickable(ui->save_profile_menu, title, G_CALLBACK(menu_save_profile_file), loc);
 		gtk_add_menu_item_clickable(ui->edit_profile_menu, title, G_CALLBACK(menu_edit_profile), loc);
 	}
-trace();
 
 	// Update the menu
 	gtk_widget_show_all(ui->open_profile_menu);
