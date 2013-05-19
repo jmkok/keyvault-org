@@ -3,6 +3,7 @@
 
 #include "structures.h"
 
+struct FILE_LOCATION;
 extern int ssh_get_file(struct FILE_LOCATION*, void** data, ssize_t* length);
 extern int ssh_put_file(struct FILE_LOCATION*, void* data, ssize_t length);
 	

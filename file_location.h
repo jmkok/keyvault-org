@@ -26,4 +26,7 @@ struct FILE_LOCATION {
 
 enum FL_PROTO text_to_proto(const char* text);
 
+extern int read_data(struct FILE_LOCATION*, void** data, ssize_t* length);
+extern int write_data(struct FILE_LOCATION*, void* data, ssize_t length);
+
 #endif /* _file_location_h_ */

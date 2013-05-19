@@ -4,6 +4,8 @@
 #include "main.h"
 #include "structures.h"
 
+struct FILE_LOCATION;
+
 extern gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title);
 extern gint gtk_dialog_ex(const gchar *message, GtkMessageType type);
 

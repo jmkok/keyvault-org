@@ -7,6 +7,7 @@
 #include "gtk_dialogs.h"
 #include "configuration.h"
 #include "functions.h"
+#include "file_location.h"
 
 gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title) {
 	/* Create the dialog */

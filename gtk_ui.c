@@ -23,7 +23,7 @@
 #include "configuration.h"
 #include "encryption.h"
 #include "xml.h"
-#include "ssh.h"
+#include "file_location.h"
 
 // -----------------------------------------------------------
 //
@@ -111,7 +111,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 		/* Read the file */
 		void* data;
 		ssize_t len;
-		if (ssh_get_file(kvo,&data,&len) != 0)
+		if (read_data(kvo,&data,&len) != 0)
 			return -ENOENT;
 
 		// Read the data into an xml structure
@@ -197,7 +197,7 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 	else if (kvo->protocol == PROTO_SSH) {
 		void* data;
 		ssize_t len;
-		if (ssh_get_file(kvo,&data,&len) != 0)
+		if (read_data(kvo,&data,&len) != 0)
 			return;
 
 		// Read the data into an xml structure
@@ -281,7 +281,7 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 		xmlChar* data;
 		int len;
 		xmlDocDumpFormatMemory(doc_encrypted, &data, &len, 1);
-		ssh_put_file(kvo, data, len);
+		write_data(kvo, data, len);
 	}
 
 	// Free the encrypted doc

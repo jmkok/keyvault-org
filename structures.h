@@ -2,7 +2,6 @@
 #define _structures_h_
 
 #include "stdint.h"
-#include "file_location.h"
 #include <libxml/parser.h>
 
 // ---------------------------------------------------------------------

@@ -13,6 +13,7 @@
 #include "functions.h"
 #include "ssh.h"
 #include "gtk_dialogs.h"
+#include "file_location.h"
 
 #define min(a,b) (a<b?a:b)
 
@@ -144,7 +145,7 @@ static int ssh_login(struct tSsh* ssh, struct FILE_LOCATION* kvo, const char* us
 
 // ------------------------------------------------------------------
 //
-// ssh_read() - Read data frm an ssh handle
+// ssh_read() - Read data from an ssh handle
 //
 
 static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t* length) {
@@ -204,7 +205,7 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 
 // ------------------------------------------------------------------
 //
-// ssh_write() - Write data frm an ssh handle
+// ssh_write() - Write data to an ssh handle
 //
 
 static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t length) {

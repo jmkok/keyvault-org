@@ -11,6 +11,7 @@
 #include "main.h"
 #include "gtk_shortcuts.h"
 #include "xml.h"
+#include "file_location.h"
 
 // -----------------------------------------------------------
 //
