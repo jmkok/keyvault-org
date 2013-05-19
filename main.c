@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	xmlKeepBlanksDefault(0);
 
 	/* Initialize the global setup */
-	struct SETUP* setup = mallocz(sizeof(struct SETUP));
+	struct SETUP* setup = calloc(1,sizeof(struct SETUP));
 
 	/* Load any default file */
 	setup->default_filename = NULL;

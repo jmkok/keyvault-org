@@ -262,7 +262,7 @@ int xmlIsNodeEncrypted(xmlNode* root) {
 _DEPRECATED_ xmlNode* xmlNewChildEncrypted(xmlNodePtr parent, xmlNs* ns, const xmlChar* name, const xmlChar* value, const unsigned char passphrase_key[32]) {
 	unsigned char* ivec = malloc_random(16);
 	int len = (xmlStrlen(value) & ~63) + 64;
-	unsigned char* enlarged_value = mallocz(len+1);
+	unsigned char* enlarged_value = calloc(1,len+1);
 	strcpy((char*)enlarged_value, (const char*)value);
 	evp_cipher(EVP_aes_256_ofb(), enlarged_value, len, passphrase_key, ivec);
 	gchar* tmp = g_base64_encode(enlarged_value, len);

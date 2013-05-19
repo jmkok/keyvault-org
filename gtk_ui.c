@@ -412,7 +412,7 @@ static void menu_new_profile(_UNUSED_ GtkWidget* widget, xmlDoc* doc) {
 /*
 static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	// Create a new kvo file
-	tConfigDescription* config = mallocz(sizeof(tConfigDescription));
+	tConfigDescription* config = calloc(1,sizeof(tConfigDescription));
 	// Let the use fill in all required fields...
 	if (gtk_dialog_request_config(main_window, config)) {
 		// Store the kvo to the list
@@ -839,10 +839,10 @@ static void treestore_reverse_sort_order(GtkWidget *widget, gpointer ptr) {
 //
 
 static struct TREEVIEW* create_view_and_model(void) {
-	struct TREEVIEW* tree = mallocz(sizeof(struct TREEVIEW));
+	struct TREEVIEW* tree = calloc(1,sizeof(struct TREEVIEW));
 
 	// Malloc the filter
-	tree->filter_text = mallocz(1024);
+	tree->filter_text = calloc(1,1024);
 
 	// Create the treestore (6 strings fields + 2 time fields)
 	tree->store = gtk_tree_store_new(NUM_COLS,
@@ -934,8 +934,8 @@ static void click_about(_UNUSED_ GtkWidget* widget, gpointer parent_window)
 int create_main_window(struct SETUP* setup) {
 	// Initialize the generic global component
 	global = setup;
-	passkey = mallocz(sizeof(struct PASSKEY));
-	ui = mallocz(sizeof(struct UI));
+	passkey = calloc(1,sizeof(struct PASSKEY));
+	ui = calloc(1,sizeof(struct UI));
 
 	GtkWidget* label;
 

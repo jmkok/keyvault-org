@@ -68,7 +68,7 @@ struct CONFIG* read_configuration(const char* filename) {
 	printf("read_configuration('%s')\n", filename);
 
 	// Create a config list
-	struct CONFIG* config = mallocz(sizeof(struct CONFIG));
+	struct CONFIG* config = calloc(1,sizeof(struct CONFIG));
 	//~ config->config_list = listCreate();
 
 	// Read the xml config
@@ -96,7 +96,7 @@ struct CONFIG* read_configuration(const char* filename) {
 				title = xmlGetTextContents(node, CONST_BAD_CAST "title");
 			if (title) {
 				// Create a new kvo_file
-				tConfigDescription* item = mallocz(sizeof(tConfigDescription));
+				tConfigDescription* item = calloc(1,sizeof(tConfigDescription));
 				listAdd(config->config_list, item);
 				item->title = (char*)title;
 				//~ item->doc = config->doc;
@@ -123,7 +123,7 @@ struct FILE_LOCATION* node_to_kvo(xmlNode* node) {
 	printf("node_to_kvo(%p)\n",node);
 	assert(node);
 	xmlNodeShow(node);
-	struct FILE_LOCATION* kvo = mallocz(sizeof(struct FILE_LOCATION));
+	struct FILE_LOCATION* kvo = calloc(1,sizeof(struct FILE_LOCATION));
 	kvo->title = (char*)xmlGetTextContents(node, CONST_BAD_CAST "title");
 	char* p = (char*)xmlGetTextContents(node, CONST_BAD_CAST "protocol");
 	if (p) {
@@ -146,7 +146,7 @@ struct FILE_LOCATION* node_to_kvo(xmlNode* node) {
 
 struct FILE_LOCATION* url_to_kvo(const char* url) {
 	printf("%s('%s')\n", __FUNCTION__, url);
-	struct FILE_LOCATION* kvo = mallocz(sizeof(struct FILE_LOCATION));
+	struct FILE_LOCATION* kvo = calloc(1,sizeof(struct FILE_LOCATION));
 	char* tmp = strdup(url);
 	kvo->title = strdup(url);
 

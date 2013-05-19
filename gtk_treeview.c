@@ -27,7 +27,7 @@ static long int time_to_int(const char* text) {
 	if (!text || !*text)
 		return time(0);
 	if (strchr(text,':') || strchr(text,'-')) {
-		struct tm* xtime = mallocz(sizeof(struct tm));
+		struct tm* xtime = calloc(1,sizeof(struct tm));
 		int retval = sscanf(text,"%d-%d-%d %d:%d:%d",&xtime->tm_mday, &xtime->tm_mon, &xtime->tm_year, &xtime->tm_hour, &xtime->tm_min, &xtime->tm_sec);
 		if ((retval == 3) || (retval == 6)) {
 			xtime->tm_mon--;
@@ -249,7 +249,7 @@ void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
 
 char** read_csv_line(char* line) {
 	line++;
-	char** list = mallocz(10 * sizeof(char*));
+	char** list = calloc(10, sizeof(char*));
 	int i;
 	for (i=0;i<10;i++) {
 		char* ptr = strstr(line,"\",\"");

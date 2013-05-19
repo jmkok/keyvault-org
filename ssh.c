@@ -340,7 +340,7 @@ int ssh_get_file(struct FILE_LOCATION* kvo, void** data, ssize_t* length) {
 	*length=0;
 	int err=0;
 
-	struct tSsh* ssh = mallocz(sizeof(struct tSsh));
+	struct tSsh* ssh = calloc(1,sizeof(struct tSsh));
 
 	// Connect to the server
 	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
@@ -378,7 +378,7 @@ shutdown:
 int ssh_put_file(struct FILE_LOCATION* kvo, void* data, ssize_t length) {
 	printf("ssh_put_file(%p, %p, %zu)", kvo, data, length);
 	int err=0;
-	struct tSsh* ssh = mallocz(sizeof(struct tSsh));
+	struct tSsh* ssh = calloc(1,sizeof(struct tSsh));
 
 	// Connect to the server
 	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
