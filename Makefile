@@ -10,7 +10,8 @@
 TARG=keyvault
 SRCS=main.c \
 	gtk_ui.c gtk_treeview.c gtk_dialogs.c gtk_shortcuts.c \
-	configuration.c ssh.c encryption.c functions.c list.c xml.c
+	configuration.c ssh.c encryption.c functions.c list.c xml.c \
+	file_location.c
 OBJS=$(SRCS:.c=.o)
 LIBRARIES=glib-2.0 gtk+-2.0 libxml-2.0 openssl libssh2
 #~ CROSS=-m32

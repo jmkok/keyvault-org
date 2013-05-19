@@ -27,8 +27,8 @@ xmlNode* new_config_node(xmlDoc* doc);
 xmlNode* get_config_node(xmlDoc* doc, int idx);
 char* get_config_title(xmlNode*);
 
-tFileDescription* node_to_kvo(xmlNode* node);
-tFileDescription* url_to_kvo(const char* url);
-xmlNode* kvo_to_node(tFileDescription* kvo);
+struct FILE_LOCATION* node_to_kvo(xmlNode* node);
+struct FILE_LOCATION* url_to_kvo(const char* url);
+xmlNode* kvo_to_node(struct FILE_LOCATION* kvo);
 
 #endif

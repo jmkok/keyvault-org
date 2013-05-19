@@ -51,7 +51,7 @@ gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title) {
 	return retval;
 }
 
-gboolean gtk_dialog_request_config (GtkWidget* parent, tFileDescription* kvo) {
+gboolean gtk_dialog_request_config (GtkWidget* parent, struct FILE_LOCATION* kvo) {
 	//~ assert(kvo);
 	gboolean retval=FALSE;
 	/* Create the dialog */
@@ -84,7 +84,7 @@ gboolean gtk_dialog_request_config (GtkWidget* parent, tFileDescription* kvo) {
   gtk_box_pack_start(GTK_BOX(vbox), combo_box , FALSE, TRUE, 1);
 	if (!kvo->protocol)
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),0);
-	else if (strcmp(kvo->protocol,"ssh") == 0)
+	else if (kvo->protocol == PROTO_SSH)
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),1);
 
 	/* Add the fields */
@@ -135,8 +135,11 @@ gboolean gtk_dialog_request_config (GtkWidget* parent, tFileDescription* kvo) {
 		// Update the fields in the kvo structure...
 		if (kvo->title) free(kvo->title);
 		kvo->title = strdup(gtk_entry_get_text(GTK_ENTRY(title_entry)));
-		if (kvo->protocol) free(kvo->protocol);
-		kvo->protocol=gtk_combo_box_get_active_text(GTK_COMBO_BOX(combo_box));
+		char* p = gtk_combo_box_get_active_text(GTK_COMBO_BOX(combo_box));
+		if (p) {
+			kvo->protocol = text_to_proto(p);
+			free(p);
+		}
 		if (gtk_combo_box_get_active(GTK_COMBO_BOX(combo_box)) >= 1) {
 			if (kvo->hostname) free(kvo->hostname);
 			kvo->hostname=strdup(gtk_entry_get_text(GTK_ENTRY(hostname_entry)));

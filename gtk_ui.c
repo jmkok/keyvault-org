@@ -104,7 +104,7 @@ static int load_from_file(const gchar* filename, GtkTreeStore* treestore) {
 	xmlDoc* encrypted_doc = NULL;
 	if (strstr(filename,"ssh://")) {
 		/* Convertthe url into a file dexcription */
-		tFileDescription* kvo = url_to_kvo(filename);
+		struct FILE_LOCATION* kvo = url_to_kvo(filename);
 		if (!kvo->username)
 			kvo->username = strdup(getenv("USER"));
 
@@ -180,7 +180,7 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 	}
 
 	// Convert the node into an config object
-	tFileDescription* kvo = node_to_kvo(config_node);
+	struct FILE_LOCATION* kvo = node_to_kvo(config_node);
 	if (!kvo)
 		return;
 
@@ -191,10 +191,10 @@ static void menu_open_profile_file(_UNUSED_ GtkWidget *widget, xmlNode* node) {
 	g_printf("username: %s\n",kvo->username);
 	g_printf("password: %s\n",kvo->password);
 	g_printf("filename: %s\n",kvo->filename);
-	if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
+	if (kvo->protocol == PROTO_FILE) {
 		trace();
 	}
-	else if (strcmp(kvo->protocol,"ssh") == 0) {
+	else if (kvo->protocol == PROTO_SSH) {
 		void* data;
 		ssize_t len;
 		if (ssh_get_file(kvo,&data,&len) != 0)
@@ -251,7 +251,7 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	}
 
 	// Convert the node into an config object
-	tFileDescription* kvo = node_to_kvo(config_node);
+	struct FILE_LOCATION* kvo = node_to_kvo(config_node);
 	if (!kvo)
 		return;
 
@@ -269,7 +269,7 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	assert(doc_encrypted);
 
 	// Write the data to the file
-	if (!kvo->protocol || (strcmp(kvo->protocol,"local") == 0)) {
+	if (kvo->protocol == PROTO_FILE) {
 		FILE* fp = fopen(kvo->filename, "w");
 		if (fp) {
 			xmlDocFormatDump(fp, doc_encrypted, 1);
@@ -277,7 +277,7 @@ static void menu_save_profile_file(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 		}
 	}
 	// Write the data to an ssh account
-	else if (strcmp(kvo->protocol,"ssh") == 0) {
+	else if (kvo->protocol == PROTO_SSH) {
 		xmlChar* data;
 		int len;
 		xmlDocDumpFormatMemory(doc_encrypted, &data, &len, 1);
@@ -383,7 +383,7 @@ static void menu_edit_profile(_UNUSED_ GtkWidget* widget, xmlNode* node) {
 	}
 
 	// Convert the node into an config object
-	tFileDescription* kvo = node_to_kvo(config_node);
+	struct FILE_LOCATION* kvo = node_to_kvo(config_node);
 	if (!kvo)
 		return;
 

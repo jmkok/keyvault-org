@@ -2,11 +2,12 @@
 #define _structures_h_
 
 #include "stdint.h"
+#include "file_location.h"
 #include <libxml/parser.h>
 
-// -----------------------------------------------------------
+// ---------------------------------------------------------------------
 //
-// Global variables
+// The global config
 //
 
 typedef struct {
@@ -15,18 +16,10 @@ typedef struct {
 	void* passphrase_check;	// The passphrase check
 } tConfigDescription;
 
-typedef struct {
-	char* title;						// title
-	char* protocol;		// protocol (local / ssh)
-	char* filename;		// filename
-	// network
-	char* hostname;		// hostname (network protocol)
-	uint16_t port;		// port (network protocol)
-	char* username;		// username (network protocol)
-	char* password;		// password (network protocol)
-	// SSH specific...
-	void* fingerprint;		// The SSH fingerprint
-} tFileDescription;
+// ---------------------------------------------------------------------
+//
+// A data structure
+//
 
 typedef struct {
 	void* data;

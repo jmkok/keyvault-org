@@ -107,7 +107,7 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 // ssh_login() - Login to an SSH server
 //
 
-static int ssh_login(struct tSsh* ssh, tFileDescription* kvo, const char* username, const char* default_password) {
+static int ssh_login(struct tSsh* ssh, struct FILE_LOCATION* kvo, const char* username, const char* default_password) {
 	printf("ssh_login(%p, %p, '%s', '%s')\n", ssh, kvo, username, default_password);
 	char* userauthlist = libssh2_userauth_list(ssh->session, username, strlen(username));
 	printf("\tAuthentication methods: %s\n", userauthlist);
@@ -336,7 +336,7 @@ int ssh_agent_login(struct tSsh* ssh, const char* username) {
 // ssh_get_file() - Read a file from a SSH server
 //
 
-int ssh_get_file(tFileDescription* kvo, void** data, ssize_t* length) {
+int ssh_get_file(struct FILE_LOCATION* kvo, void** data, ssize_t* length) {
 	*length=0;
 	int err=0;
 
@@ -375,7 +375,7 @@ shutdown:
 // ssh_put_file() - Write a file from a SSH server
 //
 
-int ssh_put_file(tFileDescription* kvo, void* data, ssize_t length) {
+int ssh_put_file(struct FILE_LOCATION* kvo, void* data, ssize_t length) {
 	printf("ssh_put_file(%p, %p, %zu)", kvo, data, length);
 	int err=0;
 	struct tSsh* ssh = mallocz(sizeof(struct tSsh));

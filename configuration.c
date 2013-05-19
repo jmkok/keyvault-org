@@ -119,13 +119,17 @@ struct CONFIG* read_configuration(const char* filename) {
 // get_configuration
 //
 
-tFileDescription* node_to_kvo(xmlNode* node) {
+struct FILE_LOCATION* node_to_kvo(xmlNode* node) {
 	printf("node_to_kvo(%p)\n",node);
 	assert(node);
 	xmlNodeShow(node);
-	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
+	struct FILE_LOCATION* kvo = mallocz(sizeof(struct FILE_LOCATION));
 	kvo->title = (char*)xmlGetTextContents(node, CONST_BAD_CAST "title");
-	kvo->protocol = (char*)xmlGetTextContents(node, CONST_BAD_CAST "protocol");
+	char* p = (char*)xmlGetTextContents(node, CONST_BAD_CAST "protocol");
+	if (p) {
+		kvo->protocol = text_to_proto(p);
+		free(p);
+	}
 	kvo->hostname = (char*)xmlGetTextContents(node, CONST_BAD_CAST "hostname");
 	kvo->port = xmlGetIntegerContents(node, CONST_BAD_CAST "port");
 	kvo->username = (char*)xmlGetTextContents(node, CONST_BAD_CAST "username");
@@ -140,9 +144,9 @@ tFileDescription* node_to_kvo(xmlNode* node) {
 // Split an url into its components
 //
 
-tFileDescription* url_to_kvo(const char* url) {
+struct FILE_LOCATION* url_to_kvo(const char* url) {
 	printf("%s('%s')\n", __FUNCTION__, url);
-	tFileDescription* kvo = mallocz(sizeof(tFileDescription));
+	struct FILE_LOCATION* kvo = mallocz(sizeof(struct FILE_LOCATION));
 	char* tmp = strdup(url);
 	kvo->title = strdup(url);
 
@@ -150,7 +154,7 @@ tFileDescription* url_to_kvo(const char* url) {
 	char* next = strstr(tmp,"://");
 	assert(next);
 	*next = 0; next += 3;
-	kvo->protocol = strdup(tmp);
+	kvo->protocol = text_to_proto(tmp);
 
 	/* next points to the potential username
 	 * extract the "username:password@hostname" */
@@ -191,7 +195,7 @@ tFileDescription* url_to_kvo(const char* url) {
 // put_configuration
 //
 
-xmlNode* kvo_to_node(tFileDescription* kvo) {
+xmlNode* kvo_to_node(struct FILE_LOCATION* kvo) {
 	printf("kvo_to_node(%p)\n", kvo);
 	assert(kvo);
 	assert(kvo->title);
