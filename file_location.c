@@ -19,6 +19,19 @@ enum FL_PROTO text_to_proto(const char* text) {
 	return PROTO_UNKNOWN;
 }
 
+const char* proto_to_text(enum FL_PROTO protocol) {
+	switch(protocol) {
+		case PROTO_UNKNOWN:
+			return "unknown";
+		case PROTO_FILE:
+			return "local";
+		case PROTO_SSH:
+			return "ssh";
+		default:
+			return "unknown";
+	};
+}
+
 // ---------------------------------------------------------------------
 //
 // Read the data from the FILE LOCATION
@@ -32,8 +45,9 @@ extern int read_data(struct FILE_LOCATION* loc, void** data, ssize_t* length) {
 			assert(0);
 		case PROTO_SSH:
 			return ssh_get_file(loc, data, length);
+		default:
+			return -1;
 	};
-	return -1;
 }
 
 // ---------------------------------------------------------------------

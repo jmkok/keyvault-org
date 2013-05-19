@@ -204,7 +204,7 @@ xmlNode* kvo_to_node(struct FILE_LOCATION* kvo) {
 	assert(root);
 	xmlNewTextChild(root, NULL, CONST_BAD_CAST "title", BAD_CAST kvo->title);
 	if (kvo->protocol)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "protocol", BAD_CAST kvo->protocol);
+		xmlNewTextChild(root, NULL, CONST_BAD_CAST "protocol", BAD_CAST proto_to_text(kvo->protocol));
 	if (kvo->hostname)
 		xmlNewTextChild(root, NULL, CONST_BAD_CAST "hostname", BAD_CAST kvo->hostname);
 	if (kvo->port)
