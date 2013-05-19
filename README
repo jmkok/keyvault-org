@@ -1,9 +1,7 @@
 Required packages
 
-libgtk2.0-dev libssh2-1-dev libmxml-dev
-
 Installing under Ubuntu (or Debian)
-sudo apt-get install libgtk2.0-dev libssh2-1-dev libmxml-dev
+sudo apt-get install libgtk2.0-dev libssh2-1-dev libxml2-dev libssl-dev
 
 ------ ENCRYPTION SCHEME ------
 
