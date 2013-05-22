@@ -22,15 +22,33 @@ struct TREEVIEW {
 };
 
 struct UI {
-	// The main window
+	/* The main window */
 	GtkWidget* main_window;
+	GtkAccelGroup* accel_group;
+
+	/* The file menu */
+	GtkWidget* file_menu;
+
+	/* The file menu items */
+	GtkWidget* new_menu_item;
+	GtkWidget* open_menu_item;
+	GtkWidget* save_menu_item;
+	GtkWidget* close_menu_item;
+	GtkWidget* exit_menu_item;
+
+	GtkWidget* import_menu_item;
+	GtkWidget* export_menu_item;
 
 	// The menus
-	GtkWidget* open_profile_menu;
-	GtkWidget* save_profile_menu;
-	GtkWidget* edit_profile_menu;
+	//~ GtkWidget* open_profile_menu;
+	//~ GtkWidget* save_profile_menu;
+	//~ GtkWidget* edit_profile_menu;
 
-	// The entries
+	/* The left side */
+	GtkWidget* filter_entry;
+	GtkWidget* treeview_scroll;
+
+	/* The right side */
 	GtkWidget* title_entry;
 	GtkWidget* username_entry;
 	GtkWidget* password_entry;
@@ -39,6 +57,9 @@ struct UI {
 	GtkWidget* info_text;
 	GtkWidget* time_created_label;
 	GtkWidget* time_modified_label;
+	GtkWidget* random_password_button;
+	GtkWidget* launch_button;
+	GtkWidget* record_save_button;
 
 	/* The treeview and its proporties */
 	struct TREEVIEW* tree;
