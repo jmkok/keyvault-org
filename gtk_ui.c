@@ -630,34 +630,36 @@ static void update_profile_menu(struct CONFIG* config) {
 #endif
 
 void setup_file_menu(struct UI* ui, struct CONFIG* config) {
+	/* remove all items in the file menu */
+	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
+		gtk_remove_menu_item(data, menu_item);
+	}
+	gtk_container_foreach(GTK_CONTAINER(ui->file_menu), cb_remove_menu_item, ui->file_menu);
+
 	/* open, save, save as */
-	ui->new_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "New", G_CALLBACK(menu_new_profile), config);
+	ui->new_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "New", G_CALLBACK(menu_new_profile), NULL);
 	ui->open_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Open file", G_CALLBACK(menu_file_open), ui->tree->store);
 	ui->save_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Save", G_CALLBACK(menu_file_save), ui->tree->store);
 	gtk_add_menu_item_clickable(ui->file_menu, "Save as...", G_CALLBACK(menu_file_save_as), ui->tree->store);
 	gtk_add_separator(ui->file_menu);
 
 	/* predefined files */
-	// Add all items in the config_list to the profile menu
-	int idx = 0;
-	while(1) {
-		struct FILE_LOCATION* loc = get_file_location_by_index(config, idx++);
-		if (!loc)
-			break;
-		gtk_add_menu_item_clickable(ui->file_menu, loc->title, G_CALLBACK(menu_open_file_location), loc);
+	if (config) {
+		int idx = 0;
+		while(1) {
+			struct FILE_LOCATION* loc = get_file_location_by_index(config, idx++);
+			if (!loc)
+				break;
+			gtk_add_menu_item_clickable(ui->file_menu, loc->title, G_CALLBACK(menu_open_file_location), loc);
+		}
+		if (idx > 1)
+			gtk_add_separator(ui->file_menu);
 	}
-	//~ ui->open_profile_menu = gtk_add_menu(ui->file_menu, "Open profile");
-	//~ ui->save_profile_menu = gtk_add_menu(file_menu, "Save profile");
-	//~ ui->edit_profile_menu = gtk_add_menu(file_menu, "Edit profile");
-	gtk_add_separator(ui->file_menu);
 
 	/* import/export */
 	ui->import_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Import...", G_CALLBACK(menu_file_import), ui->tree->store);
 	ui->export_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Export...", G_CALLBACK(menu_file_export), ui->tree->store);
 	gtk_add_separator(ui->file_menu);
-	//~ gtk_add_menu_item_clickable(ui->file_menu, "Read configuration", G_CALLBACK(save_configuration), NULL);
-	//~ gtk_add_menu_item_clickable(ui->file_menu, "Save configuration", G_CALLBACK(read_configuration), NULL);
-	//~ gtk_add_separator(ui->file_menu);
 
 	/* exit */
 	ui->close_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Close", G_CALLBACK(menu_file_close), NULL);
