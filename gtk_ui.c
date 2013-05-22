@@ -48,33 +48,34 @@ static struct FILE_LOCATION* active_file_location = NULL;
 //
 
 static void set_active_file_location(struct FILE_LOCATION* loc, int modified) {
+	struct UI* ui = g_ui;
 	active_file_location = loc;
 
 	/* Update the visibility of some menu items */
 	gboolean v = (loc ? TRUE : FALSE);
-	gtk_widget_set_sensitive(g_ui->save_menu_item, v);
-	gtk_widget_set_sensitive(g_ui->close_menu_item, v);
-	gtk_widget_set_sensitive(g_ui->export_menu_item, v);
-	gtk_widget_set_sensitive(g_ui->import_menu_item, !v);	/* inverted */
+	gtk_widget_set_sensitive(ui->save_menu_item, v);
+	gtk_widget_set_sensitive(ui->close_menu_item, v);
+	gtk_widget_set_sensitive(ui->export_menu_item, v);
+	gtk_widget_set_sensitive(ui->import_menu_item, !v);	/* inverted */
 
 	/* The left side */
-	gtk_widget_set_sensitive(g_ui->filter_entry, v);
-	gtk_widget_set_sensitive(g_ui->treeview_scroll, v);
+	gtk_widget_set_sensitive(ui->filter_entry, v);
+	gtk_widget_set_sensitive(ui->treeview_scroll, v);
 
 	/* The right side */
-	gtk_widget_set_sensitive(g_ui->title_entry, v);
-	gtk_widget_set_sensitive(g_ui->username_entry, v);
-	gtk_widget_set_sensitive(g_ui->password_entry, v);
-	gtk_widget_set_sensitive(g_ui->url_entry, v);
-	gtk_widget_set_sensitive(g_ui->group_entry, v);
-	gtk_widget_set_sensitive(g_ui->info_text, v);
-	gtk_widget_set_sensitive(g_ui->random_password_button, v);
-	gtk_widget_set_sensitive(g_ui->launch_button, v);
-	gtk_widget_set_sensitive(g_ui->record_save_button, v);
+	gtk_widget_set_sensitive(ui->title_entry, v);
+	gtk_widget_set_sensitive(ui->username_entry, v);
+	gtk_widget_set_sensitive(ui->password_entry, v);
+	gtk_widget_set_sensitive(ui->url_entry, v);
+	gtk_widget_set_sensitive(ui->group_entry, v);
+	gtk_widget_set_sensitive(ui->info_text, v);
+	gtk_widget_set_sensitive(ui->random_password_button, v);
+	gtk_widget_set_sensitive(ui->launch_button, v);
+	gtk_widget_set_sensitive(ui->record_save_button, v);
 
 	/* Update the menu title */
 	if (!loc) {
-		gtk_window_set_title(GTK_WINDOW(g_ui->main_window), "Keyvault.org");
+		gtk_window_set_title(GTK_WINDOW(ui->main_window), "Keyvault.org");
 		return;
 	}
 
@@ -91,7 +92,7 @@ static void set_active_file_location(struct FILE_LOCATION* loc, int modified) {
 		title = malloc(128);
 		sprintf(title, "%s - %s%s", "Keyvault.org", "NEW", (modified ? "*" : ""));
 	}
-	gtk_window_set_title(GTK_WINDOW(g_ui->main_window), title);
+	gtk_window_set_title(GTK_WINDOW(ui->main_window), title);
 	free(title);
 }
 
@@ -150,6 +151,7 @@ static xmlDoc* user_decrypt_xml(xmlDoc* encrypted_doc) {
 
 static void load_from_file_location(struct FILE_LOCATION* loc) {
 	debugf("\n%s(%p)\n", __FUNCTION__, loc);
+	struct UI* ui = g_ui;
 	fl_todo(loc);
 
 	void* data;
@@ -171,7 +173,7 @@ static void load_from_file_location(struct FILE_LOCATION* loc) {
 	}
 
 	// Move the encrypted xml into the treestore
-	import_treestore_from_xml(g_ui->tree->store, doc);
+	import_treestore_from_xml(ui->tree->store, doc);
 
 	/* Set the active file location */
 	set_active_file_location(loc, 0);
@@ -212,7 +214,8 @@ static int load_from_uri(const gchar* filename, GtkTreeStore* treestore) {
 //
 
 static void menu_file_open(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer treestore_ptr) {
-	gchar* filename=gtk_dialog_open_file(GTK_WINDOW(g_ui->main_window), 0);
+	struct UI* ui = g_ui;
+	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 0);
 	if (filename) {
 		//~ GtkTreeStore* treestore = treestore_ptr;
 		struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
@@ -251,6 +254,7 @@ static void menu_file_close(_UNUSED_ GtkWidget *widget, _UNUSED_ struct FILE_LOC
 
 static void save_to_file_location(struct FILE_LOCATION* loc) {
 	g_printf("\n%s(...,%p)\n", __FUNCTION__, loc);
+	struct UI* ui = g_ui;
 	fl_todo(loc);
 
 	// Get a passphrase if not yet available
@@ -261,7 +265,7 @@ static void save_to_file_location(struct FILE_LOCATION* loc) {
 	}
 
 	// Create an encrypted xml document
-	xmlDoc* doc = export_treestore_to_xml(g_ui->tree->store);
+	xmlDoc* doc = export_treestore_to_xml(ui->tree->store);
 	assert(doc);
 	xmlDoc* doc_encrypted = xml_doc_encrypt(doc, passkey->data);
 	assert(doc_encrypted);
@@ -297,9 +301,9 @@ static void save_to_file_location(struct FILE_LOCATION* loc) {
 // MENU: file -> save as
 //
 
-static void menu_file_save_as(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer treestore_ptr)
-{
-	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(g_ui->main_window), 0);
+static void menu_file_save_as(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer treestore_ptr) {
+	struct UI* ui = g_ui;
+	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui->main_window), 0);
 	if (!filename)
 		return;
 	struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
@@ -373,10 +377,10 @@ static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer dat
 // MENU: file -> import
 //
 
-static void menu_file_import(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
-{
+static void menu_file_import(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr) {
+	struct UI* ui = g_ui;
 	GtkTreeStore* treestore = treestore_ptr;
-	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(g_ui->main_window), 2);
+	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 2);
 	if (strstr(filename,".csv")) {
 		import_treestore_from_csv(treestore, filename);
 	}
@@ -394,11 +398,11 @@ static void menu_file_import(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 // MENU: file -> export
 //
 
-static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
-{
+static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr) {
+	struct UI* ui = g_ui;
 	GtkTreeStore* treestore = treestore_ptr;
 	gtk_warning("You are about to save your information unencrypted");
-	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(g_ui->main_window), 1);
+	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui->main_window), 1);
 	if (strstr(filename,".csv")) {
 		export_treestore_to_csv(treestore, filename);
 	}
@@ -421,7 +425,8 @@ static void menu_file_export(_UNUSED_ GtkWidget* widget, gpointer treestore_ptr)
 //
 
 void click_launch_button(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	const gchar* url=gtk_entry_get_text(GTK_ENTRY(g_ui->url_entry));
+	struct UI* ui = g_ui;
+	const gchar* url = gtk_entry_get_text(GTK_ENTRY(ui->url_entry));
 	printf("Launch: %s\n",url);
 	char* cmd = malloc(strlen(url) + 64);
 	sprintf(cmd,"/usr/bin/xdg-open %s",url);
@@ -436,9 +441,10 @@ void click_launch_button(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 //
 
 static void treemodel_filter_change(GtkWidget *widget, gpointer ptr) {
+	struct UI* ui = g_ui;
 	GtkTreeModelFilter* treefilter = ptr;
 	const char* text=gtk_entry_get_text(GTK_ENTRY(widget));
-	strcpy(g_ui->tree->filter_text, text);
+	strcpy(ui->tree->filter_text, text);
 	gtk_tree_model_filter_refilter(treefilter);
 }
 
@@ -452,12 +458,13 @@ static void clear_filter(GtkEntry *entry, _UNUSED_ GtkEntryIconPosition icon_pos
 //
 
 void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) {
+	struct UI* ui = g_ui;
   GtkTreeIter filter_iter;
   GtkTreeModel* filter_model;
 	GtkTreeIter child_iter;
 	GtkTreeModel* child_model;
 	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &filter_model, &filter_iter)) {
-		GtkTextBuffer* text_buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(g_ui->info_text));
+		GtkTextBuffer* text_buffer=gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui->info_text));
 		GtkTextIter start,end;
 		gtk_text_buffer_get_bounds(text_buffer,&start,&end);
 		const gchar* info = gtk_text_buffer_get_text(text_buffer, &start, &end, 0);
@@ -468,11 +475,11 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 
 		// Now update the tree store
 		gtk_tree_store_set(GTK_TREE_STORE(child_model), &child_iter,
-			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(g_ui->title_entry)),
-			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(g_ui->username_entry)),
-			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(g_ui->password_entry)),
-			COL_URL, gtk_entry_get_text(GTK_ENTRY(g_ui->url_entry)),
-			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(g_ui->group_entry)),
+			COL_TITLE, gtk_entry_get_text(GTK_ENTRY(ui->title_entry)),
+			COL_USERNAME, gtk_entry_get_text(GTK_ENTRY(ui->username_entry)),
+			COL_PASSWORD, gtk_entry_get_text(GTK_ENTRY(ui->password_entry)),
+			COL_URL, gtk_entry_get_text(GTK_ENTRY(ui->url_entry)),
+			COL_GROUP, gtk_entry_get_text(GTK_ENTRY(ui->group_entry)),
 			COL_INFO, info,
 			COL_TIME_MODIFIED, time(0),
 			-1);
@@ -485,8 +492,9 @@ void write_changes_to_treestore(_UNUSED_ GtkWidget* widget, gpointer selection) 
 //
 
 static void click_random_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
+	struct UI* ui = g_ui;
 	gchar* password = create_random_password(12);
-	gtk_entry_set_text(GTK_ENTRY(g_ui->password_entry),password);
+	gtk_entry_set_text(GTK_ENTRY(ui->password_entry),password);
 	g_free(password);
 }
 
@@ -496,15 +504,16 @@ static void click_random_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer 
 //
 
 static void click_add_item(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
+	struct UI* ui = g_ui;
 	GtkTreeIter iter;
 	// Insert a new record with a random password
 	gchar* password = create_random_password(12);
 	gchar* id = create_random_password(16);
-	treestore_add_record(g_ui->tree->store, &iter, NULL, id, "NEW", "", password, "http://", "", "", time(0), time(0));
+	treestore_add_record(ui->tree->store, &iter, NULL, id, "NEW", "", password, "http://", "", "", time(0), time(0));
 	g_free(id);
 	g_free(password);
 	// Set focus...
-  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(g_ui->tree->view));
+  GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
 	gtk_tree_selection_select_iter(selection, &iter);
 }
 
@@ -522,13 +531,13 @@ static void click_copy_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer da
 //
 
 static void focus_in_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	//~ GtkWidget*
-	gtk_entry_set_visibility(GTK_ENTRY(g_ui->password_entry), TRUE);
+	struct UI* ui = g_ui;
+	gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), TRUE);
 }
 
 static void focus_out_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	//~ GtkWidget*
-	gtk_entry_set_visibility(GTK_ENTRY(g_ui->password_entry), FALSE);
+	struct UI* ui = g_ui;
+	gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), FALSE);
 }
 
 // -----------------------------------------------------------
@@ -538,6 +547,7 @@ static void focus_out_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer dat
 //
 
 static void do_popup_menu (_UNUSED_ GtkWidget* widget, GdkEventButton *event) {
+	struct UI* ui = g_ui;
 	int button, event_time;
 
 	if (event) {
@@ -549,7 +559,7 @@ static void do_popup_menu (_UNUSED_ GtkWidget* widget, GdkEventButton *event) {
 		event_time = gtk_get_current_event_time ();
 	}
 
-	gtk_menu_popup (GTK_MENU (g_ui->tree->popup_menu), NULL, NULL, NULL, NULL, button, event_time);
+	gtk_menu_popup (GTK_MENU (ui->tree->popup_menu), NULL, NULL, NULL, NULL, button, event_time);
 }
 
 static gboolean my_widget_button_press_event_handler (GtkWidget *widget, GdkEventButton *event) {
@@ -652,8 +662,8 @@ static char* strdup_ctime(time_t xtime) {
 	return tmp;
 }
 
-static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
-{
+static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar) {
+	struct UI* ui = g_ui;
   GtkTreeIter iter;
   GtkTreeModel *model;
   char* id;
@@ -685,18 +695,18 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
     gtk_statusbar_push(GTK_STATUSBAR(statusbar),gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar),title), title);
 
 		// Update the input fields
-		gtk_entry_set_text(GTK_ENTRY(g_ui->title_entry),(title?title:""));
-		gtk_entry_set_text(GTK_ENTRY(g_ui->username_entry),(username?username:""));
-		gtk_entry_set_text(GTK_ENTRY(g_ui->password_entry),(password?password:""));
-		gtk_entry_set_text(GTK_ENTRY(g_ui->url_entry),(url?url:""));
-		gtk_entry_set_text(GTK_ENTRY(g_ui->group_entry),(group?group:""));
-		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(g_ui->info_text));
+		gtk_entry_set_text(GTK_ENTRY(ui->title_entry),(title?title:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->username_entry),(username?username:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->password_entry),(password?password:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->url_entry),(url?url:""));
+		gtk_entry_set_text(GTK_ENTRY(ui->group_entry),(group?group:""));
+		GtkTextBuffer* buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(ui->info_text));
 		if (info)
 			gtk_text_buffer_set_text(buffer,info,-1);
 		else
 			gtk_text_buffer_set_text(buffer,"",-1);
-		gtk_label_set_markup(GTK_LABEL(g_ui->time_created_label), time_created_text);
-		gtk_label_set_markup(GTK_LABEL(g_ui->time_modified_label), time_modified_text);
+		gtk_label_set_markup(GTK_LABEL(ui->time_created_label), time_created_text);
+		gtk_label_set_markup(GTK_LABEL(ui->time_modified_label), time_modified_text);
 
     free(time_modified_text);
     free(time_created_text);
@@ -719,14 +729,14 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar)
 // It filters the title column, but potentially could filter other columns
 //
 
-static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter, _UNUSED_ gpointer data)
-{
+static gboolean treemodel_visible_func (GtkTreeModel *model, GtkTreeIter  *iter, _UNUSED_ gpointer data) {
+	struct UI* ui = g_ui;
 	gchar *str;
 	gboolean visible = FALSE;
 	gtk_tree_model_get (model, iter, COL_TITLE, &str, -1);
 	if (str) {
 		lowercase(str);
-		if (strstr(str, g_ui->tree->filter_text))
+		if (strstr(str, ui->tree->filter_text))
 			visible = TRUE;
 		g_free (str);
 	}
