@@ -36,6 +36,7 @@ struct UI* g_ui = NULL;
 static struct FILE_LOCATION* active_file_location = NULL;
 
 static void setup_menu_items(struct UI* ui, struct CONFIG* config);
+static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar);
 
 // -----------------------------------------------------------
 //
@@ -488,6 +489,7 @@ static void click_add_item(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	/* Set focus... */
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
 	gtk_tree_selection_select_iter(selection, &iter);
+	treeview_selection_changed(GTK_WIDGET(selection), ui->statusbar);
 }
 
 static void click_copy_username(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
@@ -1020,8 +1022,8 @@ int create_main_window(struct SETUP* setup) {
   gtk_box_pack_start(GTK_BOX(vbox_right), ui->record_save_button , FALSE, TRUE, 1);
 
 	/* Status bar... */
-  GtkWidget* statusbar = gtk_statusbar_new();
-  gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, TRUE, 1);
+  ui->statusbar = gtk_statusbar_new();
+  gtk_box_pack_start(GTK_BOX(vbox), ui->statusbar, FALSE, TRUE, 1);
 
 	/* Connects... */
   g_signal_connect(G_OBJECT (ui->main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -1035,7 +1037,7 @@ int create_main_window(struct SETUP* setup) {
 	/* Connect to any changes made to the treeview */
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
   gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
-  g_signal_connect(selection, "changed", G_CALLBACK(treeview_selection_changed), statusbar);
+  g_signal_connect(selection, "changed", G_CALLBACK(treeview_selection_changed), ui->statusbar);
 
 	/* Connect to any changes made to the input fields */
 	//~ g_signal_connect(G_OBJECT (title_entry), "changed", G_CALLBACK(write_changes_to_ui->tree->store), selection);

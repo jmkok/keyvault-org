@@ -62,6 +62,9 @@ struct UI {
 	GtkWidget* launch_button;
 	GtkWidget* record_save_button;
 
+	/* The status bar */
+	GtkWidget* statusbar;
+
 	/* The treeview and its proporties */
 	struct TREEVIEW* tree;
 };
