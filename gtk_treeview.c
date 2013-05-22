@@ -67,12 +67,12 @@ xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 		int time_created;
 		int time_modified;
 
-		gtk_tree_model_get(model, iter, 
-			COL_ID, &id, 
-			COL_TITLE, &title, 
-			COL_USERNAME, &username, 
-			COL_PASSWORD, &password, 
-			COL_URL, &url, 
+		gtk_tree_model_get(model, iter,
+			COL_ID, &id,
+			COL_TITLE, &title,
+			COL_USERNAME, &username,
+			COL_PASSWORD, &password,
+			COL_URL, &url,
 			COL_GROUP, &group,
 			COL_INFO, &info,
 			COL_TIME_CREATED, &time_created,
@@ -135,7 +135,7 @@ void xml_contents_into_treestore_column(xmlNode* node, const char* name, GtkTree
 void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 	debugf("import_treestore_from_xml(%p,%p)\n", treestore, doc);
 	assert(doc);
-	
+
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 
@@ -176,16 +176,17 @@ void import_treestore_from_xml(GtkTreeStore* treestore, xmlDoc* doc) {
 void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIter* parent, const char* id, const char* title, const char* username, const char* password, const char* url, const char* group, const char* info, time_t time_created, time_t time_modified) {
 	gtk_tree_store_append(treestore, iter, parent);
 	gtk_tree_store_set(treestore, iter,
-		COL_ID, id, 
-		COL_TITLE, title, 
-		COL_USERNAME, username, 
-		COL_PASSWORD, password, 
-		COL_URL, url, 
+		COL_ID, id,
+		COL_TITLE, title,
+		COL_USERNAME, username,
+		COL_PASSWORD, password,
+		COL_URL, url,
 		COL_GROUP, group,
-		COL_INFO, info, 
+		COL_INFO, info,
 		COL_TIME_CREATED, time_created,
 		COL_TIME_MODIFIED, time_modified,
-		-1);
+		-1
+	);
 }
 
 // -----------------------------------------------------------
@@ -193,53 +194,51 @@ void treestore_add_record(GtkTreeStore* treestore, GtkTreeIter* iter, GtkTreeIte
 // export the treestore to an csv file (UNENCRYPTED)
 //
 
+static gboolean cb_store_treenode_as_csv(GtkTreeModel *model, _UNUSED_ GtkTreePath* path, GtkTreeIter *iter, gpointer data) {
+	FILE* fh = data;
+	char* id;
+	char* title;
+	char* username;
+	char* password;
+	char* url;
+	char* group;
+	char* info;
+	int time_created;
+	int time_modified;
+
+	gtk_tree_model_get(model, iter,
+		COL_ID, &id,
+		COL_TITLE, &title,
+		COL_USERNAME, &username,
+		COL_PASSWORD, &password,
+		COL_URL, &url,
+		COL_GROUP, &group,
+		COL_INFO, &info,
+		COL_TIME_CREATED, &time_created,
+		COL_TIME_MODIFIED, &time_modified,
+		-1
+	);
+	fprintf(fh,"\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%u\",\"%u\"\n", id, title, username, password, url, group, info, time_created, time_modified);
+
+	g_free(id);
+	g_free(title);
+	g_free(username);
+	g_free(password);
+	g_free(url);
+	g_free(group);
+	g_free(info);
+	return FALSE;
+}
+
+
 void export_treestore_to_csv(GtkTreeStore* treestore, const char* filename) {
-	debugf("export_treestore_to_csv(%p,'%s')\n", treestore, filename);
-	// Callback per treenode
-	gboolean treenode_to_csv(GtkTreeModel *model, _UNUSED_ GtkTreePath* path, GtkTreeIter *iter, gpointer data) {
-		FILE* fh = data;
-		char* id;
-		char* title;
-		char* username;
-		char* password;
-		char* url;
-		char* group;
-		char* info;
-		int time_created;
-		int time_modified;
-
-		gtk_tree_model_get(model, iter, 
-			COL_ID, &id, 
-			COL_TITLE, &title, 
-			COL_USERNAME, &username, 
-			COL_PASSWORD, &password, 
-			COL_URL, &url, 
-			COL_GROUP, &group,
-			COL_INFO, &info,
-			COL_TIME_CREATED, &time_created,
-			COL_TIME_MODIFIED, &time_modified,
-			-1);
-		fprintf(fh,"\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%u\",\"%u\"\n", id, title, username, password, url, group, info, time_created, time_modified);
-
-		g_free(id);
-		g_free(title);
-		g_free(username);
-		g_free(password);
-		g_free(url);
-		g_free(group);
-		g_free(info);
-		return FALSE;
-	}
-
-	// Create the xml container
+	debugf("%s(%p,'%s')\n", __FUNCTION__, treestore, filename);
 	FILE* fh = fopen(filename,"w");
-	fprintf(fh,"title,username,password,url,info\n");
-
-	// Foreach node call "treenode_to_xml" and store the node into the <keyvault> element
-	gtk_tree_model_foreach(GTK_TREE_MODEL(treestore), treenode_to_csv, fh);
-	
-	// Close the handle
-	fclose(fh);
+	if (fh) {
+		fprintf(fh,"title,username,password,url,info\n");
+		gtk_tree_model_foreach(GTK_TREE_MODEL(treestore), cb_store_treenode_as_csv, fh);
+		fclose(fh);
+	}
 }
 
 // -----------------------------------------------------------
@@ -266,7 +265,7 @@ char** read_csv_line(char* line) {
 }
 
 void import_treestore_from_csv(GtkTreeStore* treestore, const char* filename) {
-	debugf("import_treestore_from_csv(%p,'%s')\n", treestore, filename);
+	debugf("%s(%p,'%s')\n", __FUNCTION__, treestore, filename);
 	// Remove all rows
 	gtk_tree_store_clear(treestore);
 

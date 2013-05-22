@@ -29,7 +29,7 @@ ARCH = $(shell uname -i)
 all: $(TARG)
 
 run: $(TARG)
-	LANG=C ./$(TARG)
+	./$(TARG)
 
 clean:
 	rm -f $(TARG) $(OBJS) $(TARG)*.deb

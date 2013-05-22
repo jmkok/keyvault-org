@@ -306,7 +306,7 @@ void fl_todo(struct FILE_LOCATION* loc) {
 //
 
 struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, int idx) {
-	printf("%s(%p,%i)\n", __FUNCTION__, config, idx);
+	//~ printf("%s(%p,%i)\n", __FUNCTION__, config, idx);
 
 	// Get the root
 	xmlNode* root = xmlDocGetRootElement(config->doc);
@@ -315,7 +315,6 @@ struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, int idx)
 	// Walk all children
 	xmlNode* node = root->children;
 	while(node) {
-		trace();
 		if (node->type == XML_ELEMENT_NODE) {
 			if (idx-- == 0)
 				break;
@@ -324,7 +323,6 @@ struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, int idx)
 	}
 	if (!node)
 		return NULL;
-	xmlNodeShow(node);
 
 	/* Convert the xmlNode into a struct FILE_LOCATION */
 	struct FILE_LOCATION* loc = calloc(1,sizeof(struct FILE_LOCATION));
@@ -349,40 +347,49 @@ struct FILE_LOCATION* get_file_location_by_index(struct CONFIG* config, int idx)
 // put_configuration
 //
 
-static xmlNode* file_location_to_xml_node(struct FILE_LOCATION* kvo) {
-	printf("kvo_to_node(%p)\n", kvo);
-	assert(kvo);
-	assert(kvo->title);
-	xmlNode* root = xmlNewNode(NULL, CONST_BAD_CAST "kvo_file");
-	assert(root);
-	xmlNewTextChild(root, NULL, CONST_BAD_CAST "title", BAD_CAST kvo->title);
-	if (kvo->protocol)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "protocol", BAD_CAST proto_to_text(kvo->protocol));
-	if (kvo->hostname)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "hostname", BAD_CAST kvo->hostname);
-	if (kvo->port)
-		xmlNewIntegerChild(root, NULL, CONST_BAD_CAST "port", kvo->port);
-	if (kvo->username)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "username", BAD_CAST kvo->username);
-	if (kvo->password)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "password", BAD_CAST kvo->password);
-	if (kvo->filename)
-		xmlNewTextChild(root, NULL, CONST_BAD_CAST "filename", BAD_CAST kvo->filename);
-	if (kvo->fingerprint)
-		xmlNewBase64Child(root, NULL, CONST_BAD_CAST "fingerprint", BAD_CAST kvo->fingerprint, 16);
+static xmlNode* file_location_to_xml_node(struct FILE_LOCATION* loc) {
+	printf("%s('%s')\n", __FUNCTION__, loc->title);
+
+	/* Create / determine the root */
+	xmlNode* root = NULL;
+	if (loc->xml_node)
+		root = loc->xml_node;
+	else
+		root = xmlNewNode(NULL, CONST_BAD_CAST "file");
+	loc->xml_node = root;
+
+	/* Remove any node tems */
+	while(root->children)
+		xmlUnlinkNode(root->children);
+
+	/* Set the node items */
+	xmlNewTextChild(root, NULL, CONST_BAD_CAST "title", BAD_CAST loc->title);
+	if (loc->protocol)
+		xmlNewTextChild(root, NULL, CONST_BAD_CAST "protocol", BAD_CAST proto_to_text(loc->protocol));
+	if (loc->hostname)
+		xmlNewTextChild(root, NULL, CONST_BAD_CAST "hostname", BAD_CAST loc->hostname);
+	if (loc->port)
+		xmlNewIntegerChild(root, NULL, CONST_BAD_CAST "port", loc->port);
+	if (loc->username)
+		xmlNewTextChild(root, NULL, CONST_BAD_CAST "username", BAD_CAST loc->username);
+	if (loc->password)
+		xmlNewTextChild(root, NULL, CONST_BAD_CAST "password", BAD_CAST loc->password);
+	if (loc->filename)
+		xmlNewTextChild(root, NULL, CONST_BAD_CAST "filename", BAD_CAST loc->filename);
+	if (loc->fingerprint)
+		xmlNewBase64Child(root, NULL, CONST_BAD_CAST "fingerprint", BAD_CAST loc->fingerprint, 16);
 	return root;
 }
 
 void store_file_location(struct CONFIG* config, struct FILE_LOCATION* loc) {
-	//~ xmlNode* node = xmlNewDocNode(doc, NULL, CONST_BAD_CAST "kvo_file", NULL);
+	printf("%s('%s')\n", __FUNCTION__, loc->title);
+	//~ xmlNode* node = xmlNewDocNode(doc, NULL, CONST_BAD_CAST "file", NULL);
 	xmlNode* node = file_location_to_xml_node(loc);
-	if (loc->xml_node) {
-		xmlReplaceNode(loc->xml_node, node);
-		xmlFreeNode(loc->xml_node);
-		loc->xml_node = node;
-	}
-	else {
+	assert(loc->xml_node);
+	assert(node);
+	if (!node->doc) {
 		xmlNode* root = xmlDocGetRootElement(config->doc);
 		xmlAddChild(root, node);
 	}
+	//~ xmlDocShow(config->doc);
 }

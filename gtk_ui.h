@@ -26,18 +26,19 @@ struct UI {
 	GtkWidget* main_window;
 	GtkAccelGroup* accel_group;
 
-	/* The file menu */
+	/* The file menu + items */
 	GtkWidget* file_menu;
-
-	/* The file menu items */
 	GtkWidget* new_menu_item;
 	GtkWidget* open_menu_item;
 	GtkWidget* save_menu_item;
+	GtkWidget* edit_location_item;
 	GtkWidget* close_menu_item;
 	GtkWidget* exit_menu_item;
-
 	GtkWidget* import_menu_item;
 	GtkWidget* export_menu_item;
+
+	/* The edit menu */
+	GtkWidget* edit_menu;
 
 	// The menus
 	//~ GtkWidget* open_profile_menu;

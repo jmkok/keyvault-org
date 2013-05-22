@@ -35,12 +35,7 @@ struct PASSKEY* passkey = NULL;
 struct UI* g_ui = NULL;
 static struct FILE_LOCATION* active_file_location = NULL;
 
-// -----------------------------------------------------------
-//
-// static functions (needed as they reference each other)
-//
-
-//~ static void update_profile_menu(struct CONFIG* config);
+static void setup_menu_items(struct UI* ui, struct CONFIG* config);
 
 // -----------------------------------------------------------
 //
@@ -49,6 +44,10 @@ static struct FILE_LOCATION* active_file_location = NULL;
 
 static void set_active_file_location(struct FILE_LOCATION* loc, int modified) {
 	struct UI* ui = g_ui;
+
+	/* If an active file location is present, release this first */
+	if (active_file_location && active_file_location != loc)
+		destroy_file_location(active_file_location);
 	active_file_location = loc;
 
 	/* Update the visibility of some menu items */
@@ -103,7 +102,8 @@ static void set_active_file_location(struct FILE_LOCATION* loc, int modified) {
 
 static int gtk_request_passphrase(void) {
 	int err=0;
-	// Request the passphrase from the user
+
+	/* Request the passphrase from the user */
 	gchar* passphrase = gtk_dialog_password(NULL, "Enter passphrase");
 	if (!passphrase) {
 		passkey->valid = 0;
@@ -113,13 +113,13 @@ static int gtk_request_passphrase(void) {
 		return -1;
 	}
 
-	// Create the keyvault-data keys
+	/* Create the keyvault-data keys */
 	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_DATA,   KEYVAULT_DATA_ROUNDS,   passkey->data);
 	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_CONFIG, KEYVAULT_CONFIG_ROUNDS, passkey->config);
 	pkcs5_pbkdf2_hmac_sha1(passphrase, KEYVAULT_LOGIN,  KEYVAULT_LOGIN_ROUNDS,  passkey->login);
 	passkey->valid = 1;
 
-	// Cleanup
+	/* Cleanup */
 	memset(passphrase, 0 ,strlen(passphrase));
 	g_free(passphrase);
 	return err;
@@ -195,21 +195,6 @@ static void load_from_file_location(struct FILE_LOCATION* loc) {
 
 // -----------------------------------------------------------
 //
-// load from an uri
-//
-
-static int load_from_uri(const gchar* filename, GtkTreeStore* treestore) {
-	debugf("%s('%s',%p)\n", __FUNCTION__, filename, treestore);
-	struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
-	if (!loc)
-		return -ENOENT;
-	load_from_file_location(loc);
-	destroy_file_location(loc);
-	return 0;
-}
-
-// -----------------------------------------------------------
-//
 // MENU: file -> open
 //
 
@@ -217,23 +202,22 @@ static void menu_file_open(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer treesto
 	struct UI* ui = g_ui;
 	gchar* filename = gtk_dialog_open_file(GTK_WINDOW(ui->main_window), 0);
 	if (filename) {
-		//~ GtkTreeStore* treestore = treestore_ptr;
 		struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
-		if (!loc) {
-			todo();	/* error message */
-			return;
+		if (loc) {
+			load_from_file_location(loc);
 		}
-		load_from_file_location(loc);
-		//~ destroy_file_location(loc); - TODO: MOVE TO CLOSE FUNCTION
+		else {
+			gtk_error("Cannot open file");
+		}
 	}
 }
 
 // -----------------------------------------------------------
 //
-// MENU: file -> open_profile
+// MENU: file -> open predefined location
 //
 
-static void menu_open_file_location(_UNUSED_ GtkWidget *widget, struct FILE_LOCATION* loc) {
+static void menu_file_open_location(_UNUSED_ GtkWidget *widget, struct FILE_LOCATION* loc) {
 	load_from_file_location(loc);
 }
 
@@ -304,11 +288,14 @@ static void save_to_file_location(struct FILE_LOCATION* loc) {
 static void menu_file_save_as(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer treestore_ptr) {
 	struct UI* ui = g_ui;
 	gchar* filename = gtk_dialog_save_file(GTK_WINDOW(ui->main_window), 0);
-	if (!filename)
-		return;
-	struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
-	g_free (filename);
-	save_to_file_location(loc);
+	if (filename) {
+		struct FILE_LOCATION* loc = create_file_location_from_uri(filename);
+		g_free (filename);
+		if (loc)
+			save_to_file_location(loc);
+		else
+			gtk_error("Failed to save file");
+	}
 }
 
 // -----------------------------------------------------------
@@ -317,30 +304,28 @@ static void menu_file_save_as(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer tree
 //
 
 static void menu_file_save(_UNUSED_ GtkWidget *widget, _UNUSED_ gpointer ptr) {
-	if (active_file_location)
+	if (active_file_location) {
 		save_to_file_location(active_file_location);
+		gtk_info("Files saved");
+	}
 }
 
 // -----------------------------------------------------------
 //
-// MENU: file -> profile -> new
+// MENU: edit -> location
 // edit a profile
 //
 
-#if 0
-static void menu_edit_profile(_UNUSED_ GtkWidget* widget, struct FILE_LOCATION* loc) {
-	g_printf("\n%s(...,%p)\n", __FUNCTION__, loc);
+static void menu_file_edit_location(_UNUSED_ GtkWidget* widget, struct FILE_LOCATION* loc) {
+	g_printf("%s()\n", __FUNCTION__);
+	struct UI* ui = g_ui;
 
 	// Let the use fill in all required fields...
 	if (gtk_dialog_request_config(ui->main_window, loc)) {
-		// Store the kvo to the list
-		//~ listAdd(global->config_list, config);
-		update_profile_menu(global->config);
-		// Store the the profile list
-		save_configuration("config.xml", global->config);
+		setup_menu_items(ui, global->config);
+		store_file_location(global->config, loc);
 	}
 }
-#endif
 
 // -----------------------------------------------------------
 //
@@ -352,25 +337,11 @@ static void menu_new_profile(_UNUSED_ GtkWidget* widget, _UNUSED_ struct CONFIG*
 	//~ xmlNode* node = new_config_node(doc);
 	struct FILE_LOCATION* loc = create_file_location();
 	set_active_file_location(loc, 1);
+	setup_menu_items(g_ui, global->config);
 	//~ menu_edit_profile(NULL, loc);
 	//~ store_file_location(config, loc);
 	//~ update_profile_menu(config);
 }
-
-/*
-static void menu_file_open_ssh(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	// Create a new kvo file
-	tConfigDescription* config = calloc(1,sizeof(tConfigDescription));
-	// Let the use fill in all required fields...
-	if (gtk_dialog_request_config(main_window, config)) {
-		// Store the kvo to the list
-		listAdd(global->config_list, config);
-		update_profile_menu(global->config_list);
-		// Open the file...
-		menu_open_profile_file(NULL, config);
-	}
-}
-*/
 
 // -----------------------------------------------------------
 //
@@ -506,23 +477,25 @@ static void click_random_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer 
 static void click_add_item(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
 	struct UI* ui = g_ui;
 	GtkTreeIter iter;
-	// Insert a new record with a random password
+
+	/* Insert a new record with a random password */
 	gchar* password = create_random_password(12);
 	gchar* id = create_random_password(16);
 	treestore_add_record(ui->tree->store, &iter, NULL, id, "NEW", "", password, "http://", "", "", time(0), time(0));
 	g_free(id);
 	g_free(password);
-	// Set focus...
+
+	/* Set focus... */
   GtkTreeSelection* selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ui->tree->view));
 	gtk_tree_selection_select_iter(selection, &iter);
 }
 
 static void click_copy_username(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	printf("click_copy_username\n");
+	printf("%s()\n", __FUNCTION__);
 }
 
 static void click_copy_password(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer data) {
-	printf("click_copy_password\n");
+	printf("%s()\n", __FUNCTION__);
 }
 
 // -----------------------------------------------------------
@@ -602,31 +575,52 @@ void menu_edit_change_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer d
 
 // -----------------------------------------------------------
 //
+// Remove menu item
+//
+
+static void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
+	gtk_remove_menu_item(data, menu_item);
+}
+
+// -----------------------------------------------------------
+//
 // Setup the file menu
 //
 
-static void setup_file_menu(struct UI* ui, struct CONFIG* config) {
-	/* remove all items in the file menu */
-	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
-		gtk_remove_menu_item(data, menu_item);
-	}
-	gtk_container_foreach(GTK_CONTAINER(ui->file_menu), cb_remove_menu_item, ui->file_menu);
+static void setup_menu_items(struct UI* ui, struct CONFIG* config) {
+	printf("%s()\n", __FUNCTION__);
 
-	/* open, save, save as */
+	/* remove all items in the file and edit menu */
+	gtk_container_foreach(GTK_CONTAINER(ui->file_menu), cb_remove_menu_item, ui->file_menu);
+	gtk_container_foreach(GTK_CONTAINER(ui->edit_menu), cb_remove_menu_item, ui->edit_menu);
+
+	/* FILE: open, save, save as */
 	ui->new_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "New", G_CALLBACK(menu_new_profile), NULL);
 	ui->open_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Open file", G_CALLBACK(menu_file_open), ui->tree->store);
 	ui->save_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Save", G_CALLBACK(menu_file_save), ui->tree->store);
 	gtk_add_menu_item_clickable(ui->file_menu, "Save as...", G_CALLBACK(menu_file_save_as), ui->tree->store);
+	ui->edit_location_item = gtk_add_menu(ui->file_menu, "Edit...");
 	gtk_add_separator(ui->file_menu);
 
-	/* predefined files */
+	/* EDIT: add, copy */
+	GtkWidget* add_item = gtk_add_menu_item_clickable(ui->edit_menu, "Add item", G_CALLBACK(click_add_item), NULL);
+	GtkWidget* copy_username_menu_item = gtk_add_menu_item_clickable(ui->edit_menu, "Copy username", G_CALLBACK(click_copy_username), NULL);
+	GtkWidget* copy_password_menu_item = gtk_add_menu_item_clickable(ui->edit_menu, "Copy passphrase", G_CALLBACK(click_copy_password), NULL);
+	gtk_add_separator(ui->edit_menu);
+	gtk_add_menu_item_clickable(ui->edit_menu, "Change passphrase", G_CALLBACK(menu_edit_change_passphrase), NULL);
+
+	/* FILE+EDIT: predefined files */
 	if (config) {
 		int idx = 0;
 		while(1) {
 			struct FILE_LOCATION* loc = get_file_location_by_index(config, idx++);
 			if (!loc)
 				break;
-			gtk_add_menu_item_clickable(ui->file_menu, loc->title, G_CALLBACK(menu_open_file_location), loc);
+			//~ if (idx == 1)
+				//~ gtk_add_separator(ui->edit_menu);
+			gtk_add_menu_item_clickable(ui->file_menu, loc->title, G_CALLBACK(menu_file_open_location), loc);
+			//~ gtk_add_menu_item_clickable(ui->edit_menu, loc->title, G_CALLBACK(menu_file_edit_location), loc);
+			gtk_add_menu_item_clickable(ui->edit_location_item, loc->title, G_CALLBACK(menu_file_edit_location), loc);
 		}
 		if (idx > 1)
 			gtk_add_separator(ui->file_menu);
@@ -641,13 +635,22 @@ static void setup_file_menu(struct UI* ui, struct CONFIG* config) {
 	ui->close_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Close", G_CALLBACK(menu_file_close), NULL);
 	ui->exit_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Exit", G_CALLBACK(gtk_main_quit), NULL);
 
-	/* Set the accelerators */
+	/* FILE: Set the accelerators */
   gtk_widget_add_accelerator(ui->open_menu_item, "activate", ui->accel_group, GDK_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator(ui->save_menu_item, "activate", ui->accel_group, GDK_s, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
   gtk_widget_add_accelerator(ui->exit_menu_item, "activate", ui->accel_group, GDK_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
+	/* EDIT: Set the accelerators */
+	gtk_widget_add_accelerator(add_item, "activate", ui->accel_group, GDK_n, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(copy_username_menu_item, "activate", ui->accel_group, GDK_u, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(copy_password_menu_item, "activate", ui->accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+
 	/* Disable some of the items */
 	set_active_file_location(NULL, 0);
+
+	/* Update the application */
+	gtk_widget_show_all(ui->file_menu);
+	gtk_widget_show_all(ui->edit_menu);
 }
 
 // -----------------------------------------------------------
@@ -910,17 +913,10 @@ int create_main_window(struct SETUP* setup) {
 	GtkWidget* menu_bar = gtk_menu_bar_new();
 	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, TRUE, 1);
 	ui->file_menu = gtk_add_menu(menu_bar,"File");
-	GtkWidget* edit_menu = gtk_add_menu(menu_bar,"Edit");
+	ui->edit_menu = gtk_add_menu(menu_bar,"Edit");
 	GtkWidget* test_menu = gtk_add_menu(menu_bar,"Test");
 	//~ GtkWidget* view_menu = gtk_add_menu(menu_bar,"View");
 	GtkWidget* help_menu = gtk_add_menu(menu_bar,"Help");
-
-	// Edit menu
-	gtk_add_menu_item_clickable(edit_menu, "Add item", G_CALLBACK(click_add_item), NULL);
-	GtkWidget* copy_username_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy username", G_CALLBACK(click_copy_username), NULL);
-	GtkWidget* copy_password_menu_item = gtk_add_menu_item_clickable(edit_menu, "Copy passphrase", G_CALLBACK(click_copy_password), NULL);
-	gtk_add_separator(edit_menu);
-	gtk_add_menu_item_clickable(edit_menu, "Change passphrase", G_CALLBACK(menu_edit_change_passphrase), NULL);
 
 	// Test menu
 	gtk_add_menu_item(test_menu, "SSH");
@@ -1022,11 +1018,6 @@ int create_main_window(struct SETUP* setup) {
   GtkWidget* statusbar = gtk_statusbar_new();
   gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, TRUE, 1);
 
-  /* Create a GtkAccelGroup and add it to the window. */
-  //~ gtk_widget_add_accelerator (add_menu_item, "activate", accel_group, GDK_a, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-  gtk_widget_add_accelerator (copy_username_menu_item, "activate", ui->accel_group, GDK_u, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-  gtk_widget_add_accelerator (copy_password_menu_item, "activate", ui->accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-
 	/* Connects... */
   g_signal_connect(G_OBJECT (ui->main_window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT (ui->launch_button), "clicked", G_CALLBACK(click_launch_button), ui->tree->view);
@@ -1058,14 +1049,17 @@ int create_main_window(struct SETUP* setup) {
 	setup->config = read_configuration("config.xml");
 
 	/* File menu */
-	setup_file_menu(ui, setup->config);
+	setup_menu_items(ui, setup->config);
 
 	/* Show the application */
   gtk_widget_show_all(ui->main_window);
 
 	/* Is a default filename given, then read that file */
-	if (setup->default_filename)
-		load_from_uri(setup->default_filename, ui->tree->store);
+	if (setup->default_filename) {
+		struct FILE_LOCATION* loc = create_file_location_from_uri(setup->default_filename);
+		if (loc)
+			load_from_file_location(loc);
+	}
 
 	/* Run the app */
   gtk_main();
