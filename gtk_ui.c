@@ -592,44 +592,10 @@ void menu_edit_change_passphrase(_UNUSED_ GtkWidget* widget, _UNUSED_ gpointer d
 
 // -----------------------------------------------------------
 //
-// Update the list of profile files
+// Setup the file menu
 //
 
-#if 0
-static void update_profile_menu(struct CONFIG* config) {
-	printf("update_profile_menu(%p)\n", config);
-	// First remove all items in the profile menu
-	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
-		gtk_remove_menu_item(data, menu_item);
-	}
-	//~ gtk_container_foreach(GTK_CONTAINER(ui->open_profile_menu), cb_remove_menu_item, ui->open_profile_menu);
-	//~ gtk_container_foreach(GTK_CONTAINER(ui->save_profile_menu), cb_remove_menu_item, ui->save_profile_menu);
-	//~ gtk_container_foreach(GTK_CONTAINER(ui->edit_profile_menu), cb_remove_menu_item, ui->edit_profile_menu);
-
-	// Edit profile...
-	//~ gtk_add_separator(ui->edit_profile_menu);
-
-	// Add all items in the config_list to the profile menu
-	int idx = 0;
-	while(1) {
-		struct FILE_LOCATION* loc = get_file_location_by_index(config, idx++);
-		if (!loc)
-			break;
-		const char* title = loc->title;
-		gtk_add_menu_item_clickable(g_ui->file_menu, title, G_CALLBACK(menu_open_file_location), loc);
-		//~ gtk_add_menu_item_clickable(ui->save_profile_menu, title, G_CALLBACK(menu_save_profile_file), loc);
-		//~ gtk_add_menu_item_clickable(ui->edit_profile_menu, title, G_CALLBACK(menu_edit_profile), loc);
-	}
-
-	// Update the menu
-	gtk_widget_show_all(g_ui->file_menu);
-	//~ gtk_widget_show_all(ui->open_profile_menu);
-	//~ gtk_widget_show_all(ui->save_profile_menu);
-	//~ gtk_widget_show_all(ui->edit_profile_menu);
-}
-#endif
-
-void setup_file_menu(struct UI* ui, struct CONFIG* config) {
+static void setup_file_menu(struct UI* ui, struct CONFIG* config) {
 	/* remove all items in the file menu */
 	void cb_remove_menu_item(GtkWidget* menu_item, gpointer data) {
 		gtk_remove_menu_item(data, menu_item);
