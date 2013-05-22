@@ -20,7 +20,7 @@ extern GtkTreeModel* data_treemodel;
 
 // -----------------------------------------------------------
 //
-// static functions (needed as they reference each other)
+// Convert time-text to time-int
 //
 
 static long int time_to_int(const char* text) {
@@ -38,7 +38,7 @@ static long int time_to_int(const char* text) {
 			//~ asctime_r(xtime,tmp);
 			//~ printf("asctime(): %s\n", tmp);
 			time_t unix_time = mktime(xtime);
-			//~ printf("unix_time: %ld\n", unix_time);
+			printf("unix_time: %s => %ld\n", text, unix_time);
 			return unix_time;
 		}
 		return 0;

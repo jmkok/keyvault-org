@@ -690,9 +690,14 @@ static void treeview_selection_changed(GtkWidget *widget, gpointer statusbar) {
 			COL_GROUP, &group,
 			COL_INFO, &info,
 			COL_TIME_CREATED, &time_created,
-			COL_TIME_MODIFIED, &time_modified, -1);
+			COL_TIME_MODIFIED, &time_modified,
+			-1
+		);
 
 		// Update the status bar
+		printf("%li:%li\n", time_created, time_modified);
+		if (time_created > 9999999999)
+			time_created /= 120000;
 		char* time_created_text = strdup_ctime(time_created);
 		char* time_modified_text = strdup_ctime(time_modified);
     gtk_statusbar_push(GTK_STATUSBAR(statusbar),gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar),title), title);
