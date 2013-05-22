@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <gtk/gtk.h>
 
 #include "gtk_dialogs.h"
@@ -8,6 +9,11 @@
 #include "configuration.h"
 #include "functions.h"
 #include "file_location.h"
+
+// -----------------------------------------------------------
+//
+// Request a password
+//
 
 gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title) {
 	/* Create the dialog */
@@ -52,22 +58,69 @@ gchar* gtk_dialog_password(GtkWindow* parent, const gchar* title) {
 	return retval;
 }
 
-gboolean gtk_dialog_request_config (GtkWidget* parent, struct FILE_LOCATION* kvo) {
-	//~ assert(kvo);
-	gboolean retval=FALSE;
+// -----------------------------------------------------------
+//
+// Edit the file location configuration
+//
+
+struct LOCATION_DIALOG_UI {
+	GtkWidget* dialog;
+	GtkWidget* hostname_label;
+	GtkWidget* hostname_entry;
+	GtkWidget* username_label;
+	GtkWidget* username_entry;
+	GtkWidget* password_label;
+	GtkWidget* password_entry;
+};
+
+void change_location_protocol(GtkWidget *widget, gpointer data) {
+	struct LOCATION_DIALOG_UI* ui = data;
+	gchar* protocol = gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
+	enum FL_PROTO p = text_to_proto(protocol);
+	free_if_defined(protocol);
+
+	switch (p) {
+		case PROTO_FILE:
+		case PROTO_UNKNOWN:
+			gtk_widget_hide(ui->hostname_label);
+			gtk_widget_hide(ui->hostname_entry);
+			gtk_widget_hide(ui->username_label);
+			gtk_widget_hide(ui->username_entry);
+			gtk_widget_hide(ui->password_label);
+			gtk_widget_hide(ui->password_entry);
+			break;
+		case PROTO_SSH:
+			gtk_widget_show(ui->hostname_label);
+			gtk_widget_show(ui->hostname_entry);
+			gtk_widget_show(ui->username_label);
+			gtk_widget_show(ui->username_entry);
+			gtk_widget_show(ui->password_label);
+			gtk_widget_show(ui->password_entry);
+			break;
+	}
+	gint width,height;
+	gtk_window_get_size(GTK_WINDOW(ui->dialog),&width,&height);
+	gtk_window_resize(GTK_WINDOW(ui->dialog), width, 1);
+}
+
+gboolean gtk_dialog_request_config (GtkWidget* parent, struct FILE_LOCATION* loc) {
+	assert(loc);
+	gboolean retval = FALSE;
+	struct LOCATION_DIALOG_UI* ui = calloc(1,sizeof(struct LOCATION_DIALOG_UI));
+
 	/* Create the dialog */
-	GtkWidget* dialog = gtk_dialog_new_with_buttons ("File configuration",
+	ui->dialog = gtk_dialog_new_with_buttons ("File configuration",
 																	 GTK_WINDOW(parent),
 																	 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
 																	 NULL);
-	GtkWidget* ok_button = gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_OK, GTK_RESPONSE_OK);	// GTK_RESPONSE_ACCEPT
-	gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);	// GTK_RESPONSE_NONE
+	GtkWidget* ok_button = gtk_dialog_add_button (GTK_DIALOG (ui->dialog), GTK_STOCK_OK, GTK_RESPONSE_OK);	// GTK_RESPONSE_ACCEPT
+	gtk_dialog_add_button (GTK_DIALOG (ui->dialog), GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);	// GTK_RESPONSE_NONE
 
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/pixmaps/apple-red.png", NULL);
-	gtk_window_set_icon_name(GTK_WINDOW(dialog), GTK_STOCK_DIALOG_AUTHENTICATION);
-	gtk_window_set_default_size (GTK_WINDOW(dialog), 300, -1);
-	gtk_dialog_set_has_separator(GTK_DIALOG(dialog), FALSE);
-	GtkWidget* content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
+	gtk_window_set_icon_name(GTK_WINDOW(ui->dialog), GTK_STOCK_DIALOG_AUTHENTICATION);
+	gtk_window_set_default_size (GTK_WINDOW(ui->dialog), 300, -1);
+	gtk_dialog_set_has_separator(GTK_DIALOG(ui->dialog), FALSE);
+	GtkWidget* content_area = gtk_dialog_get_content_area (GTK_DIALOG (ui->dialog));
 
 	/* Add the vbox */
   GtkWidget* vbox = gtk_vbox_new(FALSE, 1);
@@ -83,78 +136,63 @@ gboolean gtk_dialog_request_config (GtkWidget* parent, struct FILE_LOCATION* kvo
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo_box),"local");
 	gtk_combo_box_append_text(GTK_COMBO_BOX(combo_box),"ssh");
   gtk_box_pack_start(GTK_BOX(vbox), combo_box , FALSE, TRUE, 1);
-	if (!kvo->protocol)
-		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),0);
-	else if (kvo->protocol == PROTO_SSH)
+	gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),0);
+	if (loc->protocol == PROTO_SSH)
 		gtk_combo_box_set_active(GTK_COMBO_BOX(combo_box),1);
 
 	/* Add the fields */
-	GtkWidget* title_entry = gtk_add_labeled_entry(vbox, "Title",kvo->title);
-	GtkWidget* hostname_label = gtk_add_label(vbox,"Hostname");
-	GtkWidget* hostname_entry = gtk_add_entry(vbox,kvo->hostname);
-	GtkWidget* username_label = gtk_add_label(vbox,"Username");
-	GtkWidget* username_entry = gtk_add_entry(vbox,kvo->username);
-	GtkWidget* password_label = gtk_add_label(vbox,"Password");
-	GtkWidget* password_entry = gtk_add_entry(vbox,kvo->password);
-	gtk_entry_set_visibility(GTK_ENTRY(password_entry), FALSE);
-	GtkWidget* filename_entry = gtk_add_labeled_entry(vbox, "Filename",kvo->filename);
+	GtkWidget* title_entry = gtk_add_labeled_entry(vbox, "Title", loc->title);
+	ui->hostname_label = gtk_add_label(vbox, "Hostname");
+	ui->hostname_entry = gtk_add_entry(vbox, loc->hostname);
+	ui->username_label = gtk_add_label(vbox, "Username");
+	ui->username_entry = gtk_add_entry(vbox, loc->username);
+	ui->password_label = gtk_add_label(vbox, "Password");
+	ui->password_entry = gtk_add_entry(vbox, loc->password);
+	gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), FALSE);
+	GtkWidget* filename_entry = gtk_add_labeled_entry(vbox, "Filename",loc->filename);
 
 	/* Protocol change */
-	void change_protocol(GtkWidget *widget, _UNUSED_ gpointer data) {
-		gchar* protocol=gtk_combo_box_get_active_text(GTK_COMBO_BOX(widget));
-		if (!protocol || strcmp(protocol,"local") == 0) {
-			gtk_widget_hide(hostname_label);
-			gtk_widget_hide(hostname_entry);
-			gtk_widget_hide(username_label);
-			gtk_widget_hide(username_entry);
-			gtk_widget_hide(password_label);
-			gtk_widget_hide(password_entry);
-		}
-		else if (strcmp(protocol,"ssh") == 0) {
-			gtk_widget_show(hostname_label);
-			gtk_widget_show(hostname_entry);
-			gtk_widget_show(username_label);
-			gtk_widget_show(username_entry);
-			gtk_widget_show(password_label);
-			gtk_widget_show(password_entry);
-		}
-		g_free(protocol);
-		gint width,height;
-		gtk_window_get_size(GTK_WINDOW(dialog),&width,&height);
-		gtk_window_resize (GTK_WINDOW(dialog), width, 1);
-	}
-  g_signal_connect(G_OBJECT (combo_box), "changed", G_CALLBACK(change_protocol), NULL);
+  g_signal_connect(G_OBJECT(combo_box), "changed", G_CALLBACK(change_location_protocol), ui);
 
 	/* Show the dialog, wait for the OK button and return the passphrase */
-	gtk_widget_show_all(dialog);
-	change_protocol(combo_box,NULL);
+	gtk_widget_show_all(ui->dialog);
+	change_location_protocol(combo_box, ui);
 
 	//~ gtk_signal_connect_object (GTK_OBJECT (passphrase_entry), "focus_in_event", GTK_SIGNAL_FUNC (gtk_widget_grab_default), GTK_OBJECT (ok_button));
 	gtk_signal_connect_object (GTK_OBJECT (combo_box), "activate", GTK_SIGNAL_FUNC (gtk_button_clicked), GTK_OBJECT (ok_button));
 
-	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
-		// Update the fields in the kvo structure...
-		if (kvo->title) free(kvo->title);
-		kvo->title = strdup(gtk_entry_get_text(GTK_ENTRY(title_entry)));
+	if (gtk_dialog_run(GTK_DIALOG(ui->dialog)) == GTK_RESPONSE_OK) {
+		/* First release all fields */
+		free_if_defined(loc->title);
+		free_if_defined(loc->hostname);
+		free_if_defined(loc->username);
+		free_if_defined(loc->password);
+		free_if_defined(loc->filename);
+
+		/* Update the fields in the loc structure... */
+		loc->protocol = PROTO_FILE;
 		char* p = gtk_combo_box_get_active_text(GTK_COMBO_BOX(combo_box));
 		if (p) {
-			kvo->protocol = text_to_proto(p);
+			loc->protocol = text_to_proto(p);
 			free(p);
 		}
-		if (gtk_combo_box_get_active(GTK_COMBO_BOX(combo_box)) >= 1) {
-			if (kvo->hostname) free(kvo->hostname);
-			kvo->hostname=strdup(gtk_entry_get_text(GTK_ENTRY(hostname_entry)));
-			if (kvo->username) free(kvo->username);
-			kvo->username=strdup(gtk_entry_get_text(GTK_ENTRY(username_entry)));
-			if (kvo->password) free(kvo->password);
-			kvo->password=strdup(gtk_entry_get_text(GTK_ENTRY(password_entry)));
+		loc->title = strdup(gtk_entry_get_text(GTK_ENTRY(title_entry)));
+		loc->filename = strdup(gtk_entry_get_text(GTK_ENTRY(filename_entry)));
+		if (loc->protocol == PROTO_SSH) {
+			loc->hostname = strdup(gtk_entry_get_text(GTK_ENTRY(ui->hostname_entry)));
+			loc->username = strdup(gtk_entry_get_text(GTK_ENTRY(ui->username_entry)));
+			loc->password = strdup(gtk_entry_get_text(GTK_ENTRY(ui->password_entry)));
 		}
-		if (kvo->filename) free(kvo->filename);
-		kvo->filename=strdup(gtk_entry_get_text(GTK_ENTRY(filename_entry)));
-		retval=TRUE;
+		else {
+			loc->hostname = NULL;
+			loc->username = NULL;
+			loc->password = NULL;
+		}
+		retval = TRUE;
 	}
 
-	gtk_widget_destroy(dialog);
+	gtk_widget_destroy(ui->dialog);
+	free(ui);
 	return retval;
 }
 

@@ -16,9 +16,9 @@
 //
 
 enum FL_PROTO text_to_proto(const char* text) {
-	if (strcmp(text,"local") == 0)
+	if (text && strcmp(text,"local") == 0)
 		return PROTO_FILE;
-	if (strcmp(text,"ssh") == 0)
+	if (text && strcmp(text,"ssh") == 0)
 		return PROTO_SSH;
 	return PROTO_UNKNOWN;
 }
