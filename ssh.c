@@ -43,11 +43,11 @@ int tcp_connect(const char* hostname, int port) {
 
 	// Resolve the hostname
 	struct hostent* host = gethostbyname(hostname);
-	printf("\thostaddr: %u.%u.%u.%u (%u)\n", 
-		(uint8_t)host->h_addr_list[0][0], 
-		(uint8_t)host->h_addr_list[0][1], 
-		(uint8_t)host->h_addr_list[0][2], 
-		(uint8_t)host->h_addr_list[0][3], 
+	printf("\thostaddr: %u.%u.%u.%u (%u)\n",
+		(uint8_t)host->h_addr_list[0][0],
+		(uint8_t)host->h_addr_list[0][1],
+		(uint8_t)host->h_addr_list[0][2],
+		(uint8_t)host->h_addr_list[0][3],
 		host->h_length);
 
 	// Create the TCP socket
@@ -78,7 +78,7 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 		gtk_error("Failed to connect to the SSH server");
 		return -1;
 	}
-	
+
 	// Open an SSH session...
 	ssh->session = libssh2_session_init();
 	if (libssh2_session_startup(ssh->session, ssh->sock)) {
@@ -96,7 +96,7 @@ static int ssh_connect(struct tSsh* ssh, const char* hostname, int port, void** 
 		gtk_error("Incorrect fingerprint for remote SSH server\nMore info: http://en.wikipedia.org/wiki/Public_key_fingerprint");
 		return -1;
 	}
-	
+
 	// Store the new fingerprint if it was not yet defined
 	if (!*fingerprint)
 		*fingerprint=malloc(16);
@@ -195,7 +195,7 @@ static int ssh_read(struct tSsh* ssh, const char* filename, void** data, ssize_t
 	while(total < *length) {
 		int rx = *length-total;
 		rx=libssh2_sftp_read(sftp_handle, *data+total, rx);
-		printf("\trx: %u (%u / %zu)\n",rx,total,*length);	
+		printf("\trx: %u (%u / %zu)\n",rx,total,*length);
 		if (rx <= 0) break;
 		total+=rx;
 	}
@@ -240,13 +240,13 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	else {
 		printf("\tSFTP handle openened\n");
 	}
-	
+
 	// Start writing (only 16kB blocks - 32kB and/or larger blocks fail...)
-	printf("\tSending %zu bytes\n", length);	
+	printf("\tSending %zu bytes\n", length);
 	int total=0;
 	while(total < length) {
 		int tx = libssh2_sftp_write(sftp_handle, data+total, (min((16*1024),length-total)));
-		printf("\ttx: %u (%u / %zu)\n", tx, total, length);	
+		printf("\ttx: %u (%u / %zu)\n", tx, total, length);
 		if (tx == 0)
 			continue;
 		if (tx <= 0) {
@@ -259,7 +259,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 	// Close the file
 	int retval = libssh2_sftp_close(sftp_handle);
 	printf("retval: %i\n",retval);
-	
+
 	// libssh2_sftp_rename (it seems I am not able to overwrite files...)
 	if ((retval == 0) && (total == length)) {
 		// remove the current backup.kvo
@@ -295,7 +295,7 @@ static int ssh_write(struct tSsh* ssh, const char* filename, void* data, ssize_t
 //
 
 int ssh_agent_login(struct tSsh* ssh, const char* username) {
-	/* Connect to the ssh-agent */ 
+	/* Connect to the ssh-agent */
 	LIBSSH2_AGENT* agent = libssh2_agent_init(ssh->session);
 	if (!agent) {
 		fprintf(stderr, "Failure initializing ssh-agent support\n");
@@ -332,7 +332,7 @@ int ssh_agent_login(struct tSsh* ssh, const char* username) {
 		}
 		prev_identity = identity;
 	}
-} 
+}
 
 // ------------------------------------------------------------------
 //
@@ -345,19 +345,19 @@ int ssh_get_file(struct FILE_LOCATION* kvo, void** data, ssize_t* length) {
 
 	struct tSsh* ssh = calloc(1,sizeof(struct tSsh));
 
-	// Connect to the server
+	/* Connect to the server */
 	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
 	if (err) goto shutdown;
 
-	// Use the SSH agent to connect
+	/* Use the SSH agent to connect */
 	err = ssh_agent_login(ssh, kvo->username);
 	if (err) {
-		// check what authentication methods are available
+		/* check what authentication methods are available */
 		err = ssh_login(ssh, kvo, kvo->username, kvo->password);
 		if (err) goto shutdown;
 	}
 
-	// Read the file...
+	/* Read the file... */
 	err = ssh_read(ssh, kvo->filename, data, length);
 	if (err) goto shutdown;
 
@@ -383,15 +383,19 @@ int ssh_put_file(struct FILE_LOCATION* kvo, void* data, ssize_t length) {
 	int err=0;
 	struct tSsh* ssh = calloc(1,sizeof(struct tSsh));
 
-	// Connect to the server
+	/* Connect to the server */
 	err = ssh_connect(ssh, kvo->hostname, kvo->port, &kvo->fingerprint);
 	if (err) goto shutdown;
 
-	// check what authentication methods are available
-	err = ssh_login(ssh, kvo, kvo->username, kvo->password);
-	if (err) goto shutdown;
+	/* Use the SSH agent to connect */
+	err = ssh_agent_login(ssh, kvo->username);
+	if (err) {
+		/* check what authentication methods are available */
+		err = ssh_login(ssh, kvo, kvo->username, kvo->password);
+		if (err) goto shutdown;
+	}
 
-	// Read the file...
+	/* Write the data... */
 	err = ssh_write(ssh, kvo->filename, data, length);
 	if (err) goto shutdown;
 
