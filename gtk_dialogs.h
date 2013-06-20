@@ -14,9 +14,11 @@ extern gboolean gtk_dialog_request_config(GtkWidget* parent, struct FILE_LOCATIO
 extern gchar* gtk_dialog_open_file(GtkWindow* parent_window, int filter);
 extern gchar* gtk_dialog_save_file(GtkWindow* parent_window, int filter);
 
-#define gtk_info(msg) gtk_dialog_ex(msg, GTK_MESSAGE_INFO)
-#define gtk_warning(msg) gtk_dialog_ex(msg, GTK_MESSAGE_WARNING)
-#define gtk_question(msg) gtk_dialog_ex(msg, GTK_MESSAGE_QUESTION)
-#define gtk_error(msg) gtk_dialog_ex(msg, GTK_MESSAGE_ERROR)
+int gtk_dialog_printf(GtkMessageType type, const char* fmt, ...);
+
+#define gtk_info(msg...) gtk_dialog_printf(GTK_MESSAGE_INFO, msg)
+#define gtk_warning(msg...) gtk_dialog_printf(GTK_MESSAGE_WARNING, msg)
+#define gtk_question(msg...) gtk_dialog_printf(GTK_MESSAGE_QUESTION, msg)
+#define gtk_error(msg...) gtk_dialog_printf(GTK_MESSAGE_ERROR, msg)
 
 #endif

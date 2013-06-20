@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -274,4 +276,17 @@ gint gtk_dialog_ex(const gchar* message, GtkMessageType type) {
 	gint retval = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
 	return retval;
+}
+
+int gtk_dialog_printf(GtkMessageType type, const char* fmt, ...) {
+	char* msg = NULL;
+	va_list ap;
+	va_start(ap, fmt);
+	int len = vasprintf(&msg, fmt, ap);
+	va_end(ap);
+	if (len >= 0) {
+		gtk_dialog_ex(msg, type);
+		free(msg);
+	}
+	return len;
 }

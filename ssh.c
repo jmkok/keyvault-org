@@ -133,11 +133,11 @@ static int ssh_login(struct tSsh* ssh, struct FILE_LOCATION* kvo, const char* us
 					free(kvo->password);
 					kvo->password = password;
 				}
-				printf("\tAuthentication by password succeeded.\n");
+				gtk_info("Authentication by password succeeded.");
 				return 0;
 			}
 			g_free(password);
-			printf("\tAuthentication by password failed!\n");
+			gtk_error("Authentication by password failed!");
 		}
 		password = gtk_dialog_password(NULL, "Enter password for SSH server");
 		if (!password)
@@ -298,17 +298,17 @@ int ssh_agent_login(struct tSsh* ssh, const char* username) {
 	/* Connect to the ssh-agent */
 	LIBSSH2_AGENT* agent = libssh2_agent_init(ssh->session);
 	if (!agent) {
-		fprintf(stderr, "Failure initializing ssh-agent support\n");
+		gtk_error("Failure initializing ssh-agent support");
 		return -1;
 	}
 
 	if (libssh2_agent_connect(agent)) {
-		fprintf(stderr, "Failure connecting to ssh-agent\n");
+		gtk_error("Failure connecting to ssh-agent");
 		return -1;
 	}
 
 	if (libssh2_agent_list_identities(agent)) {
-		fprintf(stderr, "Failure requesting identities to ssh-agent\n");
+		gtk_error("Failure requesting identities to ssh-agent");
 		return -1;
 	}
 
@@ -316,18 +316,18 @@ int ssh_agent_login(struct tSsh* ssh, const char* username) {
 	while (1) {
 		int rc = libssh2_agent_get_identity(agent, &identity, prev_identity);
 		if (rc == 1) {
-			fprintf(stderr, "Couldn't continue authentication\n");
+			gtk_error("Couldn't continue authentication");
 			return -1;
 		}
 		if (rc < 0) {
-			fprintf(stderr, "Failure obtaining identity from ssh-agent support\n");
+			gtk_error("Failure obtaining identity from ssh-agent support");
 			return -1;
 		}
 		if (libssh2_agent_userauth(agent, username, identity)) {
-			printf("\tAuthentication with username %s and public key %s failed!\n", username, identity->comment);
+			gtk_error("Authentication with username %s and public key %s failed!", username, identity->comment);
 		}
 		else {
-			printf("\tAuthentication with username %s and public key %s succeeded!\n", username, identity->comment);
+			gtk_info("Authentication with username %s and public key %s succeeded!", username, identity->comment);
 			return 0;
 		}
 		prev_identity = identity;
