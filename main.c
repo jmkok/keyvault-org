@@ -1,3 +1,5 @@
+#include <pwd.h>
+
 #include "main.h"
 #include "gtk_ui.h"
 #include "gtk_dialogs.h"
@@ -8,6 +10,11 @@ int main(int argc, char** argv)
 {
 	/* "Patch" unitiy with messing with "correct" position of the menu bar */
 	setenv("UBUNTU_MENUPROXY",argv[0],1);
+
+	/* chdir to the HOME directory */
+	struct passwd* userInfoPtr = getpwuid(getuid());
+	if (userInfoPtr)
+		chdir(userInfoPtr->pw_dir);
 
 	/* Initialize the gtk */
   gtk_init(&argc, &argv);

@@ -1053,7 +1053,7 @@ int create_main_window(struct SETUP* setup) {
 	g_signal_connect(G_OBJECT (ui->filter_entry), "icon-press", G_CALLBACK(clear_filter), NULL);
 
 	/* Read the configuration... */
-	setup->config = read_configuration("config.xml");
+	setup->config = read_configuration(FILE_CONFIG);
 
 	/* File menu */
 	setup_menu_items(ui, setup->config);
@@ -1072,7 +1072,7 @@ int create_main_window(struct SETUP* setup) {
   gtk_main();
 
 	/* Save the configuration... */
-	save_configuration("config.xml", setup->config);
+	save_configuration(FILE_CONFIG, setup->config);
 
   return 0;
 }

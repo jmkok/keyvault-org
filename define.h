@@ -27,6 +27,7 @@
 /* The file we use to inidicate that the user has read the warning about
  * the beta stage of the code
  */
-#define FILE_WARN_ONCE ".keyvault-warning.once"
+#define FILE_CONFIG ".config/keyvault/config.xml"
+#define FILE_WARN_ONCE ".config/keyvault/warning.once"
 
 #endif
