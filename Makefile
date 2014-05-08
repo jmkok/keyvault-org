@@ -13,7 +13,7 @@ SRCS=main.c \
 	configuration.c ssh.c encryption.c functions.c list.c xml.c \
 	file_location.c
 OBJS=$(SRCS:.c=.o)
-LIBRARIES=glib-2.0 gtk+-2.0 libxml-2.0 openssl libssh2
+LIBRARIES=glib-2.0 gtk+-3.0 libxml-2.0 openssl libssh2
 #~ CROSS=-m32
 CFLAGS=$(CROSS) `pkg-config --cflags $(LIBRARIES)` -Wall
 CFLAGS += -Wextra -Werror -Wshadow -Wwrite-strings

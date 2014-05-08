@@ -638,14 +638,14 @@ static void setup_menu_items(struct UI* ui, struct CONFIG* config) {
 	ui->exit_menu_item = gtk_add_menu_item_clickable(ui->file_menu, "Exit", G_CALLBACK(gtk_main_quit), NULL);
 
 	/* FILE: Set the accelerators */
-  gtk_widget_add_accelerator(ui->open_menu_item, "activate", ui->accel_group, GDK_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-  gtk_widget_add_accelerator(ui->save_menu_item, "activate", ui->accel_group, GDK_s, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-  gtk_widget_add_accelerator(ui->exit_menu_item, "activate", ui->accel_group, GDK_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(ui->open_menu_item, "activate", ui->accel_group, GDK_KEY_o, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(ui->save_menu_item, "activate", ui->accel_group, GDK_KEY_s, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(ui->exit_menu_item, "activate", ui->accel_group, GDK_KEY_q, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
 	/* EDIT: Set the accelerators */
-	gtk_widget_add_accelerator(add_item, "activate", ui->accel_group, GDK_n, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-  gtk_widget_add_accelerator(copy_username_menu_item, "activate", ui->accel_group, GDK_u, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
-  gtk_widget_add_accelerator(copy_password_menu_item, "activate", ui->accel_group, GDK_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+	gtk_widget_add_accelerator(add_item, "activate", ui->accel_group, GDK_KEY_n, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(copy_username_menu_item, "activate", ui->accel_group, GDK_KEY_u, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(copy_password_menu_item, "activate", ui->accel_group, GDK_KEY_p, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
 
 	/* Disable some of the items */
 	set_active_file_location(NULL, 0);
@@ -869,7 +869,7 @@ static void click_about(_UNUSED_ GtkWidget* widget, gpointer parent_window)
 	gtk_show_about_dialog (parent_window,
 		"program-name", "KeyVault.org",
 		"title", "About KeyVault.org",
-		"logo-icon-name", GTK_STOCK_DIALOG_AUTHENTICATION,
+		"logo-icon-name", "dialog-password",
 		"authors", authors,
 		"website", "http://www.keyvault.org/",
 		NULL);
@@ -895,14 +895,14 @@ int create_main_window(struct SETUP* setup) {
 	GtkWidget* label;
 
 	// Initialize gtk
-  gtk_window_set_default_icon_name(GTK_STOCK_DIALOG_AUTHENTICATION);
+  gtk_window_set_default_icon_name("dialog-password");
 
 	// Create the primary window
   ui->main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_position(GTK_WINDOW(ui->main_window), GTK_WIN_POS_CENTER);
   gtk_window_set_title(GTK_WINDOW(ui->main_window), "Keyvault.org");
 	//~ gtk_window_set_icon_from_file(GTK_WINDOW(main_window), "/usr/share/pixmaps/apple-red.png", NULL);
-	gtk_window_set_icon_name(GTK_WINDOW(ui->main_window), GTK_STOCK_DIALOG_AUTHENTICATION);
+	gtk_window_set_icon_name(GTK_WINDOW(ui->main_window), "dialog-password");
   gtk_widget_set_size_request (ui->main_window, 700, 600);
 
 	/* Create the accel group */
@@ -913,7 +913,7 @@ int create_main_window(struct SETUP* setup) {
   ui->tree = create_view_and_model();
 
 	// Make the vbox and put it in the main window
-  GtkWidget* vbox = gtk_vbox_new(FALSE, 3);
+  GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
   gtk_container_add(GTK_CONTAINER(ui->main_window), vbox);
 
 	// Menu bar
@@ -934,27 +934,27 @@ int create_main_window(struct SETUP* setup) {
 
 	// This is the container for the treeview AND the record info
 	// Make the hbox and put it inside the vbox
-	//~ GtkWidget* hbox = gtk_hbox_new(FALSE, 2);
-	GtkWidget* hbox = gtk_hpaned_new();
+	//~ GtkWidget* hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+	GtkWidget* hbox = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
 	gtk_paned_set_position(GTK_PANED(hbox),200);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 1);
 
 	/* The left side (treeview) */
-	GtkWidget* vbox_left = gtk_vbox_new(FALSE, 2);
+	GtkWidget* vbox_left = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
 	gtk_paned_add1(GTK_PANED(hbox), vbox_left);
 
 	/* Treeview filter entry */
 	ui->filter_entry = gtk_entry_new();
-	gtk_entry_set_icon_from_stock(GTK_ENTRY(ui->filter_entry), GTK_ENTRY_ICON_SECONDARY, GTK_STOCK_CLEAR);
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(ui->filter_entry), GTK_ENTRY_ICON_SECONDARY, "edit-clear");
 	gtk_box_pack_start(GTK_BOX(vbox_left), ui->filter_entry, FALSE, TRUE, 1);
 
 	/* Place the tree view in a scrollable widget */
 	ui->treeview_scroll = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(ui->treeview_scroll), ui->tree->view);
+	gtk_container_add(GTK_CONTAINER(ui->treeview_scroll), ui->tree->view);
 	gtk_box_pack_start(GTK_BOX(vbox_left), ui->treeview_scroll , TRUE, TRUE, 1);
 
 	/* The right side (record info) */
-	GtkWidget* vbox_right = gtk_vbox_new(FALSE, 2);
+	GtkWidget* vbox_right = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
 	gtk_paned_add2(GTK_PANED(hbox), vbox_right);
 
 	/* Add the title and username input entry */
@@ -965,7 +965,7 @@ int create_main_window(struct SETUP* setup) {
 	label = gtk_label_new("Password");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
-	GtkWidget* box = gtk_hbox_new(FALSE,2);
+	GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
 		ui->password_entry = gtk_entry_new();
 		gtk_entry_set_visibility(GTK_ENTRY(ui->password_entry), FALSE);
@@ -977,7 +977,7 @@ int create_main_window(struct SETUP* setup) {
 	label = gtk_label_new("Url");
 	gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
   gtk_box_pack_start(GTK_BOX(vbox_right), label , FALSE, TRUE, 1);
-	box = gtk_hbox_new(FALSE,2);
+	box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
 		ui->url_entry = gtk_entry_new();
 		gtk_box_pack_start(GTK_BOX(box), ui->url_entry , TRUE, TRUE, 0);
@@ -996,12 +996,12 @@ int create_main_window(struct SETUP* setup) {
 	ui->info_text = gtk_text_view_new();
 	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(ui->info_text),GTK_WRAP_WORD);
 	GtkWidget* scroll = gtk_scrolled_window_new(NULL,NULL);
-	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll),ui->info_text);
+	gtk_container_add(GTK_CONTAINER(scroll),ui->info_text);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_box_pack_start(GTK_BOX(vbox_right), scroll , TRUE, TRUE, 1);
 
 	/* Add the created and modified time label */
-	box = gtk_hbox_new(TRUE,2);
+	box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
   gtk_box_pack_start(GTK_BOX(vbox_right), box, FALSE, TRUE, 1);
 		// Add the created time label
 		ui->time_created_label = gtk_label_new("Created...");
@@ -1012,13 +1012,13 @@ int create_main_window(struct SETUP* setup) {
 		gtk_misc_set_alignment (GTK_MISC(ui->time_modified_label), 0, 0);
 		gtk_box_pack_start(GTK_BOX(box), ui->time_modified_label , FALSE, TRUE, 1);
 		// Set the texts to be grey
-		GdkColor grey_color;
-		gdk_color_parse ("grey", &grey_color);
-		gtk_widget_modify_fg (ui->time_created_label, GTK_STATE_NORMAL, &grey_color);
-		gtk_widget_modify_fg (ui->time_modified_label, GTK_STATE_NORMAL, &grey_color);
+		GdkRGBA grey_color;
+		gdk_rgba_parse (&grey_color, "grey");
+		gtk_widget_override_color (ui->time_created_label, GTK_STATE_FLAG_NORMAL, &grey_color);
+		gtk_widget_override_color (ui->time_modified_label, GTK_STATE_FLAG_NORMAL, &grey_color);
 
 	/* The record save button */
-  ui->record_save_button = gtk_button_new_from_stock(GTK_STOCK_SAVE);
+  ui->record_save_button = gtk_button_new_from_icon_name("_Save", GTK_ICON_SIZE_BUTTON);
   gtk_box_pack_start(GTK_BOX(vbox_right), ui->record_save_button , FALSE, TRUE, 1);
 
 	/* Status bar... */
