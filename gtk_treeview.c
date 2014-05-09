@@ -50,59 +50,64 @@ static long int time_to_int(const char* text) {
 
 // -----------------------------------------------------------
 //
+// Callback per treenode
+//
+
+gboolean treenode_to_xml(GtkTreeModel *model, _UNUSED_ GtkTreePath* path, GtkTreeIter *iter, gpointer data) {
+	char* id;
+	char* title;
+	char* username;
+	char* password;
+	char* url;
+	char* group;
+	char* info;
+	int time_created;
+	int time_modified;
+
+	gtk_tree_model_get(model, iter,
+		COL_ID, &id,
+		COL_TITLE, &title,
+		COL_USERNAME, &username,
+		COL_PASSWORD, &password,
+		COL_URL, &url,
+		COL_GROUP, &group,
+		COL_INFO, &info,
+		COL_TIME_CREATED, &time_created,
+		COL_TIME_MODIFIED, &time_modified,
+		-1);
+
+	xmlNode* keyvault = data;
+	xmlNode* node = xmlNewChild(keyvault, NULL, XML_CHAR "node", NULL);
+	xmlNewTextChild(node, NULL, XML_CHAR "id", BAD_CAST id);
+	xmlNewTextChild(node, NULL, XML_CHAR "title", BAD_CAST title);
+	xmlNewTextChild(node, NULL, XML_CHAR "username", BAD_CAST username);
+	xmlNewTextChild(node, NULL, XML_CHAR "password", BAD_CAST password);
+	if (url)
+		xmlNewTextChild(node, NULL, XML_CHAR "url", BAD_CAST url);
+	if (info)
+		xmlNewTextChild(node, NULL, XML_CHAR "info", BAD_CAST info);
+	if (group)
+		xmlNewTextChild(node, NULL, XML_CHAR "group", BAD_CAST group);
+	xmlNewIntegerChild(node, NULL, XML_CHAR "time-created", time_created);
+	xmlNewIntegerChild(node, NULL, XML_CHAR "time-modified", time_modified);
+
+	g_free(id);
+	g_free(title);
+	g_free(username);
+	g_free(password);
+	g_free(url);
+	g_free(group);
+	g_free(info);
+	return FALSE;
+}
+
+// -----------------------------------------------------------
+//
 // export the treestore into an xml text
 //
 
 xmlDoc* export_treestore_to_xml(GtkTreeStore* treestore) {
 	debugf("export_treestore_to_xml(%p)\n", treestore);
-	// Callback per treenode
-	gboolean treenode_to_xml(GtkTreeModel *model, _UNUSED_ GtkTreePath* path, GtkTreeIter *iter, gpointer data) {
-		char* id;
-		char* title;
-		char* username;
-		char* password;
-		char* url;
-		char* group;
-		char* info;
-		int time_created;
-		int time_modified;
-
-		gtk_tree_model_get(model, iter,
-			COL_ID, &id,
-			COL_TITLE, &title,
-			COL_USERNAME, &username,
-			COL_PASSWORD, &password,
-			COL_URL, &url,
-			COL_GROUP, &group,
-			COL_INFO, &info,
-			COL_TIME_CREATED, &time_created,
-			COL_TIME_MODIFIED, &time_modified,
-			-1);
-
-		xmlNode* keyvault = data;
-		xmlNode* node = xmlNewChild(keyvault, NULL, XML_CHAR "node", NULL);
-		xmlNewTextChild(node, NULL, XML_CHAR "id", BAD_CAST id);
-		xmlNewTextChild(node, NULL, XML_CHAR "title", BAD_CAST title);
-		xmlNewTextChild(node, NULL, XML_CHAR "username", BAD_CAST username);
-		xmlNewTextChild(node, NULL, XML_CHAR "password", BAD_CAST password);
-		if (url)
-			xmlNewTextChild(node, NULL, XML_CHAR "url", BAD_CAST url);
-		if (info)
-			xmlNewTextChild(node, NULL, XML_CHAR "info", BAD_CAST info);
-		if (group)
-			xmlNewTextChild(node, NULL, XML_CHAR "group", BAD_CAST group);
-		xmlNewIntegerChild(node, NULL, XML_CHAR "time-created", time_created);
-		xmlNewIntegerChild(node, NULL, XML_CHAR "time-modified", time_modified);
-
-		g_free(id);
-		g_free(title);
-		g_free(username);
-		g_free(password);
-		g_free(url);
-		g_free(group);
-		g_free(info);
-		return FALSE;
-	}
 
 	// Create the xml container
 	xmlDoc* doc = xmlNewDoc(XML_CHAR "1.0");
