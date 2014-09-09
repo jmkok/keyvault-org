@@ -1,4 +1,6 @@
 #include <pwd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "main.h"
 #include "gtk_ui.h"
@@ -18,6 +20,9 @@ int main(int argc, char** argv)
 
 	/* Initialize the gtk */
   gtk_init(&argc, &argv);
+
+	/* Create the config directory */
+	mkdir(PATH_CONFIG, 0700);
 
 	/* Warn once about the beta status */
 	if (!file_exists(FILE_WARN_ONCE)) {
